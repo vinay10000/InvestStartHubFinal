@@ -119,19 +119,21 @@ export function formatInvestmentStage(stage: string): string {
 
 /**
  * Get the color for an investment stage
+ * Returns an object with bg and text properties for styling
  */
-export function getInvestmentStageColor(stage: string): string {
-  const colorMap: Record<string, string> = {
-    "seed": "emerald",
-    "pre_seed": "green",
-    "series_a": "blue",
-    "series_b": "indigo",
-    "series_c": "violet",
-    "growth": "purple",
-    "pre_ipo": "fuchsia",
+export function getInvestmentStageColor(stage: string): { bg: string; text: string } {
+  const colorMap: Record<string, { bg: string; text: string }> = {
+    "seed": { bg: "bg-emerald-100", text: "text-emerald-800" },
+    "pre_seed": { bg: "bg-green-100", text: "text-green-800" },
+    "pre-seed": { bg: "bg-green-100", text: "text-green-800" },
+    "series_a": { bg: "bg-blue-100", text: "text-blue-800" },
+    "series_b": { bg: "bg-indigo-100", text: "text-indigo-800" },
+    "series_c": { bg: "bg-violet-100", text: "text-violet-800" },
+    "growth": { bg: "bg-purple-100", text: "text-purple-800" },
+    "pre_ipo": { bg: "bg-fuchsia-100", text: "text-fuchsia-800" },
   };
   
-  return colorMap[stage.toLowerCase()] || "gray";
+  return colorMap[stage.toLowerCase()] || { bg: "bg-gray-100", text: "text-gray-800" };
 }
 
 /**

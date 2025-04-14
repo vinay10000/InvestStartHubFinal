@@ -18,7 +18,7 @@ import UPIPayment from "@/components/payments/UPIPayment";
 
 const StartupDetails = () => {
   const { id } = useParams();
-  const startupId = parseInt(id);
+  const startupId = id ? parseInt(id) : 0; // Add null check and provide default
   const { user } = useSimpleAuth();
   const { getStartupById, getDocumentsByStartupId, updateStartup, uploadDocument } = useStartups();
   const { createChat } = useChat();
@@ -28,6 +28,7 @@ const StartupDetails = () => {
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
 
+  // Only fetch if we have a valid ID
   const { data: startupData, isLoading: startupLoading } = getStartupById(startupId);
   const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(startupId);
   
@@ -35,6 +36,7 @@ const StartupDetails = () => {
   const uploadDocumentMutation = uploadDocument();
   const createChatMutation = createChat();
 
+  // Safely extract data with null checks
   const startup = startupData?.startup;
   const documents = documentsData?.documents || [];
 
@@ -196,17 +198,19 @@ const StartupDetails = () => {
                       
                       <TabsContent value="metamask">
                         <MetaMaskPayment 
-                          startup={startup} 
-                          investorId={user?.id || 0} 
-                          onSuccess={() => setIsInvestDialogOpen(false)}
+                          startupId={startup.id}
+                          startupName={startup.name}
+                          onPaymentComplete={() => setIsInvestDialogOpen(false)}
                         />
                       </TabsContent>
                       
                       <TabsContent value="upi">
                         <UPIPayment 
-                          startup={startup} 
-                          investorId={user?.id || 0} 
-                          onSuccess={() => setIsInvestDialogOpen(false)}
+                          startupId={startup.id}
+                          startupName={startup.name}
+                          upiId={startup.upiId || ""}
+                          upiQrCode={startup.upiQrCode || ""}
+                          onPaymentComplete={() => setIsInvestDialogOpen(false)}
                         />
                       </TabsContent>
                     </Tabs>

@@ -12,7 +12,7 @@ import { useWeb3 } from "@/hooks/useWeb3";
 import { useContractInteraction } from "@/hooks/useContractInteraction";
 import { formatCurrency, truncateAddress } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 
 const formSchema = z.object({
   amount: z.string()
