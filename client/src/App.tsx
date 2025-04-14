@@ -16,7 +16,6 @@ import StartupDetails from "@/pages/StartupDetails";
 import Transactions from "@/pages/Transactions";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
-import TestAuth from "@/pages/TestAuth";
 
 function Router() {
   return (
@@ -69,10 +68,6 @@ function Router() {
           <Profile />
         </ProtectedRoute>
       </Route>
-      
-      {/* Test Pages */}
-      <Route path="/test-imagekit" component={NotFound} />
-      <Route path="/test-auth" component={TestAuth} />
       
       {/* Fallback to 404 */}
       <Route component={NotFound} />
