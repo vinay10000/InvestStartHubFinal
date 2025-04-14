@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInvestmentStageColor } from "@/lib/utils";
-import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle } from "lucide-react";
+import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode } from "lucide-react";
 import DocumentUpload from "@/components/startups/DocumentUpload";
 import StartupForm from "@/components/startups/StartupForm";
 import MetaMaskPayment from "@/components/payments/MetaMaskPayment";
@@ -130,7 +130,7 @@ const StartupDetails = () => {
               <Badge className={`${stageBg} ${stageText}`}>{investmentStage}</Badge>
               <Badge variant="outline" className="font-semibold">
                 <DollarSign className="h-3.5 w-3.5 mr-1" />
-                Goal: {startup.fundingGoalEth || startup.fundingGoal} {startup.fundingGoalEth ? 'ETH' : ''}
+                Funding Goal: {startup.fundingGoal || "0"} {startup.fundingGoal ? (typeof startup.fundingGoal === 'string' && startup.fundingGoal.includes('ETH') ? 'ETH' : '') : ''}
               </Badge>
             </div>
           </div>
@@ -187,7 +187,7 @@ const StartupDetails = () => {
               <>
                 <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="lg" className="font-semibold">
+                    <Button size="lg" className="font-semibold bg-green-600 hover:bg-green-700">
                       <DollarSign className="mr-2 h-5 w-5" />
                       Invest Now
                     </Button>
@@ -245,6 +245,77 @@ const StartupDetails = () => {
             <p className="text-gray-700">{pitch}</p>
           </CardContent>
         </Card>
+
+        {isInvestor && (
+          <Card className="mb-8 border-2 border-green-100">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <DollarSign className="h-6 w-6 mr-2 text-green-600" />
+                Investment Options
+              </CardTitle>
+              <CardDescription>
+                Choose your preferred payment method to invest in {name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* MetaMask Option */}
+                <Card className="bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" 
+                  onClick={() => {
+                    setPaymentMethod("metamask");
+                    setIsInvestDialogOpen(true);
+                  }}>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-lg flex items-center">
+                      <Wallet className="h-5 w-5 mr-2" />
+                      Pay with MetaMask
+                    </CardTitle>
+                    <CardDescription>
+                      Use cryptocurrency for your investment
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• Direct blockchain payments</li>
+                      <li>• Secure Ethereum transactions</li>
+                      <li>• Transparent on-chain verification</li>
+                    </ul>
+                    <Button className="w-full mt-4" variant="outline">
+                      Invest with MetaMask
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* UPI Option */}
+                <Card className="bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setPaymentMethod("upi");
+                    setIsInvestDialogOpen(true);
+                  }}>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-lg flex items-center">
+                      <QrCode className="h-5 w-5 mr-2" />
+                      Pay with UPI
+                    </CardTitle>
+                    <CardDescription>
+                      Use Indian UPI payment system
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• Scan QR code to pay</li>
+                      <li>• Fast fiat currency transfers</li>
+                      <li>• Submit transaction reference for verification</li>
+                    </ul>
+                    <Button className="w-full mt-4" variant="outline">
+                      Invest with UPI
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <h2 className="text-2xl font-bold mb-4">Documents</h2>
         {documentsLoading ? (
