@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull(), // "founder" or "investor"
   walletAddress: text("wallet_address"),
+  profilePicture: text("profile_picture"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

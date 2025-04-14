@@ -30,12 +30,13 @@ const FounderDashboard = () => {
   const contractInteraction = useContractInteraction();
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Fetch startups
+  // Fetch startups with safety check
   const { data: startupsData, isLoading: isLoadingStartups } = getStartupsByFounderId();
   const startups = startupsData?.startups || [];
+  console.log("Loaded startups:", startups.length, "Loading state:", isLoadingStartups);
 
-  // Fetch transactions - handle both Firebase string IDs and local numeric IDs
-  const { data: transactionsData, isLoading: isLoadingTransactions } = getTransactionsByFounderId(user?.id);
+  // Fetch transactions with safety check - handle both Firebase string IDs and local numeric IDs
+  const { data: transactionsData, isLoading: isLoadingTransactions } = getTransactionsByFounderId(user?.id || 0);
   const transactions = transactionsData?.transactions || [];
   
   // Log for debugging

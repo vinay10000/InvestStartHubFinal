@@ -29,12 +29,14 @@ const InvestorDashboard = () => {
   const { getAllStartups } = useContractInteraction();
   const [activeTab, setActiveTab] = useState("overview");
   
-  // Fetch startups
+  // Fetch startups with safety check
   const startups = startupsData?.startups || [];
+  console.log("Loaded startups:", startups.length, "Loading state:", isLoadingStartups);
   
-  // Fetch transactions
-  const { data: transactionsData, isLoading: isLoadingTransactions } = getTransactionsByInvestorId(user?.id);
+  // Fetch transactions with safety check - handle both Firebase string IDs and local numeric IDs
+  const { data: transactionsData, isLoading: isLoadingTransactions } = getTransactionsByInvestorId(user?.id || 0);
   const transactions = transactionsData?.transactions || [];
+  console.log("Loaded transactions:", transactions.length, "Loading state:", isLoadingTransactions);
   
   // Calculate dashboard stats
   const totalInvested = transactions.reduce((sum, transaction) => sum + parseFloat(transaction.amount.toString()), 0);
