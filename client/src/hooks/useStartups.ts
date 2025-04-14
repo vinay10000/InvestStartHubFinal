@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Startup, InsertStartup, Document, InsertDocument } from "@shared/schema";
-import { uploadStartupDocument, uploadUpiQRCode } from "@/firebase/storage";
+import { uploadStartupDocument, uploadUpiQRCode } from "@/services/imagekit";
 
 export const useStartups = (userId?: number) => {
   const queryClient = useQueryClient();
@@ -83,7 +83,7 @@ export const useStartups = (userId?: number) => {
         name: string; 
         type: string;
       }) => {
-        // Upload file to Firebase Storage
+        // Upload file to ImageKit
         const fileUrl = await uploadStartupDocument(startupId, type, file);
         
         // Create document record in database
@@ -122,7 +122,7 @@ export const useStartups = (userId?: number) => {
         upiId: string; 
         file: File;
       }) => {
-        // Upload QR code to Firebase Storage
+        // Upload QR code to ImageKit
         const qrCodeUrl = await uploadUpiQRCode(startupId, file);
         
         // Update startup with UPI details
