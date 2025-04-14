@@ -176,13 +176,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Startup routes
   app.post('/api/startups', async (req: Request, res: Response) => {
     try {
-      const startupData = insertStartupSchema.parse(req.body);
-      const startup = await storage.createStartup(startupData);
-      res.status(201).json({ startup });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid startup data', errors: error.errors });
+      console.log('Creating startup with data:', req.body);
+      
+      // Parse the request body with more error details
+      try {
+        const startupData = insertStartupSchema.parse(req.body);
+        console.log('Startup data validated successfully:', startupData);
+        const startup = await storage.createStartup(startupData);
+        res.status(201).json({ startup });
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          console.error('Validation error:', validationError.errors);
+          return res.status(400).json({ 
+            message: 'Invalid startup data', 
+            errors: validationError.errors 
+          });
+        }
+        throw validationError; // Re-throw for the outer catch
       }
+    } catch (error) {
+      console.error('Error creating startup:', error);
       res.status(500).json({ message: 'Failed to create startup' });
     }
   });
