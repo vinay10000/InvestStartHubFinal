@@ -27,15 +27,31 @@ const SignIn = () => {
       const loginEmail = email || username;
       console.log("Starting sign-in process using email:", loginEmail);
       
-      await signIn(loginEmail, password);
-      console.log("Sign-in successful, waiting for auth state update...");
+      // Store the redirect URL before authentication
+      const redirectUrl = getRedirectUrl();
+      // If it's the root path, we'll check for user's role and redirect to their dashboard
+      if (redirectUrl === '/') {
+        localStorage.setItem('pending_redirect', 'check_role');
+      } else {
+        localStorage.setItem('pending_redirect', redirectUrl);
+      }
       
-      // Give Firebase a moment to update auth state
-      setTimeout(() => {
-        const redirectUrl = getRedirectUrl();
-        console.log("Redirecting to:", redirectUrl);
-        navigate(redirectUrl);
-      }, 1000);
+      await signIn(loginEmail, password);
+      console.log("Sign-in successful, redirecting...");
+      
+      // Check if we need to determine role-based dashboard
+      if (redirectUrl === '/') {
+        // Get user's role from localStorage
+        const role = localStorage.getItem('user_role');
+        if (role === 'founder') {
+          window.location.href = '/founder/dashboard';
+        } else {
+          window.location.href = '/investor/dashboard';
+        }
+      } else {
+        // Use direct redirection for more reliable navigation
+        window.location.href = redirectUrl;
+      }
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {
@@ -48,15 +64,34 @@ const SignIn = () => {
       setIsLoading(true);
       console.log("Starting Google sign-in process");
       
-      await signInWithGoogle();
-      console.log("Google sign-in successful, waiting for auth state update...");
+      // Store the redirect URL before authentication
+      const redirectUrl = getRedirectUrl();
+      // If it's the root path, we'll check for user's role and redirect to their dashboard
+      if (redirectUrl === '/') {
+        localStorage.setItem('pending_redirect', 'check_role');
+      } else {
+        localStorage.setItem('pending_redirect', redirectUrl);
+      }
       
-      // Use a longer delay to ensure Firebase auth state is fully updated
-      setTimeout(() => {
-        const redirectUrl = getRedirectUrl();
-        console.log("Redirecting to:", redirectUrl);
-        navigate(redirectUrl);
-      }, 2000);
+      await signInWithGoogle();
+      console.log("Google sign-in successful, redirecting...");
+      
+      // Check if we need to determine role-based dashboard
+      if (redirectUrl === '/') {
+        // For Google signin, since we may not have a role yet, we default to investor
+        // This can be changed later in user profile
+        const role = localStorage.getItem('user_role') || 'investor';
+        localStorage.setItem('user_role', role);
+        
+        if (role === 'founder') {
+          window.location.href = '/founder/dashboard';
+        } else {
+          window.location.href = '/investor/dashboard';
+        }
+      } else {
+        // Use direct redirection for more reliable navigation
+        window.location.href = redirectUrl;
+      }
     } catch (error) {
       console.error("Error signing in with Google:", error);
     } finally {

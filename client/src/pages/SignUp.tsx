@@ -24,19 +24,19 @@ const SignUp = () => {
       // Log before signup
       console.log("Starting signup process for:", email, "with role:", selectedRole);
       
-      await signUp(email, password, username, selectedRole);
-      console.log("Signup successful, checking auth state...");
+      // Store the selected role for redirection before auth
+      const targetRole = selectedRole;
+      localStorage.setItem('pending_redirect', targetRole === 'founder' ? '/founder/dashboard' : '/investor/dashboard');
       
-      // Give Firebase a moment to update auth state
-      setTimeout(() => {
-        console.log("Navigating to dashboard based on role:", selectedRole);
-        // Redirect to appropriate dashboard based on role
-        if (selectedRole === "founder") {
-          navigate("/founder/dashboard");
-        } else {
-          navigate("/investor/dashboard");
-        }
-      }, 1000);
+      await signUp(email, password, username, targetRole);
+      console.log("Signup successful, redirecting to dashboard...");
+      
+      // Immediate redirection after successful signup
+      if (targetRole === "founder") {
+        window.location.href = "/founder/dashboard";
+      } else {
+        window.location.href = "/investor/dashboard";
+      }
     } catch (error) {
       console.error("Error signing up:", error);
     } finally {
@@ -49,19 +49,20 @@ const SignUp = () => {
       setIsLoading(true);
       console.log("Starting Google sign-in with role:", selectedRole);
       
-      await signInWithGoogle();
-      console.log("Google sign-in successful, waiting for auth state update...");
+      // Store selected role in localStorage before auth
+      const targetRole = selectedRole;
+      localStorage.setItem('user_role', targetRole);
+      localStorage.setItem('pending_redirect', targetRole === 'founder' ? '/founder/dashboard' : '/investor/dashboard');
       
-      // Use a longer delay to ensure Firebase auth state is fully updated
-      setTimeout(() => {
-        console.log("Navigating after Google sign-in to role dashboard:", selectedRole);
-        // Redirect to appropriate dashboard based on role
-        if (selectedRole === "founder") {
-          navigate("/founder/dashboard");
-        } else {
-          navigate("/investor/dashboard");
-        }
-      }, 2000);
+      await signInWithGoogle();
+      console.log("Google sign-in successful, redirecting to dashboard...");
+      
+      // Immediate redirection
+      if (targetRole === "founder") {
+        window.location.href = "/founder/dashboard";
+      } else {
+        window.location.href = "/investor/dashboard";
+      }
     } catch (error) {
       console.error("Error signing in with Google:", error);
     } finally {
