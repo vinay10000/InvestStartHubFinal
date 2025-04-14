@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our new hook
 import {
   Sheet,
   SheetContent,
@@ -19,11 +19,11 @@ import { Menu, LogOut, User } from "lucide-react";
 
 const Header = () => {
   const [location, navigate] = useLocation();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut } = useSimpleAuth(); // Use our simplified auth context
   const [isOpen, setIsOpen] = useState(false);
 
   // Debug auth state in the header
-  console.log("Header rendering with auth state:", { user, loading });
+  console.log("Header rendering with simplified auth state:", { user, loading });
 
   const handleSignOut = async () => {
     console.log("Signing out user");
@@ -32,6 +32,7 @@ const Header = () => {
   };
 
   const getInitials = (name: string) => {
+    if (!name) return "U";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -41,7 +42,9 @@ const Header = () => {
 
   const getDashboardPath = () => {
     if (!user) return "/";
-    return user.role === "founder" ? "/founder/dashboard" : "/investor/dashboard";
+    // Get role from user object
+    const role = user.customClaims?.role || user.providerData?.[0]?.role || "investor";
+    return role === "founder" ? "/founder/dashboard" : "/investor/dashboard";
   };
 
   return (

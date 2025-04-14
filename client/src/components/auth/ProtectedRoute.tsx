@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/useAuth';
+import { useSimpleAuth } from '@/hooks/useSimpleAuth'; // Use our simplified auth hook
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useSimpleAuth(); // Use our simplified auth context
   const [, navigate] = useLocation();
 
   useEffect(() => {
@@ -20,8 +20,14 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         return;
       }
       
+      // For Firebase auth, extract role from either customClaims or a default value
+      const userRole = user.customClaims?.role || 
+                      user.providerData?.[0]?.role || 
+                      'investor'; // Default role
+      
       // If role-specific route and user doesn't have the required role
-      if (requiredRole && user.role !== requiredRole) {
+      if (requiredRole && userRole !== requiredRole) {
+        console.log(`Role mismatch: User has ${userRole}, but ${requiredRole} is required`);
         navigate('/');
         return;
       }
@@ -38,7 +44,18 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   // If authenticated (and has correct role if required), render the protected content
-  if (user && (!requiredRole || user.role === requiredRole)) {
+  if (user) {
+    // For Firebase auth, extract role and check
+    if (requiredRole) {
+      const userRole = user.customClaims?.role || 
+                      user.providerData?.[0]?.role || 
+                      'investor'; // Default role
+      
+      if (userRole !== requiredRole) {
+        return null; // Don't render if role doesn't match
+      }
+    }
+    
     return <>{children}</>;
   }
 
