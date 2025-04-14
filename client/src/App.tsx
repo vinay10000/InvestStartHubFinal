@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,6 +16,30 @@ import StartupDetails from "@/pages/StartupDetails";
 import Transactions from "@/pages/Transactions";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
+import { useEffect } from "react";
+import { useSimpleAuth } from "./hooks/useSimpleAuth";
+
+// AutoRedirect component to handle automatic redirection after login
+function AutoRedirect() {
+  const { user, loading } = useSimpleAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!loading && user) {
+      const userRole = localStorage.getItem('user_role') || 'investor';
+      
+      if (userRole === 'founder') {
+        console.log("Auto-redirecting to founder dashboard");
+        navigate('/founder/dashboard');
+      } else {
+        console.log("Auto-redirecting to investor dashboard");
+        navigate('/investor/dashboard');
+      }
+    }
+  }, [loading, user, navigate]);
+
+  return null;
+}
 
 function Router() {
   return (
@@ -23,6 +47,11 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/signin" component={SignIn} />
       <Route path="/signup" component={SignUp} />
+      
+      {/* Auto-redirect route */}
+      <Route path="/dashboard">
+        <AutoRedirect />
+      </Route>
       
       {/* Protected Founder Routes */}
       <Route path="/founder/dashboard">

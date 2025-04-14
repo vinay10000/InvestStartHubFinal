@@ -59,22 +59,15 @@ const SignIn = () => {
         }
       }
       
-      // Wait a moment to ensure auth state is updated
+      // Redirect to the dashboard route that will handle role-based redirection
       setTimeout(() => {
         // Access the user's role from localStorage - it should be set in the auth context
         const userRole = localStorage.getItem('user_role') || 'investor';
         console.log("Retrieved user role for redirection:", userRole);
+        console.log("Redirecting to the dashboard");
         
-        // Use explicit role-based redirection - normalize the role for consistency
-        const normalizedRole = userRole.toLowerCase().trim();
-        
-        if (normalizedRole === 'founder') {
-          console.log("Redirecting to founder dashboard");
-          window.location.href = '/founder/dashboard';
-        } else {
-          console.log("Redirecting to investor dashboard");
-          window.location.href = '/investor/dashboard';
-        }
+        // Use the dashboard route which will automatically redirect based on role
+        navigate('/dashboard');
       }, 500);
     } catch (error) {
       console.error("Error signing in:", error);
