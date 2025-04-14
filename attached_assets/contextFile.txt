@@ -1,0 +1,62 @@
+You are tasked with building a decentralized web application using Next.js , Tailwind CSS , and Firebase that connects startup founders with investors in a secure, transparent, and user-friendly environment. The platform allows investors to fund startups using crypto (MetaMask) or fiat (UPI) , while startup founders can manage their profiles, upload documents, track investments, and communicate directly with investors. Below is the detailed breakdown of the platform's features and technical stack.
+
+Core Features
+1. Getting Started
+Landing Page : When users visit the platform, they see its benefits and featured startups.
+Sign Up/Sign In :
+Users choose their role: Startup Founder or Investor .
+Use Firebase Authentication for secure account creation and login (support email/password and optional Google sign-in).
+After signing up, users are prompted to connect their MetaMask wallet on their profile page. This ensures each wallet address is uniquely tied to an account, preventing duplicates and ensuring trust in blockchain-based transactions.
+2. Startup Founder Flow
+Startup Dashboard :
+Founders create a startup profile by filling out a form:
+Fields include: Startup name, description, pitch, investment stage (e.g., Pre-seed, Seed), and payment details (UPI ID and QR Code for fiat).
+Upload key documents like:
+Pitch Deck
+Financial Report
+Investor Agreement
+Risk Disclosure
+Documents are stored in Firebase Storage , and metadata (like file URLs) is saved in Firebase Firestore .
+Once created, founders see key metrics like Total Revenue and Total Investors on their dashboard.
+Founders can edit their startup info or post updates visible to investors.
+Track Investments :
+A dedicated Transactions Page displays all incoming investments (via MetaMask or UPI) with details:
+Amount
+Payment method
+Investor name
+Timestamp
+Transactions are logged in Firebase Firestore for real-time tracking.
+Chat Inbox :
+Founders can communicate with investors through a real-time chat system powered by Firebase Realtime Database .
+Chat histories are automatically synced and stored in Firebase.
+3. Investor Flow
+Discovery Dashboard :
+Investors browse startups actively seeking funding.
+Each startup card includes:
+Name, pitch, investment stage, and links to download important documents (Pitch Deck, Financial Report, etc.).
+Documents are fetched securely from Firebase Storage via URLs stored in Firebase Firestore .
+Investing :
+Investors choose how to invest:
+UPI : Scan the startup’s QR code, complete the transaction in their banking app, and enter the Transaction ID on the platform for verification.
+MetaMask : Input the investment amount and confirm the transaction directly from their crypto wallet.
+After investing, the transaction is logged in Firebase Firestore and reflected on both the investor’s Transactions Page and the startup’s dashboard.
+Filter Transactions :
+Investors can filter their transaction history by date, startup, or payment method.
+Chat with Founders :
+Investors can initiate one-on-one conversations with founders using the “Chat” button on each startup card.
+Real-time messaging is powered by Firebase Realtime Database , and messages are stored securely in Firebase.
+Technical Stack
+Frontend
+Framework : Use Next.js for server-side rendering, routing, and improved SEO.
+Styling : Use Tailwind CSS for efficient, modern styling.
+UI Components : Use shadcn (a library of reusable, customizable UI components built with Radix UI and Tailwind CSS) for consistent and professional-looking UI elements like buttons, modals, forms, and tables.
+Blockchain Integration : Use Web3.js or Ethers.js for handling interactions with MetaMask and blockchain smart contracts.
+Backend
+Database : Use Firebase Firestore for structured data storage (users, startups, transactions, document metadata).
+Storage : Use Firebase Storage for securely storing uploaded files like Pitch Decks, Financial Reports, etc.
+Real-Time Messaging : Use Firebase Realtime Database for enabling live chat between investors and founders.
+Authentication : Use Firebase Authentication for secure user sign-up, login, and role-based access (Founder/Investor).
+Blockchain
+Smart Contracts : Write smart contracts in Solidity to manage crypto investments and milestone-based fund releases.
+Development Tools : Use Hardhat for compiling, testing, and deploying smart contracts to Ethereum or compatible chains.
+Wallet Integration : Use MetaMask for initiating and signing Web3 crypto transactions.
