@@ -45,12 +45,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (firebaseUser) {
         try {
-          // Get user from our backend
-          const response = await apiRequest("GET", `/api/user/profile?userId=${firebaseUser.uid}`, undefined);
-          const userData = await response.json();
-          setUser(userData.user);
+          // Get or create user directly from Firebase
+          const { getFirestoreUser, createFirestoreUser } = await import("@/firebase/firestore");
+          
+          // Try to get existing user data
+          let userData = await getFirestoreUser(firebaseUser.uid);
+          
+          if (!userData) {
+            // User doesn't exist in Firestore, create one
+            console.log("Creating new Firestore user for:", firebaseUser.email);
+            await createFirestoreUser(firebaseUser.uid, {
+              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email || '',
+              role: "investor", // Default role
+              profilePicture: firebaseUser.photoURL || '',
+              walletAddress: '',
+            });
+            
+            // Get the newly created user
+            userData = await getFirestoreUser(firebaseUser.uid);
+          }
+          
+          // Set the user state with Firestore data
+          setUser(userData);
         } catch (error) {
-          console.error("Error fetching user data:", error);
+          console.error("Error fetching user data from Firestore:", error);
           setUser(null);
         }
       } else {

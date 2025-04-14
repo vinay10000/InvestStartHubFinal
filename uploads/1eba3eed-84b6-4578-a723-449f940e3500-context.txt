@@ -1,0 +1,48 @@
+# 🧠 Project Context: Decentralized Startup Investment Platform
+
+This platform is a decentralized web application designed to connect **startup founders** with **investors** in a secure and transparent environment. The core goal is to allow investors to fund promising startups using either **MetaMask (crypto)** or **UPI (fiat)**, while enabling startup founders to manage their startup profiles, upload crucial documents, post funding updates, track transactions, and directly interact with investors. All data—including user accounts, startup profiles, transactions, documents, and chat logs—is securely stored in **MongoDB Atlas**. Blockchain transactions are powered by **Solidity smart contracts** deployed using **Hardhat**, and wallet interactions are handled through **MetaMask**.
+
+Upon visiting the platform, users land on the **Landing Page**, which highlights the platform’s benefits and showcases featured startups. From here, users can choose to either **Sign Up** or **Sign In**. New users are taken to the **Authentication Page**, where they select their role—either a **Startup Founder** or an **Investor**—and input their email and password. This data is securely stored in MongoDB Atlas. Upon successful login or registration, users are redirected to their respective **Profile Page**.
+
+On the Profile Page, users are prompted to connect their **MetaMask wallet**. This is a one-time step and ensures the wallet address is uniquely associated with the user’s account. No two accounts can be tied to the same wallet, which helps prevent identity overlap and enforces trust in blockchain-based transactions.
+
+## 🌱 Startup Flow
+
+For **Startup Founders**, the journey continues on the **Startup Dashboard**. If they haven’t created a startup yet, they must fill out a **Startup Creation Form**. This form includes fields like **Startup Name**, **Description**, **Pitch (short investment summary)**, **Investment Stage** (Pre-seed, Seed, Series A, etc.), and **Payment Information** such as a **UPI ID** and **QR Code**—both of which are **required** to receive fiat investments. Startups must also upload supporting documents including the **Pitch Deck**, **Financial Report**, **Investor Agreement**, and **Risk Disclosure**. These documents are securely stored in **MongoDB Atlas**, ensuring persistent access.
+
+Once the startup is created, founders can see key metrics like **Total Revenue** and **Total Investors** on their dashboard. They can **edit their startup information** or **post updates** that become visible to investors. A dedicated **Startup Transactions Page** displays all incoming investments—via both MetaMask and UPI—along with details such as transaction amount, method, investor name, and timestamp. This allows startups to track funding activity in real time.
+
+Additionally, founders gain access to a **Chat Inbox** where they can directly communicate with investors who are interested in their startup. Messages are powered by a real-time messaging system using **Socket.io**, and chat histories are saved in MongoDB Atlas.
+
+## 💰 Investor Flow
+
+For **Investors**, the platform opens up a **rich discovery dashboard** showcasing startups actively seeking investment. Each startup card includes the name, pitch, investment stage, and a link to view or **download important documents**—including the **Pitch Deck**, **Financial Report**, **Investor Agreement**, and **Risk Disclosure**. These documents help investors conduct due diligence before committing funds, and are fetched securely from MongoDB Atlas.
+
+When ready to invest, investors choose between two funding methods:
+- **UPI**: Investors scan the startup’s UPI QR code, complete the transaction in their banking app, and enter the **Transaction ID** back on the platform for verification.
+- **MetaMask**: Investors input the investment amount and confirm the crypto transaction directly from their Web3 wallet.
+
+Post-transaction, the investment is logged in **MongoDB Atlas** and reflected in both the **Investor Transactions Page** and the corresponding startup’s dashboard. This ensures transparency and synchronization between investors and founders. Each investor can filter their transaction history by date, startup, or payment method for better tracking.
+
+Each startup card also includes a **“Chat” button**, enabling investors to initiate a one-on-one real-time conversation with the startup founder. This feature is built using **Socket.io**, allowing investors to ask questions, express interest, or request additional information directly. The chat messages are stored securely in MongoDB Atlas, ensuring privacy and historical traceability.
+
+---
+
+## 💡 Technologies Used
+
+### Frontend:
+- **React.js** – For building interactive and responsive user interfaces.
+- **Next.js** (optional) – For server-side rendering and routing.
+- **Tailwind CSS** or **Material-UI** – For efficient, modern component styling.
+- **Web3.js** or **Ethers.js** – For handling blockchain wallet integration.
+
+### Backend:
+- **Node.js** with **Express.js** – For building REST APIs and server-side logic.
+- **MongoDB Atlas** – Cloud-based NoSQL database to store users, startups, documents, transactions, and messages.
+- **Socket.io** – For enabling real-time messaging between investors and startups.
+
+### Blockchain:
+- **Solidity** – Used to write smart contracts managing crypto investments and milestone-based fund releases.
+- **Hardhat** – For compiling, testing, and deploying smart contracts to Ethereum or compatible chains.
+- **MetaMask** – To initiate and sign Web3 crypto transactions from investor wallets.
+

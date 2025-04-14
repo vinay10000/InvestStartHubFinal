@@ -38,8 +38,11 @@ interface TransactionListProps {
   startups?: any[]; // Optional startup data to show names instead of just IDs
   viewType?: "table" | "list";
   loading?: boolean;
-  showStartupInfo?: boolean;
-  showInvestorInfo?: boolean;
+  isLoading?: boolean; // Added to match FounderDashboard naming
+  showStartup?: boolean; // Updated to match FounderDashboard naming
+  showInvestor?: boolean; // Updated to match FounderDashboard naming
+  showStartupInfo?: boolean; // Keeping for backward compatibility
+  showInvestorInfo?: boolean; // Keeping for backward compatibility
   maxItems?: number;
   title?: string;
   description?: string;
@@ -53,8 +56,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
   startups = [],
   viewType = "table",
   loading = false,
-  showStartupInfo = true,
-  showInvestorInfo = false,
+  isLoading = false,
+  showStartup = true,
+  showInvestor = false,
+  showStartupInfo,
+  showInvestorInfo,
   maxItems,
   title = "Transactions",
   description = "Your investment transaction history",
@@ -62,8 +68,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onVerifyTransaction,
   filterByStatus,
 }) => {
+  // Set default values based on both old and new prop names for backward compatibility
+  const shouldShowStartup = showStartupInfo !== undefined ? showStartupInfo : showStartup;
+  const shouldShowInvestor = showInvestorInfo !== undefined ? showInvestorInfo : showInvestor;
+  
   // If loading, show skeleton UI
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -207,8 +217,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                {showStartupInfo && <TableHead>Startup</TableHead>}
-                {showInvestorInfo && <TableHead>Investor</TableHead>}
+                {shouldShowStartup && <TableHead>Startup</TableHead>}
+                {shouldShowInvestor && <TableHead>Investor</TableHead>}
                 <TableHead>Amount</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
@@ -222,13 +232,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     {formatDate(transaction.createdAt || new Date())}
                   </TableCell>
                   
-                  {showStartupInfo && (
+                  {shouldShowStartup && (
                     <TableCell>
                       {getStartupName(transaction.startupId)}
                     </TableCell>
                   )}
                   
-                  {showInvestorInfo && (
+                  {shouldShowInvestor && (
                     <TableCell>
                       {transaction.investorId}
                     </TableCell>
@@ -314,7 +324,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium leading-none">
-                    {showStartupInfo ? getStartupName(transaction.startupId) : "Investment"}
+                    {shouldShowStartup ? getStartupName(transaction.startupId) : "Investment"}
                   </p>
                   {renderStatus(transaction.status)}
                 </div>
