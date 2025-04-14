@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our simplified auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
+import { getFirestoreUser } from "@/firebase/firestore";
 
 const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -69,8 +70,21 @@ const SignIn = () => {
       let existingRole = localStorage.getItem('user_role');
       console.log("Existing role before Google sign-in:", existingRole);
       
-      await signInWithGoogle();
+      const user = await signInWithGoogle();
       console.log("Google sign-in successful");
+      
+      // Get the user's role from Firestore
+      if (user.user) {
+        const firebaseUser = user.user;
+        const firestoreUser = await getFirestoreUser(firebaseUser.uid);
+        console.log("Firestore user data:", firestoreUser);
+        
+        if (firestoreUser && firestoreUser.role) {
+          // Update the role in localStorage with the correct one from Firestore
+          localStorage.setItem('user_role', firestoreUser.role);
+          console.log("Set user role from Firestore:", firestoreUser.role);
+        }
+      }
       
       // Wait a moment to ensure auth state is updated
       setTimeout(() => {
@@ -78,11 +92,10 @@ const SignIn = () => {
         const userRole = localStorage.getItem('user_role') || 'investor';
         console.log("Using role for redirection:", userRole);
         
-        // Make sure we have a role saved
-        localStorage.setItem('user_role', userRole);
+        // Always redirect based on the role - make sure we're using lowercase for comparison
+        const normalizedRole = userRole.toLowerCase().trim();
         
-        // Always redirect based on the role
-        if (userRole === 'founder') {
+        if (normalizedRole === 'founder') {
           console.log("Redirecting to founder dashboard");
           window.location.href = '/founder/dashboard';
         } else {
