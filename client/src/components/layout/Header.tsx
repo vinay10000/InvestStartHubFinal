@@ -7,7 +7,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,7 +68,11 @@ const Header = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="p-0">
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                        {user.profilePicture ? (
+                          <AvatarImage src={user.profilePicture} alt={user.username} />
+                        ) : (
+                          <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                        )}
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
@@ -134,7 +138,11 @@ const Header = () => {
                         <div className="flex items-center px-4">
                           <div className="flex-shrink-0">
                             <Avatar className="h-10 w-10">
-                              <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                              {user.profilePicture ? (
+                                <AvatarImage src={user.profilePicture} alt={user.username} />
+                              ) : (
+                                <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                              )}
                             </Avatar>
                           </div>
                           <div className="ml-3">

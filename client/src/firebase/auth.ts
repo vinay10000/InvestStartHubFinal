@@ -29,7 +29,6 @@ export const signUpWithEmail = async (
       email,
       role,
       walletAddress: "",
-      createdAt: new Date(),
     });
     
     console.log("User created successfully in Firebase:", userCredential.user.uid);
@@ -59,8 +58,7 @@ export const signInWithEmail = async (
         username: credential.user.displayName || email.split('@')[0],
         email,
         role: "investor", // Default role
-        walletAddress: null,
-        createdAt: new Date(),
+        walletAddress: "",
       });
     }
     
@@ -102,7 +100,6 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
           role: "investor", // Default role for Google sign-ins
           walletAddress: "",
           profilePicture: user.photoURL || "",
-          createdAt: new Date(),
         });
         console.log("Created new Firestore user from Google sign-in:", user.uid);
       } else {
