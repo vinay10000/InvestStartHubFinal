@@ -18,7 +18,8 @@ import UPIPayment from "@/components/payments/UPIPayment";
 
 const StartupDetails = () => {
   const { id } = useParams();
-  const startupId = id ? parseInt(id) : 0; // Add null check and provide default
+  // Handle both numeric IDs (for local storage) and string IDs (for Firestore)
+  const startupId = id && !isNaN(parseInt(id)) ? parseInt(id) : id;
   const { user } = useSimpleAuth();
   const { getStartupById, getDocumentsByStartupId, updateStartup, uploadDocument } = useStartups();
   const { createChat } = useChat();

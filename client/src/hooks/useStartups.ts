@@ -12,6 +12,33 @@ export const useStartups = (userId?: number | string) => {
     return useQuery<{ startups: Startup[] }>({
       queryKey: ["/api/startups"],
       refetchOnWindowFocus: false,
+      queryFn: async () => {
+        try {
+          // Try to get startups from Firestore first
+          const { getFirestoreStartups } = await import("@/firebase/firestore");
+          const firestoreStartups = await getFirestoreStartups();
+          
+          if (firestoreStartups && firestoreStartups.length > 0) {
+            return { startups: firestoreStartups };
+          }
+          
+          // If no startups in Firestore, fall back to the API
+          const response = await fetch('/api/startups');
+          if (!response.ok) {
+            throw new Error('Failed to fetch startups');
+          }
+          return response.json();
+        } catch (error) {
+          console.error("Error fetching startups:", error);
+          
+          // Fall back to API if Firestore fails
+          const response = await fetch('/api/startups');
+          if (!response.ok) {
+            throw new Error('Failed to fetch startups');
+          }
+          return response.json();
+        }
+      }
     });
   };
 
@@ -27,7 +54,7 @@ export const useStartups = (userId?: number | string) => {
   };
 
   // Get a specific startup by ID
-  const getStartupById = (startupId?: number) => {
+  const getStartupById = (startupId?: number | string) => {
     if (!startupId) return { data: null, isLoading: false };
     
     return useQuery<{ startup: Startup }>({
@@ -35,6 +62,30 @@ export const useStartups = (userId?: number | string) => {
       enabled: !!startupId,
       refetchOnWindowFocus: false,
       retry: 1,
+      queryFn: async () => {
+        // Check if we're using a string ID (Firebase) or number ID (local storage)
+        if (typeof startupId === 'string' && startupId.toString().length > 10) {
+          // Use Firestore to get the startup
+          try {
+            const { getFirestoreStartup } = await import("@/firebase/firestore");
+            const startup = await getFirestoreStartup(startupId);
+            if (!startup) {
+              throw new Error("Startup not found");
+            }
+            return { startup };
+          } catch (error) {
+            console.error("Error fetching startup from Firestore:", error);
+            throw error;
+          }
+        }
+        
+        // Fall back to API for backward compatibility
+        const response = await fetch(`/api/startups/${startupId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch startup");
+        }
+        return response.json();
+      }
     });
   };
 
@@ -49,6 +100,7 @@ export const useStartups = (userId?: number | string) => {
         investmentStage: string;
         category?: string | null;
         fundingGoal?: string | null;
+        fundingGoalEth?: string | null; // New field for ETH funding
         currentFunding?: string | null;
         logoUrl?: string | null;
         websiteUrl?: string | null;
@@ -60,6 +112,7 @@ export const useStartups = (userId?: number | string) => {
           ...startupData,
           category: startupData.category || null,
           fundingGoal: startupData.fundingGoal || null,
+          fundingGoalEth: startupData.fundingGoalEth || null, // Handle ETH funding goal
           currentFunding: startupData.currentFunding || null,
           logoUrl: startupData.logoUrl || null,
           websiteUrl: startupData.websiteUrl || null,
@@ -263,13 +316,39 @@ export const useStartups = (userId?: number | string) => {
   };
 
   // Get documents for a specific startup
-  const getDocumentsByStartupId = (startupId?: number) => {
+  const getDocumentsByStartupId = (startupId?: number | string) => {
     if (!startupId) return { data: { documents: [] }, isLoading: false };
     
     return useQuery({
       queryKey: ["/api/startups", startupId, "documents"],
       enabled: !!startupId,
       refetchOnWindowFocus: false,
+      queryFn: async () => {
+        // Check if we're using a string ID (Firebase) or number ID (local storage)
+        if (typeof startupId === 'string' && startupId.toString().length > 10) {
+          // Use Firestore to get the documents
+          try {
+            const { getFirestoreDocumentsByStartupId } = await import("@/firebase/firestore");
+            const documents = await getFirestoreDocumentsByStartupId(startupId);
+            return { documents };
+          } catch (error) {
+            console.error("Error fetching documents from Firestore:", error);
+            return { documents: [] };
+          }
+        }
+        
+        // Fall back to API for backward compatibility
+        try {
+          const response = await fetch(`/api/startups/${startupId}/documents`);
+          if (!response.ok) {
+            throw new Error("Failed to fetch documents");
+          }
+          return response.json();
+        } catch (error) {
+          console.error("Error fetching documents:", error);
+          return { documents: [] };
+        }
+      }
     });
   };
 
