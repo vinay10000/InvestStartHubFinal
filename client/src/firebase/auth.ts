@@ -6,11 +6,23 @@ import {
   signInWithPopup,
   UserCredential,
   onAuthStateChanged,
-  User as FirebaseUser
+  User as FirebaseUser,
+  updateProfile
 } from "firebase/auth";
 import { auth } from "./config";
 import { apiRequest } from "@/lib/queryClient";
 import { createFirestoreUser, getFirestoreUser, updateFirestoreUser } from "./firestore";
+
+// Create a default avatar URL based on initials
+const createDefaultAvatar = (name: string) => {
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+  
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&color=fff&size=256`;
+};
 
 // Sign up with email/password
 export const signUpWithEmail = async (
@@ -20,21 +32,25 @@ export const signUpWithEmail = async (
   role: "founder" | "investor"
 ): Promise<UserCredential> => {
   try {
+    console.log(`Creating new user account for ${email} with role ${role}`);
+    
     // Create firebase auth user first
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
     
-    // Generate a default profile picture with initials
-    const initials = username
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+    // Generate a default profile picture
+    const profilePicture = createDefaultAvatar(username);
     
-    // Create a default avatar URL from UI Avatars
-    const profilePicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&color=fff&size=256`;
+    // Set display name and photoURL in Firebase Auth
+    await updateProfile(user, {
+      displayName: username,
+      photoURL: profilePicture
+    });
     
-    // After successful Firebase auth creation, create user in Firestore and Realtime DB
-    await createFirestoreUser(userCredential.user.uid, {
+    console.log("Updated user profile in Firebase Auth with displayName and photoURL");
+    
+    // Create user in Firestore and Realtime DB
+    await createFirestoreUser(user.uid, {
       username,
       email,
       role,
@@ -42,7 +58,11 @@ export const signUpWithEmail = async (
       profilePicture,
     });
     
-    console.log("User created successfully in Firebase:", userCredential.user.uid);
+    console.log("User created successfully in Firebase:", user.uid);
+    
+    // Force a refresh of the auth token to ensure updated claims
+    await user.getIdToken(true);
+    
     return userCredential;
   } catch (error) {
     console.error("Error in signup process:", error);
@@ -56,29 +76,28 @@ export const signInWithEmail = async (
   password: string
 ): Promise<UserCredential> => {
   try {
+    console.log(`Signing in user with email ${email}`);
+    
     // Sign in with Firebase using email
     const credential = await signInWithEmailAndPassword(auth, email, password);
-    console.log("User authenticated successfully with Firebase:", credential.user.uid);
+    const user = credential.user;
+    
+    console.log("User authenticated successfully with Firebase:", user.uid);
     
     // Check if user exists in Firestore
-    const userData = await getFirestoreUser(credential.user.uid);
+    const userData = await getFirestoreUser(user.uid);
+    
     if (!userData) {
       console.log("User exists in Firebase Auth but not in Firestore, creating record...");
       
-      // Generate a username from the email
-      const username = credential.user.displayName || email.split('@')[0];
+      // Generate a username from the email or display name
+      const username = user.displayName || email.split('@')[0];
       
-      // Generate a default profile picture
-      const initials = username
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase();
+      // Generate a default profile picture if needed
+      const profilePicture = user.photoURL || createDefaultAvatar(username);
       
-      const profilePicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&color=fff&size=256`;
-      
-      // Create user in Firestore if it doesn't exist (might happen if data gets out of sync)
-      await createFirestoreUser(credential.user.uid, {
+      // Create user in Firestore if it doesn't exist
+      await createFirestoreUser(user.uid, {
         username,
         email,
         role: "investor", // Default role
@@ -86,11 +105,23 @@ export const signInWithEmail = async (
         profilePicture,
       });
       
-      // Update the user's display name in Firebase Auth if not set
-      if (!credential.user.displayName) {
-        await updateFirestoreUser(credential.user.uid, { username });
+      // Update the user's profile in Firebase Auth if needed
+      if (!user.displayName || !user.photoURL) {
+        await updateProfile(user, {
+          displayName: username,
+          photoURL: profilePicture
+        });
       }
+    } else {
+      // Update user's last login time and online status
+      await updateFirestoreUser(user.uid, {
+        online: true,
+        lastActive: new Date()
+      });
     }
+    
+    // Force refresh the token to ensure we have updated claims
+    await user.getIdToken(true);
     
     return credential;
   } catch (error) {
@@ -102,6 +133,8 @@ export const signInWithEmail = async (
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserCredential> => {
   try {
+    console.log("Starting Google sign-in process");
+    
     const provider = new GoogleAuthProvider();
     
     // Add scopes for additional profile info
@@ -113,32 +146,24 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
       prompt: 'select_account'
     });
     
-    // Sign in with popup to ensure we can see users in Firebase console
+    // Sign in with popup
     const result = await signInWithPopup(auth, provider);
-    
-    // Handle Firestore integration directly
     const user = result.user;
+    
+    console.log("Google sign-in successful for:", user.email);
+    
     if (user.email) {
       // Check if user exists in Firestore
       const firestoreUser = await getFirestoreUser(user.uid);
       
       if (!firestoreUser) {
-        // Generate a username from the email or display name
+        console.log("Creating new Firestore user for Google sign-in");
+        
+        // Generate a username from the display name or email
         const username = user.displayName || user.email.split('@')[0];
         
         // Use Google photo URL or generate default avatar
-        let profilePicture = user.photoURL;
-        
-        // If no photo URL is available, create a default avatar
-        if (!profilePicture) {
-          const initials = username
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase();
-          
-          profilePicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&color=fff&size=256`;
-        }
+        const profilePicture = user.photoURL || createDefaultAvatar(username);
         
         // Create a new user in Firestore
         await createFirestoreUser(user.uid, {
@@ -148,6 +173,7 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
           walletAddress: "",
           profilePicture,
         });
+        
         console.log("Created new Firestore user from Google sign-in:", user.uid);
       } else {
         console.log("Found existing Firestore user:", user.uid);
@@ -160,6 +186,9 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
       }
     }
     
+    // Force refresh the token to ensure we have updated claims
+    await user.getIdToken(true);
+    
     return result;
   } catch (error) {
     console.error("Error in Google sign-in process:", error);
@@ -170,9 +199,13 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
 // Sign out
 export const signOut = async (): Promise<void> => {
   try {
+    console.log("Attempting to sign out user");
+    
     // Update online status to false before signing out
     const currentUser = auth.currentUser;
     if (currentUser) {
+      console.log("Updating online status for user:", currentUser.uid);
+      
       // Update Realtime Database status
       await updateFirestoreUser(currentUser.uid, { 
         online: false,
@@ -181,6 +214,7 @@ export const signOut = async (): Promise<void> => {
     }
     
     // Sign out from Firebase
+    console.log("Signing out from Firebase");
     return firebaseSignOut(auth);
   } catch (error) {
     console.error("Error during sign out:", error);
@@ -191,5 +225,9 @@ export const signOut = async (): Promise<void> => {
 
 // Listen to auth state changes
 export const onAuthChange = (callback: (user: FirebaseUser | null) => void): () => void => {
-  return onAuthStateChanged(auth, callback);
+  console.log("Setting up auth state change listener");
+  return onAuthStateChanged(auth, (user) => {
+    console.log("Auth state changed, user:", user ? user.uid : "signed out");
+    callback(user);
+  });
 };

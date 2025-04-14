@@ -142,7 +142,18 @@ const Header = () => {
                     </span>
                   </Link>
                   
-                  {user ? (
+                  {loading ? (
+                    // Mobile loading state
+                    <div className="border-t border-gray-200 pt-4 pb-3">
+                      <div className="flex items-center px-4">
+                        <div className="h-10 w-10 bg-gray-200 animate-pulse rounded-full"></div>
+                        <div className="ml-3">
+                          <div className="h-4 w-24 bg-gray-200 animate-pulse rounded mb-2"></div>
+                          <div className="h-3 w-32 bg-gray-200 animate-pulse rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : user ? (
                     <>
                       <div className="border-t border-gray-200 pt-4 pb-3">
                         <div className="flex items-center px-4">

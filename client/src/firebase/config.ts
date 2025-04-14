@@ -1,8 +1,17 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getAuth, connectAuthEmulator, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
+
+// Log environment variables for debugging (without showing actual values)
+console.log("Firebase environment variables available:", {
+  apiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
+  projectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  messagingSenderId: !!import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: !!import.meta.env.VITE_FIREBASE_APP_ID,
+  databaseURL: !!import.meta.env.VITE_FIREBASE_DATABASE_URL,
+});
 
 // Firebase configuration
 const firebaseConfig = {
@@ -25,4 +34,14 @@ export const firestore = getFirestore(app);
 export const storage = getStorage(app);
 export const database = getDatabase(app);
 
+// Set persistence to LOCAL to keep the user logged in even after page refresh
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Firebase Auth persistence set to LOCAL");
+  })
+  .catch((error) => {
+    console.error("Error setting persistence:", error);
+  });
+
+// Export initialized app
 export default app;
