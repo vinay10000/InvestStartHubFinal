@@ -19,6 +19,22 @@ export const useStartups = (userId?: number) => {
   const getStartupsByFounderId = () => {
     if (!userId) return { data: { startups: [] }, isLoading: false };
     
+    // Use Firebase directly if we're using Firebase auth system
+    if (typeof userId === 'string' && userId.length > 10) {
+      return useQuery<{ startups: Startup[] }>({
+        queryKey: ["firebase/startups", { founderId: userId }],
+        queryFn: async () => {
+          // Import here to avoid circular dependencies
+          const { getFirestoreStartupsByFounderId } = await import("@/firebase/firestore");
+          const startups = await getFirestoreStartupsByFounderId(userId);
+          return { startups };
+        },
+        enabled: !!userId,
+        refetchOnWindowFocus: false,
+      });
+    }
+    
+    // Fall back to API request for backward compatibility
     return useQuery<{ startups: Startup[] }>({
       queryKey: ["/api/startups", { founderId: userId }],
       enabled: !!userId,

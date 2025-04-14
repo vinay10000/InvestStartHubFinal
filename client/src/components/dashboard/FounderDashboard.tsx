@@ -34,9 +34,12 @@ const FounderDashboard = () => {
   const { data: startupsData, isLoading: isLoadingStartups } = getStartupsByFounderId();
   const startups = startupsData?.startups || [];
 
-  // Fetch transactions
+  // Fetch transactions - handle both Firebase string IDs and local numeric IDs
   const { data: transactionsData, isLoading: isLoadingTransactions } = getTransactionsByFounderId(user?.id);
   const transactions = transactionsData?.transactions || [];
+  
+  // Log for debugging
+  console.log("Loaded transactions:", transactions.length, "Loading state:", isLoadingTransactions);
 
   // Calculate dashboard stats
   const totalInvestments = transactions.reduce((sum, transaction) => sum + parseFloat(transaction.amount.toString()), 0);
