@@ -3,13 +3,13 @@ import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our simplified auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
 
 const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle } = useSimpleAuth(); // Use our simplified auth context
   const [location, navigate] = useLocation();
   
   // Get role from URL query parameter

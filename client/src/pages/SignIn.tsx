@@ -3,13 +3,13 @@ import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our simplified auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
 
 const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle } = useSimpleAuth(); // Use our simplified auth context
   const [location, navigate] = useLocation();
 
   // Extract redirect URL from query parameters if available
