@@ -27,31 +27,32 @@ const SignIn = () => {
       const loginEmail = email || username;
       console.log("Starting sign-in process using email:", loginEmail);
       
-      // Store the redirect URL before authentication
-      const redirectUrl = getRedirectUrl();
-      // If it's the root path, we'll check for user's role and redirect to their dashboard
-      if (redirectUrl === '/') {
-        localStorage.setItem('pending_redirect', 'check_role');
-      } else {
-        localStorage.setItem('pending_redirect', redirectUrl);
-      }
+      // Before signin, check if there's an existing role in localStorage
+      // We'll use this to handle redirection after successful login
+      let existingRole = localStorage.getItem('user_role');
       
       await signIn(loginEmail, password);
-      console.log("Sign-in successful, redirecting...");
+      console.log("Sign-in successful");
       
-      // Check if we need to determine role-based dashboard
-      if (redirectUrl === '/') {
-        // Get user's role from localStorage
-        const role = localStorage.getItem('user_role');
-        if (role === 'founder') {
+      // After successful login, get the user role from localStorage
+      // Use userData stored in localStorage to determine the role
+      const redirectUrl = getRedirectUrl();
+      
+      // Wait a moment to ensure auth state is updated
+      setTimeout(() => {
+        // Access the user's role from localStorage - it should be set in the auth context
+        const userRole = localStorage.getItem('user_role');
+        console.log("Retrieved user role for redirection:", userRole);
+        
+        // Use explicit role-based redirection
+        if (userRole === 'founder') {
+          console.log("Redirecting to founder dashboard");
           window.location.href = '/founder/dashboard';
         } else {
+          console.log("Redirecting to investor dashboard");
           window.location.href = '/investor/dashboard';
         }
-      } else {
-        // Use direct redirection for more reliable navigation
-        window.location.href = redirectUrl;
-      }
+      }, 500);
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {
@@ -64,34 +65,31 @@ const SignIn = () => {
       setIsLoading(true);
       console.log("Starting Google sign-in process");
       
-      // Store the redirect URL before authentication
-      const redirectUrl = getRedirectUrl();
-      // If it's the root path, we'll check for user's role and redirect to their dashboard
-      if (redirectUrl === '/') {
-        localStorage.setItem('pending_redirect', 'check_role');
-      } else {
-        localStorage.setItem('pending_redirect', redirectUrl);
-      }
+      // Check if there's an existing role in localStorage first
+      let existingRole = localStorage.getItem('user_role');
+      console.log("Existing role before Google sign-in:", existingRole);
       
       await signInWithGoogle();
-      console.log("Google sign-in successful, redirecting...");
+      console.log("Google sign-in successful");
       
-      // Check if we need to determine role-based dashboard
-      if (redirectUrl === '/') {
-        // For Google signin, since we may not have a role yet, we default to investor
-        // This can be changed later in user profile
-        const role = localStorage.getItem('user_role') || 'investor';
-        localStorage.setItem('user_role', role);
+      // Wait a moment to ensure auth state is updated
+      setTimeout(() => {
+        // After signin, check the role again
+        const userRole = localStorage.getItem('user_role') || 'investor';
+        console.log("Using role for redirection:", userRole);
         
-        if (role === 'founder') {
+        // Make sure we have a role saved
+        localStorage.setItem('user_role', userRole);
+        
+        // Always redirect based on the role
+        if (userRole === 'founder') {
+          console.log("Redirecting to founder dashboard");
           window.location.href = '/founder/dashboard';
         } else {
+          console.log("Redirecting to investor dashboard");
           window.location.href = '/investor/dashboard';
         }
-      } else {
-        // Use direct redirection for more reliable navigation
-        window.location.href = redirectUrl;
-      }
+      }, 500);
     } catch (error) {
       console.error("Error signing in with Google:", error);
     } finally {

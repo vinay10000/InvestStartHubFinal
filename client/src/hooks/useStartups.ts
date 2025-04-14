@@ -138,110 +138,114 @@ export const useStartups = (userId?: number | string) => {
     });
   };
 
-  // Upload a startup document
-  const uploadDocument = useMutation({
-    mutationFn: async ({ 
-      startupId, 
-      documentData,
-      file
-    }: { 
-      startupId: number; 
-      documentData: Omit<InsertDocument, "startupId">;
-      file: File; 
-    }) => {
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", file.name);
-      
-      // Upload the file to ImageKit
-      const uploadResponse = await apiRequest("/api/imagekit/upload", {
-        method: "POST",
-        body: formData,
-        headers: {}, // Let the browser set the content type for FormData
-      });
-      
-      // Create document record with the file URL
-      const completeDocumentData = {
-        ...documentData,
-        startupId,
-        fileUrl: uploadResponse.url,
-        fileId: uploadResponse.fileId, // Store ImageKit fileId for future reference
-      } as InsertDocument;
-      
-      return apiRequest(`/api/startups/${startupId}/documents`, {
-        method: "POST",
-        body: JSON.stringify(completeDocumentData),
-      });
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate documents query for this startup
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/startups", variables.startupId, "documents"] 
-      });
-      
-      toast({
-        title: "Document Uploaded",
-        description: "Your document has been uploaded successfully",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Error uploading document:", error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to upload your document",
-        variant: "destructive",
-      });
-    },
-  });
+  // Upload a startup document - making it a factory function
+  const uploadDocument = () => {
+    return useMutation({
+      mutationFn: async ({ 
+        startupId, 
+        documentData,
+        file
+      }: { 
+        startupId: number; 
+        documentData: Omit<InsertDocument, "startupId">;
+        file: File; 
+      }) => {
+        // Create a FormData object to send the file
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileName", file.name);
+        
+        // Upload the file to ImageKit
+        const uploadResponse = await apiRequest("/api/imagekit/upload", {
+          method: "POST",
+          body: formData,
+          headers: {}, // Let the browser set the content type for FormData
+        });
+        
+        // Create document record with the file URL
+        const completeDocumentData = {
+          ...documentData,
+          startupId,
+          fileUrl: uploadResponse.url,
+          fileId: uploadResponse.fileId, // Store ImageKit fileId for future reference
+        } as InsertDocument;
+        
+        return apiRequest(`/api/startups/${startupId}/documents`, {
+          method: "POST",
+          body: JSON.stringify(completeDocumentData),
+        });
+      },
+      onSuccess: (_, variables) => {
+        // Invalidate documents query for this startup
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/startups", variables.startupId, "documents"] 
+        });
+        
+        toast({
+          title: "Document Uploaded",
+          description: "Your document has been uploaded successfully",
+        });
+      },
+      onError: (error: any) => {
+        console.error("Error uploading document:", error);
+        toast({
+          title: "Upload Failed",
+          description: error.message || "Failed to upload your document",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
-  // Upload startup logo
-  const uploadLogo = useMutation({
-    mutationFn: async ({ 
-      startupId, 
-      file
-    }: { 
-      startupId: number; 
-      file: File;
-    }) => {
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", `logo_${startupId}_${Date.now()}`);
-      formData.append("folder", "logos");
-      
-      // Upload the file to ImageKit
-      const uploadResponse = await apiRequest("/api/imagekit/upload", {
-        method: "POST",
-        body: formData,
-        headers: {}, // Let the browser set the content type for FormData
-      });
-      
-      // Update startup with logo URL
-      return apiRequest(`/api/startups/${startupId}`, {
-        method: "PUT",
-        body: JSON.stringify({ logoUrl: uploadResponse.url }),
-      });
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate specific startup query
-      queryClient.invalidateQueries({ queryKey: ["/api/startups", variables.startupId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
-      
-      toast({
-        title: "Logo Uploaded",
-        description: "Your startup logo has been updated",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Error uploading logo:", error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to upload your logo",
-        variant: "destructive",
-      });
-    },
-  });
+  // Upload startup logo - making it a factory function
+  const uploadLogo = () => {
+    return useMutation({
+      mutationFn: async ({ 
+        startupId, 
+        file
+      }: { 
+        startupId: number; 
+        file: File;
+      }) => {
+        // Create a FormData object to send the file
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileName", `logo_${startupId}_${Date.now()}`);
+        formData.append("folder", "logos");
+        
+        // Upload the file to ImageKit
+        const uploadResponse = await apiRequest("/api/imagekit/upload", {
+          method: "POST",
+          body: formData,
+          headers: {}, // Let the browser set the content type for FormData
+        });
+        
+        // Update startup with logo URL
+        return apiRequest(`/api/startups/${startupId}`, {
+          method: "PUT",
+          body: JSON.stringify({ logoUrl: uploadResponse.url }),
+        });
+      },
+      onSuccess: (_, variables) => {
+        // Invalidate specific startup query
+        queryClient.invalidateQueries({ queryKey: ["/api/startups", variables.startupId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
+        
+        toast({
+          title: "Logo Uploaded",
+          description: "Your startup logo has been updated",
+        });
+      },
+      onError: (error: any) => {
+        console.error("Error uploading logo:", error);
+        toast({
+          title: "Upload Failed",
+          description: error.message || "Failed to upload your logo",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   // Get documents for a specific startup
   const getDocumentsByStartupId = (startupId?: number) => {

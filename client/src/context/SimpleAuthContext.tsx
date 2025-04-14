@@ -38,10 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Listen for auth state changes
   useEffect(() => {
+    console.log("Setting up auth state listener");
     const unsubscribe = observeAuthState((user) => {
       if (user) {
+        console.log("Auth state changed, user:", user.email);
+        
         // Try to retrieve the role from localStorage if available
         const savedRole = localStorage.getItem('user_role');
+        console.log("Retrieved role from localStorage:", savedRole);
+        
         if (savedRole) {
           // Enhance the user object with the saved role as a custom claim
           const enhancedUser = {
@@ -49,15 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             customClaims: { role: savedRole }
           };
           setUser(enhancedUser);
+          console.log("Set user with role:", savedRole);
         } else {
-          // Default to a role if none is found
+          // If no role is found, default to investor and save it
+          const defaultRole = 'investor';
+          localStorage.setItem('user_role', defaultRole);
+          
           const enhancedUser = {
             ...user,
-            customClaims: { role: 'investor' }
+            customClaims: { role: defaultRole }
           };
           setUser(enhancedUser);
+          console.log("No role found, defaulting to:", defaultRole);
         }
       } else {
+        console.log("Auth state changed: signed out");
         setUser(null);
       }
       setLoading(false);
