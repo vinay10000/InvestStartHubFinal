@@ -7,6 +7,7 @@ import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our simplified aut
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
 import { getFirestoreUser } from "@/firebase/firestore";
+import { auth } from "@/firebase/config"; // Import Firebase auth
 
 const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -39,14 +40,35 @@ const SignIn = () => {
       // Use userData stored in localStorage to determine the role
       const redirectUrl = getRedirectUrl();
       
+      // Get the user from Firebase Authentication
+      const currentUser = auth.currentUser;
+      
+      if (currentUser && currentUser.uid) {
+        try {
+          // Try to get the user's role from Firestore
+          const firestoreUser = await getFirestoreUser(currentUser.uid);
+          console.log("Firestore user data:", firestoreUser);
+          
+          if (firestoreUser && firestoreUser.role) {
+            // Update the role in localStorage with the correct one from Firestore
+            localStorage.setItem('user_role', firestoreUser.role);
+            console.log("Set user role from Firestore:", firestoreUser.role);
+          }
+        } catch (error) {
+          console.error("Error getting user from Firestore:", error);
+        }
+      }
+      
       // Wait a moment to ensure auth state is updated
       setTimeout(() => {
         // Access the user's role from localStorage - it should be set in the auth context
-        const userRole = localStorage.getItem('user_role');
+        const userRole = localStorage.getItem('user_role') || 'investor';
         console.log("Retrieved user role for redirection:", userRole);
         
-        // Use explicit role-based redirection
-        if (userRole === 'founder') {
+        // Use explicit role-based redirection - normalize the role for consistency
+        const normalizedRole = userRole.toLowerCase().trim();
+        
+        if (normalizedRole === 'founder') {
           console.log("Redirecting to founder dashboard");
           window.location.href = '/founder/dashboard';
         } else {
@@ -70,19 +92,27 @@ const SignIn = () => {
       let existingRole = localStorage.getItem('user_role');
       console.log("Existing role before Google sign-in:", existingRole);
       
-      const user = await signInWithGoogle();
+      await signInWithGoogle();
       console.log("Google sign-in successful");
       
-      // Get the user's role from Firestore
-      if (user.user) {
-        const firebaseUser = user.user;
-        const firestoreUser = await getFirestoreUser(firebaseUser.uid);
-        console.log("Firestore user data:", firestoreUser);
-        
-        if (firestoreUser && firestoreUser.role) {
-          // Update the role in localStorage with the correct one from Firestore
-          localStorage.setItem('user_role', firestoreUser.role);
-          console.log("Set user role from Firestore:", firestoreUser.role);
+      // After Google sign-in, we should get the user from Firebase Authentication
+      const currentUser = auth.currentUser; // Import auth from firebase/config
+      
+      if (currentUser && currentUser.uid) {
+        try {
+          // Try to get the user's role from Firestore
+          const firestoreUser = await getFirestoreUser(currentUser.uid);
+          console.log("Firestore user data:", firestoreUser);
+          
+          if (firestoreUser && firestoreUser.role) {
+            // Update the role in localStorage with the correct one from Firestore
+            localStorage.setItem('user_role', firestoreUser.role);
+            console.log("Set user role from Firestore:", firestoreUser.role);
+          }
+        } catch (error) {
+          console.error("Error getting user from Firestore:", error);
+          // Default to investor if we can't get the role
+          localStorage.setItem('user_role', 'investor');
         }
       }
       
