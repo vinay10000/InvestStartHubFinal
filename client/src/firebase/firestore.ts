@@ -74,7 +74,7 @@ export const getFirestoreStartups = async (): Promise<any[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-export const getFirestoreStartupsByFounderId = async (founderId: number): Promise<any[]> => {
+export const getFirestoreStartupsByFounderId = async (founderId: string | number): Promise<any[]> => {
   const q = query(collection(firestore, "startups"), where("founderId", "==", founderId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -93,7 +93,7 @@ export const createFirestoreDocument = async (documentData: Omit<Document, "id" 
   return docRef.id;
 };
 
-export const getFirestoreDocumentsByStartupId = async (startupId: number): Promise<any[]> => {
+export const getFirestoreDocumentsByStartupId = async (startupId: string | number): Promise<any[]> => {
   const q = query(collection(firestore, "documents"), where("startupId", "==", startupId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -108,7 +108,7 @@ export const createFirestoreTransaction = async (transactionData: Omit<Transacti
   return docRef.id;
 };
 
-export const getFirestoreTransactionsByStartupId = async (startupId: number): Promise<any[]> => {
+export const getFirestoreTransactionsByStartupId = async (startupId: string | number): Promise<any[]> => {
   const q = query(
     collection(firestore, "transactions"), 
     where("startupId", "==", startupId),
@@ -118,7 +118,7 @@ export const getFirestoreTransactionsByStartupId = async (startupId: number): Pr
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-export const getFirestoreTransactionsByInvestorId = async (investorId: number): Promise<any[]> => {
+export const getFirestoreTransactionsByInvestorId = async (investorId: string | number): Promise<any[]> => {
   const q = query(
     collection(firestore, "transactions"), 
     where("investorId", "==", investorId),
@@ -130,4 +130,30 @@ export const getFirestoreTransactionsByInvestorId = async (investorId: number): 
 
 export const updateFirestoreTransactionStatus = async (transactionId: string, status: string): Promise<void> => {
   await updateDoc(doc(firestore, "transactions", transactionId), { status });
+};
+
+export const getFirestoreTransactionsByFounderId = async (founderId: string | number): Promise<any[]> => {
+  // First get all startups belonging to this founder
+  const startups = await getFirestoreStartupsByFounderId(founderId);
+  
+  if (startups.length === 0) {
+    return [];
+  }
+  
+  // Get transactions for all startups owned by this founder
+  const transactions: any[] = [];
+  
+  for (const startup of startups) {
+    // Use either the Firebase document ID or the numeric ID
+    const startupId = startup.id;
+    const startupTransactions = await getFirestoreTransactionsByStartupId(startupId);
+    transactions.push(...startupTransactions);
+  }
+  
+  // Sort by date descending
+  return transactions.sort((a, b) => {
+    const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+    const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+    return dateB.getTime() - dateA.getTime();
+  });
 };

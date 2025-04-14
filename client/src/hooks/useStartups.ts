@@ -3,7 +3,7 @@ import { Startup, InsertStartup, InsertDocument } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-export const useStartups = (userId?: number) => {
+export const useStartups = (userId?: number | string) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

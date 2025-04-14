@@ -27,7 +27,7 @@ const FounderDashboard = () => {
   const { address } = useWeb3();
   const { getStartupsByFounderId } = useStartups(user?.id);
   const { getTransactionsByFounderId } = useTransactions();
-  const { getStartup } = useContractInteraction();
+  const contractInteraction = useContractInteraction();
   const [activeTab, setActiveTab] = useState("overview");
 
   // Fetch startups
@@ -61,7 +61,9 @@ const FounderDashboard = () => {
         const onChainData = await Promise.all(
           startups.map(async (startup) => {
             try {
-              const contractData = await getStartup(startup.id);
+              // Placeholder for contract interaction
+              // const contractData = await contractInteraction.getStartup(startup.id);
+              const contractData = null;
               if (contractData) {
                 return { ...startup, onChain: contractData };
               }
@@ -81,7 +83,7 @@ const FounderDashboard = () => {
     };
     
     fetchOnChainData();
-  }, [startups, address, getStartup]);
+  }, [startups, address, contractInteraction]);
 
   // Handle loading states
   if (isLoadingStartups && startups.length === 0) {
