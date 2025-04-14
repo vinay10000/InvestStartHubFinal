@@ -66,6 +66,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             userData = await getFirestoreUser(firebaseUser.uid);
           }
           
+          // Ensure user data has the correct id format for Firebase
+          if (userData) {
+            // Make sure the id field is the Firebase UID string
+            userData.id = firebaseUser.uid;
+            console.log("User authenticated:", userData);
+          }
+          
           // Set the user state with Firestore data
           setUser(userData);
         } catch (error) {
