@@ -28,7 +28,7 @@ export const signUpWithEmail = async (
       username,
       email,
       role,
-      walletAddress: null,
+      walletAddress: "",
       createdAt: new Date(),
     });
     
@@ -87,19 +87,30 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
   // Sign in with popup to ensure we can see users in Firebase console
   const result = await signInWithPopup(auth, provider);
   
-  // Try to create or update user in our backend if needed
+  // Handle Firestore integration directly
   try {
     const user = result.user;
     if (user.email) {
-      await apiRequest("POST", "/api/auth/google", {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || user.email.split('@')[0],
-        photoURL: user.photoURL
-      });
+      // Check if user exists in Firestore
+      const firestoreUser = await getFirestoreUser(user.uid);
+      
+      if (!firestoreUser) {
+        // Create a new user in Firestore
+        await createFirestoreUser(user.uid, {
+          username: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          role: "investor", // Default role for Google sign-ins
+          walletAddress: "",
+          profilePicture: user.photoURL || "",
+          createdAt: new Date(),
+        });
+        console.log("Created new Firestore user from Google sign-in:", user.uid);
+      } else {
+        console.log("Found existing Firestore user:", user.uid);
+      }
     }
   } catch (error) {
-    console.error("Error saving Google user to backend:", error);
+    console.error("Error handling Firestore for Google user:", error);
     // Continue anyway as the Firebase auth was successful
   }
   

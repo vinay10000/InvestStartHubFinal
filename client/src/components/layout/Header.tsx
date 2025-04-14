@@ -56,21 +56,6 @@ const Header = () => {
                   Home
                 </span>
               </Link>
-              <Link href="/startups">
-                <span className={`${location === "/startups" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
-                  Startups
-                </span>
-              </Link>
-              <Link href="/investors">
-                <span className={`${location === "/investors" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
-                  Investors
-                </span>
-              </Link>
-              <Link href="/how-it-works">
-                <span className={`${location === "/how-it-works" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
-                  How It Works
-                </span>
-              </Link>
             </nav>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
@@ -140,21 +125,6 @@ const Header = () => {
                   <Link href="/">
                     <span className={`${location === "/" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
                       Home
-                    </span>
-                  </Link>
-                  <Link href="/startups">
-                    <span className={`${location === "/startups" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
-                      Startups
-                    </span>
-                  </Link>
-                  <Link href="/investors">
-                    <span className={`${location === "/investors" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
-                      Investors
-                    </span>
-                  </Link>
-                  <Link href="/how-it-works">
-                    <span className={`${location === "/how-it-works" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
-                      How It Works
                     </span>
                   </Link>
                   
