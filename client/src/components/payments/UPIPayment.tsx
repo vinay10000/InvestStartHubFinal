@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 
 const formSchema = z.object({
   amount: z.string()
@@ -38,7 +38,7 @@ const UPIPayment = ({
   onPaymentComplete 
 }: UPIPaymentProps) => {
   const { createTransaction } = useTransactions();
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);

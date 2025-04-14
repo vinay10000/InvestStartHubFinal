@@ -36,9 +36,10 @@ const StartupDetails = () => {
   const uploadDocumentMutation = uploadDocument();
   const createChatMutation = createChat();
 
-  // Safely extract data with null checks
+  // Safely extract data with null checks and type handling
   const startup = startupData?.startup;
-  const documents = documentsData?.documents || [];
+  // Handle documents data with proper type safety
+  const documents = documentsData && 'documents' in documentsData ? documentsData.documents : [];
 
   const isFounder = user?.id === startup?.founderId;
   const isInvestor = user?.role === "investor";
@@ -255,7 +256,7 @@ const StartupDetails = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {documents.map((document) => (
+            {documents.map((document: any) => (
               <Card key={document.id} className="overflow-hidden">
                 <CardHeader className="p-4">
                   <CardTitle className="text-lg">{document.name}</CardTitle>
