@@ -22,6 +22,7 @@ interface StartupCardProps {
   onChainData?: any;
   isLoadingOnChain?: boolean;
   showActions?: boolean;
+  view?: "founder" | "investor";
 }
 
 const StartupCard = ({ 

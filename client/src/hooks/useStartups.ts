@@ -55,31 +55,43 @@ export const useStartups = (userId?: number | string) => {
   };
 
   // Create a new startup
-  const createStartup = useMutation({
-    mutationFn: async (startupData: InsertStartup) => {
-      return apiRequest("/api/startups", {
-        method: "POST",
-        body: JSON.stringify(startupData),
-      });
-    },
-    onSuccess: () => {
-      // Invalidate startups query to refetch data
-      queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
-      
-      toast({
-        title: "Startup Created",
-        description: "Your startup has been registered successfully",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Error creating startup:", error);
-      toast({
-        title: "Creation Failed",
-        description: error.message || "Failed to register your startup",
-        variant: "destructive",
-      });
-    },
-  });
+  const createStartup = () => {
+    return useMutation({
+      mutationFn: async (startupData: InsertStartup) => {
+        // Check if we're using Firebase with a string ID
+        if (typeof startupData.founderId === 'string' && startupData.founderId.length > 10) {
+          // Use Firestore directly
+          const { createFirestoreStartup } = await import("@/firebase/firestore");
+          const startupId = await createFirestoreStartup(startupData);
+          return { id: startupId, ...startupData };
+        }
+        
+        // Fall back to API for backward compatibility
+        return apiRequest("/api/startups", {
+          method: "POST",
+          body: JSON.stringify(startupData),
+        });
+      },
+      onSuccess: () => {
+        // Invalidate startups query to refetch data
+        queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
+        queryClient.invalidateQueries({ queryKey: ["firebase/startups"] });
+        
+        toast({
+          title: "Startup Created",
+          description: "Your startup has been registered successfully",
+        });
+      },
+      onError: (error: any) => {
+        console.error("Error creating startup:", error);
+        toast({
+          title: "Creation Failed",
+          description: error.message || "Failed to register your startup",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   // Update a startup
   const updateStartup = useMutation({

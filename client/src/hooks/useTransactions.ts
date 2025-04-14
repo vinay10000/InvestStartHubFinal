@@ -16,9 +16,25 @@ export const useTransactions = () => {
   };
 
   // Get transactions by investor ID
-  const getTransactionsByInvestorId = (investorId?: number) => {
+  const getTransactionsByInvestorId = (investorId?: number | string) => {
     if (!investorId) return { data: { transactions: [] }, isLoading: false };
     
+    // Use firebase directly if we're using the Firebase auth system
+    if (typeof investorId === 'string' && investorId.length > 10) {
+      return useQuery<{ transactions: Transaction[] }>({
+        queryKey: ["firebase/transactions", { investorId }],
+        queryFn: async () => {
+          // Import here to avoid circular dependencies
+          const { getFirestoreTransactionsByInvestorId } = await import("@/firebase/firestore");
+          const transactions = await getFirestoreTransactionsByInvestorId(investorId);
+          return { transactions };
+        },
+        enabled: !!investorId,
+        refetchOnWindowFocus: false,
+      });
+    }
+    
+    // Fall back to API request for backward compatibility
     return useQuery<{ transactions: Transaction[] }>({
       queryKey: ["/api/investments", { investorId }],
       enabled: !!investorId,

@@ -15,13 +15,14 @@ import TransactionList from "@/components/transactions/TransactionList";
 
 const FounderDashboard = () => {
   const { user } = useAuth();
-  const { getStartupsByFounderId, createStartup } = useStartups(user?.id);
+  const userId = user?.id || "";
+  const { getStartupsByFounderId, createStartup } = useStartups();
   const { getTransactionsByFounderId } = useTransactions();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
 
-  const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId(user?.id || 0);
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(user?.id || 0);
+  const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId(userId);
+  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(userId);
   
   const createStartupMutation = createStartup();
 
@@ -29,7 +30,7 @@ const FounderDashboard = () => {
     try {
       await createStartupMutation.mutateAsync({
         ...startupData,
-        founderId: user?.id || 0
+        founderId: userId
       });
       setIsCreateDialogOpen(false);
     } catch (error) {

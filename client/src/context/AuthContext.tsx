@@ -18,7 +18,13 @@ interface AuthContextType {
   signIn: (username: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (userData: Partial<User>) => Promise<void>;
+  updateProfile: (userData: Partial<{
+    username?: string;
+    email?: string;
+    role?: string;
+    walletAddress?: string;
+    profilePicture?: string;
+  }>) => Promise<void>;
   connectWallet: (walletAddress: string) => Promise<void>;
 }
 

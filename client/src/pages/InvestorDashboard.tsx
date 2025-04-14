@@ -14,6 +14,7 @@ import TransactionList from "@/components/transactions/TransactionList";
 
 const InvestorDashboard = () => {
   const { user } = useAuth();
+  const userId = user?.id || "";
   const { getAllStartups } = useStartups();
   const { getTransactionsByInvestorId } = useTransactions();
   const [filter, setFilter] = useState("");
@@ -21,7 +22,7 @@ const InvestorDashboard = () => {
   const [activeTab, setActiveTab] = useState("discover");
 
   const { data: startupsData, isLoading: startupsLoading } = getAllStartups();
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByInvestorId(user?.id || 0);
+  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByInvestorId(userId);
   
   const startups = startupsData?.startups || [];
   const transactions = transactionsData?.transactions || [];
