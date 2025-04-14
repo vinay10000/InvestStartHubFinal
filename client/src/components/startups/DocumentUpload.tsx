@@ -27,6 +27,7 @@ interface DocumentUploadProps {
 
 const DocumentUpload = ({ onSubmit, isLoading }: DocumentUploadProps) => {
   const [fileError, setFileError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentFormSchema),
@@ -36,31 +37,93 @@ const DocumentUpload = ({ onSubmit, isLoading }: DocumentUploadProps) => {
     },
   });
 
+  // Auto-fill name based on selected document type
+  const documentTypeDisplayNames = {
+    "pitch_deck": "Pitch Deck",
+    "financial_report": "Financial Report",
+    "investor_agreement": "Investor Agreement / Terms Sheet",
+    "risk_disclosure": "Risk Disclosure Document"
+  };
+
+  const validateFile = (file: File): boolean => {
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError("File size should be less than 10MB");
+      return false;
+    }
+    
+    // Check file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/msword",
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      setFileError("Only PDF, Word, Excel, and PowerPoint files are allowed");
+      return false;
+    }
+    
+    setFileError(null);
+    return true;
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setFileError("File size should be less than 10MB");
-        return;
+      if (validateFile(file)) {
+        setSelectedFile(file);
+        form.setValue("file", file);
+        
+        // Auto-suggest name based on file name if name field is empty
+        const currentName = form.getValues("name");
+        if (!currentName || currentName.trim() === "") {
+          // Remove extension from file name
+          const fileName = file.name.replace(/\.[^/.]+$/, "");
+          form.setValue("name", fileName);
+        }
       }
+    }
+  };
+
+  // Handle drag and drop
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
       
-      // Check file type
-      const allowedTypes = [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/msword",
-      ];
-      
-      if (!allowedTypes.includes(file.type)) {
-        setFileError("Only PDF, Word, Excel, and PowerPoint files are allowed");
-        return;
+      if (validateFile(file)) {
+        setSelectedFile(file);
+        form.setValue("file", file);
+        
+        // Auto-suggest name based on file name if name field is empty
+        const currentName = form.getValues("name");
+        if (!currentName || currentName.trim() === "") {
+          // Remove extension from file name
+          const fileName = file.name.replace(/\.[^/.]+$/, "");
+          form.setValue("name", fileName);
+        }
       }
-      
-      setFileError(null);
-      form.setValue("file", file);
+    }
+  };
+  
+  // Update document name when type changes
+  const handleTypeChange = (type: string) => {
+    form.setValue("type", type as any);
+    const currentName = form.getValues("name");
+    
+    // If name is empty or matches one of the standard document names, update it
+    if (!currentName || Object.values(documentTypeDisplayNames).includes(currentName)) {
+      form.setValue("name", documentTypeDisplayNames[type as keyof typeof documentTypeDisplayNames]);
     }
   };
 
@@ -98,7 +161,9 @@ const DocumentUpload = ({ onSubmit, isLoading }: DocumentUploadProps) => {
               <FormControl>
                 <Select 
                   value={field.value} 
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    handleTypeChange(value);
+                  }}
                   disabled={isLoading}
                 >
                   <SelectTrigger>
@@ -107,7 +172,7 @@ const DocumentUpload = ({ onSubmit, isLoading }: DocumentUploadProps) => {
                   <SelectContent>
                     <SelectItem value="pitch_deck">Pitch Deck</SelectItem>
                     <SelectItem value="financial_report">Financial Report</SelectItem>
-                    <SelectItem value="investor_agreement">Investor Agreement</SelectItem>
+                    <SelectItem value="investor_agreement">Investor Agreement / Terms Sheet</SelectItem>
                     <SelectItem value="risk_disclosure">Risk Disclosure</SelectItem>
                   </SelectContent>
                 </Select>
@@ -124,15 +189,32 @@ const DocumentUpload = ({ onSubmit, isLoading }: DocumentUploadProps) => {
             <FormItem>
               <FormLabel>Upload File</FormLabel>
               <FormControl>
-                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2">
-                  <Upload className="h-8 w-8 text-gray-400" />
-                  <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                  <p className="text-xs text-gray-500">PDF, Word, Excel, PowerPoint (Max 10MB)</p>
-                  {value && (
-                    <p className="text-sm font-medium mt-2">{(value as File).name}</p>
+                <div 
+                  className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                >
+                  {value ? (
+                    <div className="flex flex-col items-center">
+                      <div className="bg-blue-50 p-3 rounded-full mb-2">
+                        <Upload className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <p className="text-sm font-medium">{(value as File).name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {Math.round((value as File).size / 1024)} KB
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-gray-400" />
+                      <p className="text-sm text-gray-600 font-medium">Drag and drop your file here</p>
+                      <p className="text-xs text-gray-500">or click to browse</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF, Word, Excel, PowerPoint (Max 10MB)</p>
+                    </>
                   )}
                   <Input
                     type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                     onChange={(e) => {
                       handleFileChange(e);
                     }}
@@ -141,9 +223,15 @@ const DocumentUpload = ({ onSubmit, isLoading }: DocumentUploadProps) => {
                     id="file-upload"
                     {...fieldProps}
                   />
-                  <label htmlFor="file-upload" className="mt-2">
-                    <Button type="button" variant="outline" size="sm" disabled={isLoading}>
-                      Browse Files
+                  <label htmlFor="file-upload" className="mt-2 w-full">
+                    <Button 
+                      type="button" 
+                      variant={value ? "outline" : "default"} 
+                      size="sm" 
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {value ? "Replace File" : "Browse Files"}
                     </Button>
                   </label>
                 </div>

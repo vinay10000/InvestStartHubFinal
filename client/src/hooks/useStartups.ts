@@ -143,17 +143,28 @@ export const useStartups = (userId?: number | string) => {
     return useMutation({
       mutationFn: async ({ 
         startupId, 
-        documentData,
+        name,
+        type,
         file
       }: { 
-        startupId: number; 
-        documentData: Omit<InsertDocument, "startupId">;
+        startupId: number;
+        name: string;
+        type: string;
         file: File; 
       }) => {
+        // Create a folder path based on document type
+        const folderPath = `startups/${startupId}/documents/${type}`;
+        
+        // Generate a clean filename (remove spaces and special characters)
+        const cleanFileName = file.name
+          .replace(/[^a-zA-Z0-9.]/g, '_')
+          .toLowerCase();
+          
         // Create a FormData object to send the file
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("fileName", file.name);
+        formData.append("fileName", cleanFileName);
+        formData.append("folder", folderPath);
         
         // Upload the file to ImageKit
         const uploadResponse = await apiRequest("/api/imagekit/upload", {
@@ -162,17 +173,21 @@ export const useStartups = (userId?: number | string) => {
           headers: {}, // Let the browser set the content type for FormData
         });
         
-        // Create document record with the file URL
-        const completeDocumentData = {
-          ...documentData,
+        // Create document record with the file URL and metadata
+        const documentData = {
+          name,
+          type,
           startupId,
           fileUrl: uploadResponse.url,
           fileId: uploadResponse.fileId, // Store ImageKit fileId for future reference
+          fileName: cleanFileName,
+          mimeType: file.type,
+          fileSize: file.size,
         } as InsertDocument;
         
         return apiRequest(`/api/startups/${startupId}/documents`, {
           method: "POST",
-          body: JSON.stringify(completeDocumentData),
+          body: JSON.stringify(documentData),
         });
       },
       onSuccess: (_, variables) => {

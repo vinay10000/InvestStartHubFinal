@@ -38,8 +38,12 @@ const StartupDetails = () => {
 
   // Safely extract data with null checks and type handling
   const startup = startupData?.startup;
+  
   // Handle documents data with proper type safety
-  const documents = documentsData && 'documents' in documentsData ? documentsData.documents : [];
+  const documents = documentsData && documentsData !== null && 
+    typeof documentsData === 'object' && 'documents' in documentsData 
+    ? documentsData.documents as any[] 
+    : [];
 
   const isFounder = user?.id === startup?.founderId;
   const isInvestor = user?.role === "investor";
@@ -263,20 +267,43 @@ const StartupDetails = () => {
                   <CardDescription>
                     {document.type === "pitch_deck" && "Pitch Deck"}
                     {document.type === "financial_report" && "Financial Report"}
-                    {document.type === "investor_agreement" && "Investor Agreement"}
+                    {document.type === "investor_agreement" && "Investor Agreement / Terms Sheet"}
                     {document.type === "risk_disclosure" && "Risk Disclosure"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <a 
-                    href={document.fileUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-primary hover:text-primary-600"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    View Document
-                  </a>
+                  <div className="flex flex-col space-y-2">
+                    <a 
+                      href={document.fileUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-primary hover:text-primary-600"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      View Document
+                    </a>
+                    <a 
+                      href={document.fileUrl} 
+                      download={document.name}
+                      className="inline-flex items-center text-primary hover:text-primary-600"
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="mr-2 h-4 w-4"
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      Download
+                    </a>
+                  </div>
                 </CardContent>
               </Card>
             ))}
