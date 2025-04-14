@@ -39,6 +39,21 @@ export function formatDate(date: Date | string | number): string {
 }
 
 /**
+ * Format a date with time
+ */
+export function formatDateTime(date: Date | string | number): string {
+  if (!date) return "";
+  return new Date(date).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  });
+}
+
+/**
  * Delay execution for specified milliseconds
  */
 export function delay(ms: number): Promise<void> {

@@ -71,7 +71,7 @@ const UPIPayment = ({
       await createTransaction.mutateAsync({
         startupId,
         investorId: user.id,
-        amount: parseFloat(values.amount),
+        amount: values.amount, // Use string directly as our schema expects
         paymentMethod: "upi",
         transactionId: values.referenceId,
         status: "pending" // Will be verified by admin

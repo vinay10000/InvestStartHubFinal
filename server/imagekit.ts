@@ -15,10 +15,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 // Default ImageKit credentials for development (will be overridden in production)
-// These are mock keys for local development only
-const defaultPublicKey = 'your_public_key';
-const defaultPrivateKey = 'your_private_key'; 
-const defaultUrlEndpoint = 'https://ik.imagekit.io/your_imagekit_id/';
+// These are the real keys for the application
+const defaultPublicKey = 'public_w2aMVbEkSHlMI8jXUWHwtU5gRz4=';
+const defaultPrivateKey = 'private_Y00SEOeis1Xs8woB86zFH0jzjWU='; 
+const defaultUrlEndpoint = 'https://ik.imagekit.io/cyanzx1';
 
 // Server-side ImageKit instance with fallback values for development
 const imagekit = new ImageKit({

@@ -49,9 +49,9 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
     balance, 
     chainId, 
     isInstalled, 
-    isConnecting, 
+    isLoading, 
     connect,
-    switchNetwork
+    changeNetwork
   } = useWeb3();
   
   const { toast } = useToast();
@@ -87,13 +87,14 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
       }
       
       // Check if on right network and switch if needed
-      if (chainId !== SUPPORTED_CHAIN_ID) {
+      const currentChainId = chainId ? Number(chainId) : null;
+      if (currentChainId !== SUPPORTED_CHAIN_ID) {
         toast({
           title: "Switching Network",
           description: "Switching to Sepolia testnet for this application",
         });
         
-        const switched = await switchNetwork(SUPPORTED_CHAIN_ID);
+        const switched = await changeNetwork(SUPPORTED_CHAIN_ID.toString());
         
         if (!switched) {
           toast({
@@ -140,16 +141,19 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
   };
   
   // Get chain name
-  const getChainName = (id: number | null) => {
-    if (id === 1) return "Ethereum Mainnet";
-    if (id === 11155111) return "Sepolia Testnet";
-    if (id === 137) return "Polygon";
-    if (id === 80001) return "Mumbai Testnet";
-    return id ? `Chain ID: ${id}` : "Unknown Chain";
+  const getChainName = (id: string | null) => {
+    // Convert string to number if it's a string
+    const numId = id ? Number(id) : null;
+    
+    if (numId === 1) return "Ethereum Mainnet";
+    if (numId === 11155111) return "Sepolia Testnet";
+    if (numId === 137) return "Polygon";
+    if (numId === 80001) return "Mumbai Testnet";
+    return numId ? `Chain ID: ${numId}` : "Unknown Chain";
   };
   
   // Check if connected to the right network
-  const isRightNetwork = chainId === SUPPORTED_CHAIN_ID;
+  const isRightNetwork = chainId !== null && Number(chainId) === SUPPORTED_CHAIN_ID;
   
   if (!address) {
     return (
@@ -157,10 +161,10 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
         variant={buttonVariant}
         size={buttonSize}
         onClick={handleConnect}
-        disabled={isConnecting}
+        disabled={isLoading}
       >
         {showIcon && <Wallet className="mr-2 h-4 w-4" />}
-        {isConnecting ? "Connecting..." : "Connect Wallet"}
+        {isLoading ? "Connecting..." : "Connect Wallet"}
       </Button>
     );
   }
@@ -172,7 +176,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
           <Button variant={buttonVariant} size={buttonSize}>
             {showIcon && <Wallet className="mr-2 h-4 w-4" />}
             {showAddress && truncateAddress(address)}
-            {showBalance && ` (${parseFloat(balance).toFixed(4)} ETH)`}
+            {showBalance && balance && ` (${parseFloat(balance || "0").toFixed(4)} ETH)`}
           </Button>
         </DialogTrigger>
         <DialogContent>
@@ -193,7 +197,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
                   variant="outline" 
                   size="sm" 
                   className="mt-2"
-                  onClick={() => switchNetwork(SUPPORTED_CHAIN_ID)}
+                  onClick={() => changeNetwork(SUPPORTED_CHAIN_ID.toString())}
                 >
                   Switch to Sepolia
                 </Button>
@@ -218,7 +222,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
             
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Balance:</span>
-              <span className="font-medium">{parseFloat(balance).toFixed(4)} ETH</span>
+              <span className="font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
             </div>
             
             <div className="flex items-center justify-between">

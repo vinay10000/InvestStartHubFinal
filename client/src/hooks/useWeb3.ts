@@ -1,15 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  isMetaMaskInstalled,
-  connectToMetaMask,
-  getConnectedAccounts,
-  getBalance,
-  getNetworkDetails,
+  isMetaMaskInstalled, 
+  connectWallet,
+  isWalletConnected,
+  getWalletBalance,
+  getChainId,
   switchNetwork,
-  addAccountChangeListener,
-  addNetworkChangeListener
+  listenToAccountChanges,
+  listenToChainChanges
 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
+
+// Helper function to get network name from chain ID
+const getNetworkName = (chainId: number | null): string => {
+  if (chainId === 1) return "Ethereum Mainnet";
+  if (chainId === 11155111) return "Sepolia Testnet";
+  if (chainId === 137) return "Polygon Mainnet";
+  if (chainId === 80001) return "Mumbai Testnet";
+  return chainId ? `Unknown Network (${chainId})` : "Unknown";
+};
 
 export const useWeb3 = () => {
   const [isInstalled, setIsInstalled] = useState(false);
@@ -29,18 +38,29 @@ export const useWeb3 = () => {
       if (installed) {
         try {
           // Check if user is already connected
-          const accounts = await getConnectedAccounts();
-          if (accounts.length > 0) {
-            setAddress(accounts[0]);
+          const connected = await isWalletConnected();
+          
+          if (connected) {
+            const connectedAddress = await connectWallet();
             
-            // Get network details
-            const network = await getNetworkDetails();
-            setNetworkName(network.name);
-            setChainId(network.chainId.toString());
-            
-            // Get balance
-            const balanceValue = await getBalance(accounts[0]);
-            setBalance(balanceValue);
+            if (connectedAddress) {
+              setAddress(connectedAddress);
+              
+              // Get chain ID
+              const currentChainId = await getChainId();
+              if (currentChainId) {
+                setChainId(currentChainId.toString());
+                
+                // Set network name based on chain ID
+                setNetworkName(getNetworkName(currentChainId));
+              }
+              
+              // Get balance
+              if (connectedAddress) {
+                const balanceValue = await getWalletBalance(connectedAddress);
+                setBalance(balanceValue);
+              }
+            }
           }
         } catch (error) {
           console.error('Error initializing Web3:', error);
@@ -63,23 +83,24 @@ export const useWeb3 = () => {
       } else {
         setAddress(accounts[0]);
         // Update balance for new account
-        getBalance(accounts[0])
-          .then(newBalance => setBalance(newBalance))
-          .catch(error => console.error('Error getting balance:', error));
+        getWalletBalance(accounts[0])
+          .then((newBalance: string) => setBalance(newBalance))
+          .catch((error: Error) => console.error('Error getting balance:', error));
       }
     };
     
-    const chainChanged = async (newChainId: string) => {
+    const chainChanged = async (newChainIdHex: string) => {
       // Force refresh when chain changes
-      setChainId(newChainId);
+      setChainId(newChainIdHex);
       
       try {
-        const network = await getNetworkDetails();
-        setNetworkName(network.name);
+        // Convert hex chainId to number for network name lookup
+        const newChainIdNum = parseInt(newChainIdHex, 16);
+        setNetworkName(getNetworkName(newChainIdNum));
         
         // Also update balance as it might be different on new chain
         if (address) {
-          const newBalance = await getBalance(address);
+          const newBalance = await getWalletBalance(address);
           setBalance(newBalance);
         }
       } catch (error) {
@@ -87,8 +108,8 @@ export const useWeb3 = () => {
       }
     };
     
-    const accountCleanup = addAccountChangeListener(accountsChanged);
-    const networkCleanup = addNetworkChangeListener(chainChanged);
+    const accountCleanup = listenToAccountChanges(accountsChanged);
+    const networkCleanup = listenToChainChanges(chainChanged);
     
     return () => {
       accountCleanup();
@@ -110,22 +131,27 @@ export const useWeb3 = () => {
     setIsLoading(true);
     
     try {
-      const accounts = await connectToMetaMask();
-      if (accounts.length > 0) {
-        setAddress(accounts[0]);
+      const connectedAddress = await connectWallet();
+      
+      if (connectedAddress) {
+        setAddress(connectedAddress);
         
-        // Get network details
-        const network = await getNetworkDetails();
-        setNetworkName(network.name);
-        setChainId(network.chainId.toString());
+        // Get chain ID
+        const currentChainId = await getChainId();
+        if (currentChainId) {
+          setChainId(currentChainId.toString());
+          
+          // Set network name based on chain ID
+          setNetworkName(getNetworkName(currentChainId));
+        }
         
         // Get balance
-        const balanceValue = await getBalance(accounts[0]);
+        const balanceValue = await getWalletBalance(connectedAddress);
         setBalance(balanceValue);
         
         toast({
           title: 'Wallet Connected',
-          description: `Connected to ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`,
+          description: `Connected to ${connectedAddress.substring(0, 6)}...${connectedAddress.substring(38)}`,
         });
         
         return true;
@@ -144,7 +170,7 @@ export const useWeb3 = () => {
   }, [isInstalled, toast]);
   
   // Switch network function
-  const changeNetwork = useCallback(async (newChainId: string) => {
+  const changeNetwork = useCallback(async (newChainIdStr: string) => {
     if (!isInstalled) {
       toast({
         title: 'MetaMask Required',
@@ -157,6 +183,9 @@ export const useWeb3 = () => {
     setIsLoading(true);
     
     try {
+      // Convert string to number for switchNetwork
+      const newChainId = parseInt(newChainIdStr, 10);
+      
       const success = await switchNetwork(newChainId);
       if (success) {
         // Network details will be updated by the network change listener
@@ -184,7 +213,7 @@ export const useWeb3 = () => {
     if (!address) return;
     
     try {
-      const newBalance = await getBalance(address);
+      const newBalance = await getWalletBalance(address);
       setBalance(newBalance);
     } catch (error) {
       console.error('Error refreshing balance:', error);

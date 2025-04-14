@@ -86,7 +86,7 @@ const MetaMaskPayment = ({
           await createTransaction.mutateAsync({
             startupId,
             investorId: user.id,
-            amount: parseFloat(values.amount),
+            amount: values.amount, // Use string directly as our schema expects
             paymentMethod: "metamask",
             transactionId: result.transactionHash,
             status: "pending" // Will be verified by admin
