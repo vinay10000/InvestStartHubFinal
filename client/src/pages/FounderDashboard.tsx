@@ -24,9 +24,11 @@ const FounderDashboard = () => {
   // Wait for auth to resolve before making data queries
   const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId();
   
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(
-    userId && typeof userId === 'string' && userId.length > 0 ? userId : undefined
-  );
+  // Convert to a number for API call
+  const userIdNumber = userId ? (typeof userId === 'string' ? 
+    parseInt(userId) : userId) : undefined;
+    
+  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(userIdNumber);
   
   // Create startup mutation
   const createStartupMutation = createStartup();
@@ -34,9 +36,12 @@ const FounderDashboard = () => {
   const handleCreateStartup = async (startupData: any) => {
     try {
       // Make sure all required fields are present and properly formatted
+      // Convert founderId to a proper number if it's not already
+      const userIdAsNumber = userId ? parseInt(userId.toString()) : 1;
+      
       const startupPayload = {
         ...startupData,
-        founderId: userId,
+        founderId: userIdAsNumber, // Make sure this is a number
         // Ensure these fields are present or set defaults
         category: startupData.category || null,
         fundingGoal: startupData.fundingGoal || "100000",
