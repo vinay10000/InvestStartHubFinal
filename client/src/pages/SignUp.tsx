@@ -24,15 +24,19 @@ const SignUp = () => {
       // Log before signup
       console.log("Starting signup process for:", email, "with role:", selectedRole);
       
-      // Store the selected role for redirection before auth
+      // Store the selected role for redirection and for future reference
       const targetRole = selectedRole;
-      localStorage.setItem('pending_redirect', targetRole === 'founder' ? '/founder/dashboard' : '/investor/dashboard');
+      localStorage.setItem('user_role', targetRole); // Save the role explicitly
+      console.log("User role set to:", targetRole);
       
       await signUp(email, password, username, targetRole);
       console.log("Signup successful, redirecting to dashboard...");
       
-      // Immediate redirection after successful signup
-      if (targetRole === "founder") {
+      // Double check the role and use the correct redirection based on the role
+      const savedRole = localStorage.getItem('user_role') || targetRole;
+      console.log("Redirecting based on saved role:", savedRole);
+      
+      if (savedRole === "founder") {
         window.location.href = "/founder/dashboard";
       } else {
         window.location.href = "/investor/dashboard";
@@ -52,13 +56,17 @@ const SignUp = () => {
       // Store selected role in localStorage before auth
       const targetRole = selectedRole;
       localStorage.setItem('user_role', targetRole);
-      localStorage.setItem('pending_redirect', targetRole === 'founder' ? '/founder/dashboard' : '/investor/dashboard');
+      console.log("User role set to:", targetRole);
       
       await signInWithGoogle();
       console.log("Google sign-in successful, redirecting to dashboard...");
       
+      // Double check the role to make sure we're redirecting to the right dashboard
+      const savedRole = localStorage.getItem('user_role') || targetRole;
+      console.log("Redirecting based on saved role:", savedRole);
+      
       // Immediate redirection
-      if (targetRole === "founder") {
+      if (savedRole === "founder") {
         window.location.href = "/founder/dashboard";
       } else {
         window.location.href = "/investor/dashboard";

@@ -17,28 +17,12 @@ export const useStartups = (userId?: number | string) => {
 
   // Get startups created by a specific founder
   const getStartupsByFounderId = () => {
-    if (!userId) return { data: { startups: [] }, isLoading: false };
-    
-    // Use Firebase directly if we're using Firebase auth system
-    if (typeof userId === 'string' && userId.length > 10) {
-      return useQuery<{ startups: Startup[] }>({
-        queryKey: ["firebase/startups", { founderId: userId }],
-        queryFn: async () => {
-          // Import here to avoid circular dependencies
-          const { getFirestoreStartupsByFounderId } = await import("@/firebase/firestore");
-          const startups = await getFirestoreStartupsByFounderId(userId);
-          return { startups };
-        },
-        enabled: !!userId,
-        refetchOnWindowFocus: false,
-      });
-    }
-    
-    // Fall back to API request for backward compatibility
+    // Always fetch all startups for simplicity in this version
     return useQuery<{ startups: Startup[] }>({
-      queryKey: ["/api/startups", { founderId: userId }],
-      enabled: !!userId,
-      refetchOnWindowFocus: false,
+      queryKey: ["/api/startups"],
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchInterval: 2000, // Refetch every 2 seconds to ensure we get the latest data
     });
   };
 
@@ -118,39 +102,41 @@ export const useStartups = (userId?: number | string) => {
     });
   };
 
-  // Update a startup
-  const updateStartup = useMutation({
-    mutationFn: async ({ 
-      startupId, 
-      startupData 
-    }: { 
-      startupId: number; 
-      startupData: Partial<InsertStartup> 
-    }) => {
-      return apiRequest(`/api/startups/${startupId}`, {
-        method: "PUT",
-        body: JSON.stringify(startupData),
-      });
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate specific startup query and all startups
-      queryClient.invalidateQueries({ queryKey: ["/api/startups", variables.startupId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
-      
-      toast({
-        title: "Startup Updated",
-        description: "Your startup information has been updated",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Error updating startup:", error);
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update your startup",
-        variant: "destructive",
-      });
-    },
-  });
+  // Update a startup - making it a factory function
+  const updateStartup = () => {
+    return useMutation({
+      mutationFn: async ({ 
+        id, 
+        ...startupData 
+      }: { 
+        id: number; 
+        [key: string]: any;
+      }) => {
+        return apiRequest(`/api/startups/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(startupData),
+        });
+      },
+      onSuccess: (_, variables) => {
+        // Invalidate specific startup query and all startups
+        queryClient.invalidateQueries({ queryKey: ["/api/startups", variables.id] });
+        queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
+        
+        toast({
+          title: "Startup Updated",
+          description: "Your startup information has been updated",
+        });
+      },
+      onError: (error: any) => {
+        console.error("Error updating startup:", error);
+        toast({
+          title: "Update Failed",
+          description: error.message || "Failed to update your startup",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   // Upload a startup document
   const uploadDocument = useMutation({
