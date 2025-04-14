@@ -139,12 +139,12 @@ export const useStartups = (userId?: number | string) => {
       });
       
       // Create document record with the file URL
-      const completeDocumentData: InsertDocument = {
+      const completeDocumentData = {
         ...documentData,
         startupId,
         fileUrl: uploadResponse.url,
-        fileId: uploadResponse.fileId,
-      };
+        fileId: uploadResponse.fileId, // Store ImageKit fileId for future reference
+      } as InsertDocument;
       
       return apiRequest(`/api/startups/${startupId}/documents`, {
         method: "POST",

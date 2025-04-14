@@ -83,7 +83,7 @@ const FounderDashboard = () => {
     };
     
     fetchOnChainData();
-  }, [startups, address, contractInteraction]);
+  }, [startups, address]);
 
   // Handle loading states
   if (isLoadingStartups && startups.length === 0) {
@@ -232,7 +232,7 @@ const FounderDashboard = () => {
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium leading-none">{startup.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatCurrency(startup.fundingGoal || 0)}
+                          {formatCurrency(typeof startup.fundingGoal === 'string' ? parseFloat(startup.fundingGoal) : (startup.fundingGoal || 0))}
                         </p>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -256,15 +256,10 @@ const FounderDashboard = () => {
             {startups.map((startup) => (
               <StartupCard 
                 key={startup.id} 
-                startup={{
-                  ...startup,
-                  stage: startup.investmentStage || 'Seed',
-                  category: startup.category || 'Technology',
-                  fundingGoal: startup.fundingGoal || 0,
-                  currentFunding: startup.currentFunding || 0,
-                  logoUrl: startup.logoUrl || '',
-                  websiteUrl: startup.websiteUrl || ''
-                }}
+                startup={
+                  // Only passing through the original startup object which matches the Startup type
+                  startup
+                }
                 onChainData={onChainStartups.find(s => s.id === startup.id)?.onChain}
                 isLoadingOnChain={isLoadingOnChain}
               />
