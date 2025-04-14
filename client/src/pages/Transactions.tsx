@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import { useTransactions } from "@/hooks/useTransactions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import TransactionList from "@/components/transactions/TransactionList";
 import { addDays } from "date-fns";
 
 const Transactions = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const { getTransactionsByFounderId, getTransactionsByInvestorId } = useTransactions();
   
   const [filter, setFilter] = useState("");
@@ -21,11 +21,18 @@ const Transactions = () => {
     to: undefined,
   });
 
-  // Fetch transactions based on user role
-  const { data: transactionsData, isLoading } = 
-    user?.role === "founder" 
+  // Default to an empty transactions list if user is not logged in
+  const { data: transactionsData, isLoading } = (() => {
+    // Return early with an empty result if user is not logged in or has no ID
+    if (!user || !user.id) {
+      return { data: { transactions: [] }, isLoading: false };
+    }
+    
+    // Fetch transactions based on user role
+    return user.role === "founder" 
       ? getTransactionsByFounderId(user.id) 
       : getTransactionsByInvestorId(user.id);
+  })();
   
   const transactions = transactionsData?.transactions || [];
 
