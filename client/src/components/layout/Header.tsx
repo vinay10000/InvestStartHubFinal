@@ -19,10 +19,14 @@ import { Menu, LogOut, User } from "lucide-react";
 
 const Header = () => {
   const [location, navigate] = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Debug auth state in the header
+  console.log("Header rendering with auth state:", { user, loading });
+
   const handleSignOut = async () => {
+    console.log("Signing out user");
     await signOut();
     navigate("/");
   };
@@ -59,7 +63,13 @@ const Header = () => {
             </nav>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {user ? (
+            {loading ? (
+              // Show a loading state
+              <div className="flex items-center space-x-4">
+                <div className="h-8 w-20 bg-gray-200 animate-pulse rounded-md"></div>
+                <div className="h-8 w-8 bg-gray-200 animate-pulse rounded-full"></div>
+              </div>
+            ) : user ? (
               <div className="flex items-center space-x-4">
                 <Link href={getDashboardPath()}>
                   <Button variant="ghost">Dashboard</Button>

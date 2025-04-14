@@ -22,8 +22,17 @@ const SignIn = () => {
   const handleSignIn = async (username: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log("Starting sign-in process for:", username);
+      
       await signIn(username, password);
-      navigate(getRedirectUrl());
+      console.log("Sign-in successful, waiting for auth state update...");
+      
+      // Give Firebase a moment to update auth state
+      setTimeout(() => {
+        const redirectUrl = getRedirectUrl();
+        console.log("Redirecting to:", redirectUrl);
+        navigate(redirectUrl);
+      }, 1000);
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {
@@ -34,15 +43,19 @@ const SignIn = () => {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+      console.log("Starting Google sign-in process");
+      
       await signInWithGoogle();
-      // Use a slight delay to ensure Firebase auth state is updated
+      console.log("Google sign-in successful, waiting for auth state update...");
+      
+      // Use a longer delay to ensure Firebase auth state is fully updated
       setTimeout(() => {
-        navigate(getRedirectUrl());
-      }, 500);
+        const redirectUrl = getRedirectUrl();
+        console.log("Redirecting to:", redirectUrl);
+        navigate(redirectUrl);
+      }, 2000);
     } catch (error) {
       console.error("Error signing in with Google:", error);
-      // Show error message
-      window.alert("Google sign-in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }

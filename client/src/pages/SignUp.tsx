@@ -20,14 +20,23 @@ const SignUp = () => {
   const handleSignUp = async (email: string, password: string, username: string) => {
     try {
       setIsLoading(true);
-      await signUp(email, password, username, selectedRole);
       
-      // Redirect to appropriate dashboard based on role
-      if (selectedRole === "founder") {
-        navigate("/founder/dashboard");
-      } else {
-        navigate("/investor/dashboard");
-      }
+      // Log before signup
+      console.log("Starting signup process for:", email, "with role:", selectedRole);
+      
+      await signUp(email, password, username, selectedRole);
+      console.log("Signup successful, checking auth state...");
+      
+      // Give Firebase a moment to update auth state
+      setTimeout(() => {
+        console.log("Navigating to dashboard based on role:", selectedRole);
+        // Redirect to appropriate dashboard based on role
+        if (selectedRole === "founder") {
+          navigate("/founder/dashboard");
+        } else {
+          navigate("/investor/dashboard");
+        }
+      }, 1000);
     } catch (error) {
       console.error("Error signing up:", error);
     } finally {
@@ -38,20 +47,23 @@ const SignUp = () => {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+      console.log("Starting Google sign-in with role:", selectedRole);
+      
       await signInWithGoogle();
-      // Use a slight delay to ensure Firebase auth state is updated
+      console.log("Google sign-in successful, waiting for auth state update...");
+      
+      // Use a longer delay to ensure Firebase auth state is fully updated
       setTimeout(() => {
+        console.log("Navigating after Google sign-in to role dashboard:", selectedRole);
         // Redirect to appropriate dashboard based on role
         if (selectedRole === "founder") {
           navigate("/founder/dashboard");
         } else {
           navigate("/investor/dashboard");
         }
-      }, 500);
+      }, 2000);
     } catch (error) {
       console.error("Error signing in with Google:", error);
-      // Show error message
-      window.alert("Google sign-in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }

@@ -46,8 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check if user is authenticated on mount
   useEffect(() => {
+    console.log("Setting up auth state listener");
+    setLoading(true);
+    
     const unsubscribe = onAuthChange(async (firebaseUser) => {
-      setLoading(true);
+      console.log("Auth state changed:", firebaseUser ? firebaseUser.uid : "null");
       
       if (firebaseUser) {
         try {
@@ -60,11 +63,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!userData) {
             // User doesn't exist in Firestore, create one
             console.log("Creating new Firestore user for:", firebaseUser.email);
+            
+            // Generate a username from the email or use display name
+            const username = firebaseUser.displayName || 
+                            (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User');
+            
+            // Generate a default profile picture if none exists
+            let profilePicture = firebaseUser.photoURL || '';
+            if (!profilePicture) {
+              const initials = username
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase();
+                
+              profilePicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&color=fff&size=256`;
+            }
+            
             await createFirestoreUser(firebaseUser.uid, {
-              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              username: username,
               email: firebaseUser.email || '',
               role: "investor", // Default role
-              profilePicture: firebaseUser.photoURL || '',
+              profilePicture: profilePicture,
               walletAddress: '',
             });
             
@@ -77,23 +97,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Make sure the id field is the Firebase UID string
             userData.id = firebaseUser.uid;
             console.log("User authenticated:", userData);
+            
+            // Convert any null values to empty strings to avoid UI errors
+            if (!userData.profilePicture) userData.profilePicture = '';
+            if (!userData.walletAddress) userData.walletAddress = '';
+            if (!userData.username) userData.username = firebaseUser.email?.split('@')[0] || 'User';
+            
+            // Set the user state with Firestore data
+            setUser(userData);
+            toast({
+              title: "Signed in",
+              description: `Welcome back, ${userData.username}!`,
+            });
+          } else {
+            console.error("No user data found after creation attempt");
+            setUser(null);
           }
-          
-          // Set the user state with Firestore data
-          setUser(userData);
         } catch (error) {
           console.error("Error fetching user data from Firestore:", error);
           setUser(null);
         }
       } else {
+        console.log("No firebase user - signed out");
         setUser(null);
       }
       
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      console.log("Cleaning up auth state listener");
+      unsubscribe();
+    };
+  }, [toast]);
 
   const signUp = async (email: string, password: string, username: string, role: "founder" | "investor") => {
     try {
