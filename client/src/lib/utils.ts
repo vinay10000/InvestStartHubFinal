@@ -133,6 +133,11 @@ export function getInvestmentStageColor(stage: string): { bg: string; text: stri
     "pre_ipo": { bg: "bg-fuchsia-100", text: "text-fuchsia-800" },
   };
   
+  // Handle null/undefined stage values to prevent errors
+  if (!stage) {
+    return { bg: "bg-gray-100", text: "text-gray-800" };
+  }
+  
   return colorMap[stage.toLowerCase()] || { bg: "bg-gray-100", text: "text-gray-800" };
 }
 
