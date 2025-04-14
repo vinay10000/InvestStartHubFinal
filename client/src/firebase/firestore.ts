@@ -89,7 +89,7 @@ export const updateFirestoreUser = async (
   await updateDoc(doc(firestore, "users", userId), userData);
   
   // Prepare data for Realtime Database (convert Date objects to ISO strings)
-  const realtimeData = { ...userData };
+  const realtimeData: Record<string, any> = { ...userData };
   if (realtimeData.lastActive && realtimeData.lastActive instanceof Date) {
     realtimeData.lastActive = realtimeData.lastActive.toISOString();
   }
@@ -115,17 +115,21 @@ export const createFirestoreStartup = async (startupData: {
   investmentStage: string;
   category?: string | null;
   fundingGoal?: string | null;
+  fundingGoalEth?: string | null;  // New field for ETH funding goal
   currentFunding?: string | null;
   logoUrl?: string | null;
   websiteUrl?: string | null;
   upiId?: string | null;
   upiQrCode?: string | null;
+  // Add any other new fields here
+  [key: string]: any;  // Allow for additional fields
 }): Promise<string> => {
   // Prepare data for Firestore (sanitize the data)
   const sanitizedData = {
     ...startupData,
     category: startupData.category || null,
     fundingGoal: startupData.fundingGoal || null,
+    fundingGoalEth: startupData.fundingGoalEth || null,  // Store ETH funding goal
     currentFunding: startupData.currentFunding || null,
     logoUrl: startupData.logoUrl || null,
     websiteUrl: startupData.websiteUrl || null,
@@ -162,11 +166,24 @@ export const updateFirestoreStartup = async (startupId: string, startupData: Par
 };
 
 // Document CRUD operations
-export const createFirestoreDocument = async (documentData: Omit<Document, "id" | "createdAt">): Promise<string> => {
-  const docRef = await addDoc(collection(firestore, "documents"), {
+export const createFirestoreDocument = async (documentData: Omit<Document, "id" | "createdAt"> & {
+  // Add additional fields for document metadata
+  fileId?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+}): Promise<string> => {
+  // Ensure we have the complete document data with file metadata
+  const completeDocumentData = {
     ...documentData,
+    fileId: documentData.fileId || null,
+    fileName: documentData.fileName || null,
+    mimeType: documentData.mimeType || null,
+    fileSize: documentData.fileSize || null,
     createdAt: new Date(),
-  });
+  };
+  
+  const docRef = await addDoc(collection(firestore, "documents"), completeDocumentData);
   return docRef.id;
 };
 

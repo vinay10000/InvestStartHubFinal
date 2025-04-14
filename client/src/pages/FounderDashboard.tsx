@@ -39,23 +39,50 @@ const FounderDashboard = () => {
       // Convert founderId to a proper number if it's not already
       const userIdAsNumber = userId ? parseInt(userId.toString()) : 1;
       
+      // Handle UPI QR Code file upload if provided
+      let upiQrCodeUrl = null;
+      if (startupData.upiQrCodeFile) {
+        try {
+          // Import the imagekit service dynamically
+          const { uploadUpiQRCode } = await import('@/services/imagekit');
+          upiQrCodeUrl = await uploadUpiQRCode(userIdAsNumber, startupData.upiQrCodeFile);
+        } catch (uploadError) {
+          console.error("Error uploading UPI QR code:", uploadError);
+          // Continue with creation even if the upload fails
+        }
+      }
+      
       const startupPayload = {
         ...startupData,
         founderId: userIdAsNumber, // Make sure this is a number
         // Ensure these fields are present or set defaults
         category: startupData.category || null,
-        fundingGoal: startupData.fundingGoal || "100000",
+        fundingGoal: startupData.fundingGoalEth || "1", // Use the ETH funding goal
+        fundingGoalEth: startupData.fundingGoalEth || "1", // Store as a separate field too
         currentFunding: startupData.currentFunding || "0",
         logoUrl: startupData.logoUrl || null,
         websiteUrl: startupData.websiteUrl || null,
         // Handle empty strings for optional fields
         upiId: startupData.upiId || null,
-        upiQrCode: startupData.upiQrCode || null,
+        upiQrCode: upiQrCodeUrl || startupData.upiQrCode || null,
       };
+      
+      // Remove the file from the payload as we've extracted the URL
+      delete startupPayload.upiQrCodeFile;
       
       console.log("Creating startup with data:", startupPayload);
       
-      await createStartupMutation.mutateAsync(startupPayload);
+      // Use Firebase directly if we have a firebase auth user
+      if (typeof userId === 'string' && userId.length > 20) {
+        // Import firebase operations dynamically
+        const { createFirestoreStartup } = await import('@/firebase/firestore');
+        const startupId = await createFirestoreStartup(startupPayload);
+        console.log('Startup created in Firestore with ID:', startupId);
+      } else {
+        // Use regular API for local testing
+        await createStartupMutation.mutateAsync(startupPayload);
+      }
+      
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error("Error creating startup:", error);
