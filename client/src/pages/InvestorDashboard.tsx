@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";
 
 const InvestorDashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.id || "";
   const { getAllStartups } = useStartups();
   const { getTransactionsByInvestorId } = useTransactions();
@@ -21,18 +21,33 @@ const InvestorDashboard = () => {
   const [stage, setStage] = useState("all");
   const [activeTab, setActiveTab] = useState("discover");
 
+  // Only fetch transactions when we have a valid userId
   const { data: startupsData, isLoading: startupsLoading } = getAllStartups();
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByInvestorId(userId);
+  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByInvestorId(
+    userId && typeof userId === 'string' && userId.length > 0 ? userId : undefined
+  );
   
   const startups = startupsData?.startups || [];
   const transactions = transactionsData?.transactions || [];
 
-  // Calculate metrics
-  const totalInvested = transactions
-    .filter(t => t.status === "completed")
-    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  // Calculate metrics safely using memoization
+  const totalInvested = useMemo(() => {
+    return transactions
+      .filter(t => t.status === "completed")
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+  }, [transactions]);
   
-  const investedStartups = [...new Set(transactions.map(t => t.startupId))].length;
+  // Calculate unique startups invested in without using a Set iterator
+  const investedStartups = useMemo(() => {
+    const startupIds: Record<string, boolean> = {};
+    transactions.forEach(t => {
+      if (t.startupId) {
+        const id = String(t.startupId);
+        startupIds[id] = true;
+      }
+    });
+    return Object.keys(startupIds).length;
+  }, [transactions]);
 
   // Filter startups
   const filteredStartups = startups.filter(startup => {

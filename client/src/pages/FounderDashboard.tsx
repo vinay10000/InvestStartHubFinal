@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,16 +14,21 @@ import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";
 
 const FounderDashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.id || "";
   const { getStartupsByFounderId, createStartup } = useStartups();
   const { getTransactionsByFounderId } = useTransactions();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
 
-  const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId(userId);
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(userId);
+  // Wait for auth to resolve before making data queries
+  const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId();
   
+  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(
+    userId && typeof userId === 'string' && userId.length > 0 ? userId : undefined
+  );
+  
+  // Create startup mutation
   const createStartupMutation = createStartup();
 
   const handleCreateStartup = async (startupData: any) => {
@@ -41,11 +46,23 @@ const FounderDashboard = () => {
   const startups = startupsData?.startups || [];
   const transactions = transactionsData?.transactions || [];
 
-  // Calculate metrics
-  const totalInvestors = [...new Set(transactions.map(t => t.investorId))].length;
-  const totalRevenue = transactions
-    .filter(t => t.status === "completed")
-    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  // Calculate metrics safely
+  const totalInvestors = useMemo(() => {
+    const investorIds: Record<string, boolean> = {};
+    transactions.forEach(t => {
+      if (t.investorId) {
+        const id = String(t.investorId);
+        investorIds[id] = true;
+      }
+    });
+    return Object.keys(investorIds).length;
+  }, [transactions]);
+  
+  const totalRevenue = useMemo(() => {
+    return transactions
+      .filter(t => t.status === "completed")
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+  }, [transactions]);
 
   return (
     <div className="container mx-auto py-8 px-4">

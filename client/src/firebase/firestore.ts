@@ -11,7 +11,14 @@ import {
   deleteDoc,
   orderBy
 } from "firebase/firestore";
-import { firestore } from "./config";
+import { 
+  ref, 
+  set, 
+  update,
+  get,
+  push
+} from "firebase/database";
+import { firestore, database } from "./config";
 import { User, Startup, Document, Transaction } from "@shared/schema";
 
 // User CRUD operations
@@ -25,18 +32,44 @@ export const createFirestoreUser = async (
     profilePicture?: string;
   }
 ): Promise<void> => {
+  const timestamp = new Date();
+  
+  // Store in Firestore
   await setDoc(doc(firestore, "users", userId), {
     ...userData,
-    createdAt: new Date(),
+    createdAt: timestamp,
+  });
+  
+  // Also store in Realtime Database for chat functionality
+  await set(ref(database, `users/${userId}`), {
+    ...userData,
+    createdAt: timestamp.toISOString(),
+    id: userId, // Store the ID explicitly for easy reference
+    online: true
   });
 };
 
 export const getFirestoreUser = async (userId: string): Promise<any> => {
-  const userDoc = await getDoc(doc(firestore, "users", userId));
-  if (userDoc.exists()) {
-    return { id: userDoc.id, ...userDoc.data() };
+  try {
+    // First try to get from Firestore
+    const userDoc = await getDoc(doc(firestore, "users", userId));
+    if (userDoc.exists()) {
+      return { id: userDoc.id, ...userDoc.data() };
+    }
+    
+    // If not in Firestore, try Realtime Database
+    const dbRef = ref(database, `users/${userId}`);
+    const snapshot = await get(dbRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val();
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error getting user data:", error);
+    return null;
   }
-  return null;
 };
 
 export const updateFirestoreUser = async (
@@ -47,17 +80,61 @@ export const updateFirestoreUser = async (
     role: string;
     walletAddress: string;
     profilePicture?: string;
+    online?: boolean;
+    lastActive?: Date;
+    [key: string]: any; // Allow any additional fields
   }>
 ): Promise<void> => {
+  // Update Firestore
   await updateDoc(doc(firestore, "users", userId), userData);
+  
+  // Prepare data for Realtime Database (convert Date objects to ISO strings)
+  const realtimeData = { ...userData };
+  if (realtimeData.lastActive && realtimeData.lastActive instanceof Date) {
+    realtimeData.lastActive = realtimeData.lastActive.toISOString();
+  }
+  
+  // Make sure we have valid data for Realtime Database
+  Object.keys(realtimeData).forEach(key => {
+    // Firebase Realtime Database doesn't accept undefined values
+    if (realtimeData[key] === undefined) {
+      delete realtimeData[key];
+    }
+  });
+  
+  // Update Realtime Database
+  await update(ref(database, `users/${userId}`), realtimeData);
 };
 
 // Startup CRUD operations
-export const createFirestoreStartup = async (startupData: Omit<Startup, "id" | "createdAt">): Promise<string> => {
-  const docRef = await addDoc(collection(firestore, "startups"), {
+export const createFirestoreStartup = async (startupData: {
+  name: string;
+  description: string;
+  founderId: string | number;
+  pitch: string;
+  investmentStage: string;
+  category?: string | null;
+  fundingGoal?: string | null;
+  currentFunding?: string | null;
+  logoUrl?: string | null;
+  websiteUrl?: string | null;
+  upiId?: string | null;
+  upiQrCode?: string | null;
+}): Promise<string> => {
+  // Prepare data for Firestore (sanitize the data)
+  const sanitizedData = {
     ...startupData,
-    createdAt: new Date(),
-  });
+    category: startupData.category || null,
+    fundingGoal: startupData.fundingGoal || null,
+    currentFunding: startupData.currentFunding || null,
+    logoUrl: startupData.logoUrl || null,
+    websiteUrl: startupData.websiteUrl || null,
+    upiId: startupData.upiId || null,
+    upiQrCode: startupData.upiQrCode || null,
+    createdAt: new Date()
+  };
+  
+  const docRef = await addDoc(collection(firestore, "startups"), sanitizedData);
   return docRef.id;
 };
 

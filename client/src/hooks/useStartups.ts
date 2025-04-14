@@ -57,19 +57,44 @@ export const useStartups = (userId?: number | string) => {
   // Create a new startup
   const createStartup = () => {
     return useMutation({
-      mutationFn: async (startupData: InsertStartup) => {
+      mutationFn: async (startupData: {
+        name: string;
+        description: string;
+        founderId: string | number;
+        pitch: string;
+        investmentStage: string;
+        category?: string | null;
+        fundingGoal?: string | null;
+        currentFunding?: string | null;
+        logoUrl?: string | null;
+        websiteUrl?: string | null;
+        upiId?: string | null;
+        upiQrCode?: string | null;
+      }) => {
+        // Convert any nulls to empty strings to avoid type errors
+        const sanitizedData = {
+          ...startupData,
+          category: startupData.category || null,
+          fundingGoal: startupData.fundingGoal || null,
+          currentFunding: startupData.currentFunding || null,
+          logoUrl: startupData.logoUrl || null,
+          websiteUrl: startupData.websiteUrl || null,
+          upiId: startupData.upiId || null,
+          upiQrCode: startupData.upiQrCode || null,
+        };
+        
         // Check if we're using Firebase with a string ID
-        if (typeof startupData.founderId === 'string' && startupData.founderId.length > 10) {
+        if (typeof sanitizedData.founderId === 'string' && sanitizedData.founderId.toString().length > 10) {
           // Use Firestore directly
           const { createFirestoreStartup } = await import("@/firebase/firestore");
-          const startupId = await createFirestoreStartup(startupData);
-          return { id: startupId, ...startupData };
+          const startupId = await createFirestoreStartup(sanitizedData);
+          return { id: startupId, ...sanitizedData };
         }
         
         // Fall back to API for backward compatibility
         return apiRequest("/api/startups", {
           method: "POST",
-          body: JSON.stringify(startupData),
+          body: JSON.stringify(sanitizedData),
         });
       },
       onSuccess: () => {

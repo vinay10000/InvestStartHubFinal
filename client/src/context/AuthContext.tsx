@@ -171,36 +171,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       
-      // Sign in with Google using Firebase Auth
-      const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-      const { auth } = await import("@/firebase/config");
-      
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-      
-      // Check if user exists in Firestore
-      const { getFirestoreUser, createFirestoreUser } = await import("@/firebase/firestore");
-      let userData = await getFirestoreUser(firebaseUser.uid);
-      
-      if (!userData) {
-        // Create new user in Firestore
-        await createFirestoreUser(firebaseUser.uid, {
-          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          email: firebaseUser.email || '',
-          role: "investor", // Default role for Google sign-ins
-          walletAddress: '',
-          profilePicture: firebaseUser.photoURL || '',
-        });
-      }
+      // Use the imported function for Google sign-in
+      await signInWithGoogle();
       
       toast({
         title: "Signed in with Google successfully",
       });
     } catch (error: any) {
+      console.error("Google sign-in error:", error);
       toast({
         title: "Error signing in with Google",
-        description: error.message,
+        description: error.message || "Could not sign in with Google. Please try again.",
         variant: "destructive",
       });
       throw error;
