@@ -18,18 +18,25 @@ export const signUpWithEmail = async (
   username: string, 
   role: "founder" | "investor"
 ): Promise<UserCredential> => {
-  // Create firebase auth user
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  
-  // Create user in our backend
-  await apiRequest("POST", "/api/auth/signup", {
-    username,
-    email,
-    password, // In a real app, we'd use a hashed password
-    role
-  });
-  
-  return userCredential;
+  try {
+    // Create firebase auth user first
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // After successful Firebase auth creation, create user in our backend
+    await apiRequest("POST", "/api/auth/signup", {
+      uid: userCredential.user.uid,
+      username,
+      email,
+      password, // In a real app, we'd use a hashed password
+      role
+    });
+    
+    console.log("User created successfully in Firebase:", userCredential.user.uid);
+    return userCredential;
+  } catch (error) {
+    console.error("Error in signup process:", error);
+    throw error;
+  }
 };
 
 // Sign in with email/password
@@ -37,16 +44,27 @@ export const signInWithEmail = async (
   username: string, 
   password: string
 ): Promise<any> => {
-  // Get user from our backend to get the email
-  const response = await apiRequest("POST", "/api/auth/login", {
-    username,
-    password
-  });
-  
-  const userData = await response.json();
-  
-  // Sign in with Firebase
-  return signInWithEmailAndPassword(auth, userData.user.email, password);
+  try {
+    // Get user from our backend to get the email
+    const response = await apiRequest("POST", "/api/auth/login", {
+      username,
+      password
+    });
+    
+    const userData = await response.json();
+    
+    if (!userData || !userData.user || !userData.user.email) {
+      throw new Error("Invalid user data returned from server");
+    }
+    
+    // Sign in with Firebase using email from our backend
+    const credential = await signInWithEmailAndPassword(auth, userData.user.email, password);
+    console.log("User authenticated successfully with Firebase:", credential.user.uid);
+    return credential;
+  } catch (error) {
+    console.error("Error in signin process:", error);
+    throw error;
+  }
 };
 
 // Sign in with Google

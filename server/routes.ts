@@ -13,10 +13,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      // Get uid from request if it exists
+      const { uid, ...restData } = req.body;
+      
+      // Add Firebase uid to password field as "firebase_{uid}" to track the association
+      // This allows us to find users by Firebase UID later
+      const userData = insertUserSchema.parse({
+        ...restData,
+        password: uid ? `firebase_${uid}_${restData.password}` : restData.password
+      });
+
       const user = await storage.createUser(userData);
       res.status(201).json({ user: { ...user, password: undefined } });
     } catch (error) {
+      console.error("Signup error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: 'Invalid user data', errors: error.errors });
       }
@@ -48,22 +58,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'User ID and email are required' });
       }
       
-      // Check if user already exists
-      let user = await storage.getUserByUsername(email);
+      // Check if user already exists with this Firebase UID
+      const users = await storage.getAllUsers();
+      let user = users.find((u: User) => u.password.includes(`firebase_${uid}`));
+      
+      if (!user) {
+        // Try finding by email
+        user = await storage.getUserByUsername(email);
+      }
       
       if (!user) {
         // Create new user with Google credentials
         const newUser = {
-          username: email, // Using email as unique username
+          username: displayName || email.split('@')[0], // Use display name or extract username from email
           email,
-          password: `google_${uid}`, // Special password format for Google users
+          password: `firebase_${uid}_google`, // Special password format for Google Firebase users
           role: "investor", // Default role for Google sign-ins
           profilePicture: photoURL || "",
           walletAddress: "",
         };
         
         user = await storage.createUser(newUser);
-        console.log('Created new user from Google auth:', email);
+        console.log('Created new user from Google auth:', email, 'with Firebase UID:', uid);
+      } else if (!user.password.includes(`firebase_${uid}`)) {
+        // Update existing user to include Firebase UID if it doesn't already have it
+        const updatedUser = await storage.updateUser(user.id, {
+          password: `firebase_${uid}_google`
+        });
+        
+        if (updatedUser) {
+          user = updatedUser;
+          console.log('Updated existing user with Firebase UID:', uid);
+        }
       }
       
       res.status(200).json({ user: { ...user, password: undefined } });
@@ -82,14 +108,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let user;
       // If userId looks like a Firebase UID (not a number)
       if (isNaN(Number(userId))) {
-        // This is a Firebase UID, check if we have a user with email containing this UID
-        // In a real app, you'd have a proper mapping from Firebase UID to your user
+        // This is a Firebase UID, check if we have a user with password containing this UID
         const users = await storage.getAllUsers();
-        user = users.find((u: User) => u.password.includes(userId)); // Check for "google_{uid}" pattern
+        
+        // Look for either firebase_{uid}_ or google_{uid}
+        user = users.find((u: User) => 
+          u.password.includes(`firebase_${userId}`) || 
+          u.password.includes(`google_${userId}`)
+        );
+        
+        console.log('Looking for Firebase user with UID:', userId);
         
         if (!user) {
+          console.log('Firebase user not found with UID:', userId);
           return res.status(404).json({ message: 'Firebase user not found' });
         }
+        
+        console.log('Found Firebase user:', user.username);
       } else {
         // Regular numeric user ID from our database
         user = await storage.getUser(parseInt(userId));
