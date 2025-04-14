@@ -42,20 +42,10 @@ const SignUp = () => {
         // Verify the role again - be extremely explicit
         const savedRole = localStorage.getItem('user_role');
         console.log("Final role check for redirection:", savedRole);
+        console.log("Redirecting to dashboard for automatic role-based redirection");
         
-        // Explicit redirect based on role
-        if (savedRole === "founder") {
-          console.log("REDIRECTING TO FOUNDER DASHBOARD");
-          window.location.href = "/founder/dashboard";
-        } else if (savedRole === "investor") {
-          console.log("REDIRECTING TO INVESTOR DASHBOARD");
-          window.location.href = "/investor/dashboard";
-        } else {
-          // Fallback if something is still wrong
-          console.log("NO ROLE FOUND - defaulting to investor dashboard");
-          localStorage.setItem('user_role', 'investor');
-          window.location.href = "/investor/dashboard";
-        }
+        // Use the dashboard route which will handle redirection based on role
+        navigate("/dashboard");
       }, 500); // Short delay to ensure state is saved
     } catch (error) {
       console.error("Error signing up:", error);
@@ -86,20 +76,10 @@ const SignUp = () => {
         // Double check the role to make sure we're redirecting to the right dashboard
         const savedRole = localStorage.getItem('user_role');
         console.log("Final role check for redirection:", savedRole);
+        console.log("Redirecting to dashboard for automatic role-based redirection");
         
-        // Explicit redirect based on role
-        if (savedRole === "founder") {
-          console.log("REDIRECTING TO FOUNDER DASHBOARD");
-          window.location.href = "/founder/dashboard";
-        } else if (savedRole === "investor") {
-          console.log("REDIRECTING TO INVESTOR DASHBOARD");
-          window.location.href = "/investor/dashboard";
-        } else {
-          // Fallback if something is still wrong
-          console.log("NO ROLE FOUND AFTER GOOGLE SIGNIN - defaulting to investor dashboard");
-          localStorage.setItem('user_role', 'investor');
-          window.location.href = "/investor/dashboard";
-        }
+        // Redirect to dashboard which will handle role-based routing
+        navigate("/dashboard");
       }, 500); // Short delay to ensure state is saved
     } catch (error) {
       console.error("Error signing in with Google:", error);

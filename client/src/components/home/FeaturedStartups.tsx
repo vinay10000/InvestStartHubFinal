@@ -1,51 +1,68 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getFirestoreStartups } from "@/firebase/firestore";
 
-// Mock data for the static homepage
-const featuredStartups = [
-  {
-    id: 1,
-    name: "EcoTech Solutions",
-    description: "Sustainable energy storage solutions for residential and commercial applications. Our patented battery technology increases efficiency by 35%.",
-    stage: "Seed Stage",
-    founderName: "Alex Smith",
-    founderRole: "Founder & CEO",
-    imageUrl: "https://images.unsplash.com/photo-1571974599782-a659946a9ef1?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80"
-  },
-  {
-    id: 2,
-    name: "MediConnect",
-    description: "AI-powered telemedicine platform connecting patients with specialists globally. Reducing diagnosis time by 60% through machine learning algorithms.",
-    stage: "Pre-seed Stage",
-    founderName: "Jane Park",
-    founderRole: "Founder & CTO",
-    imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1742&q=80"
-  },
-  {
-    id: 3,
-    name: "FinBlock",
-    description: "Decentralized financial infrastructure for cross-border transactions. Our blockchain solution reduces transaction costs by 80% for businesses.",
-    stage: "Series A",
-    founderName: "Raj Kumar",
-    founderRole: "Co-founder & CEO",
-    imageUrl: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80"
-  }
+// Default images for startups that don't have images
+const defaultImages = [
+  "https://images.unsplash.com/photo-1571974599782-a659946a9ef1?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1742&q=80",
+  "https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80"
 ];
 
 const getStageColorClasses = (stage: string) => {
-  switch (stage) {
-    case "Pre-seed Stage":
-      return "bg-blue-100 text-blue-800";
-    case "Seed Stage":
-      return "bg-green-100 text-green-800";
-    case "Series A":
-      return "bg-purple-100 text-purple-800";
-    default:
-      return "bg-gray-100 text-gray-800";
+  // Normalize the stage name for consistent comparison
+  const normalizedStage = stage?.toLowerCase().trim() || '';
+  
+  if (normalizedStage.includes('pre-seed') || normalizedStage.includes('preseed')) {
+    return "bg-blue-100 text-blue-800";
+  } else if (normalizedStage.includes('seed')) {
+    return "bg-green-100 text-green-800";
+  } else if (normalizedStage.includes('series a')) {
+    return "bg-purple-100 text-purple-800";
+  } else if (normalizedStage.includes('series b')) {
+    return "bg-yellow-100 text-yellow-800";
+  } else if (normalizedStage.includes('series c')) {
+    return "bg-red-100 text-red-800";
+  } else {
+    return "bg-gray-100 text-gray-800";
   }
 };
 
 const FeaturedStartups = () => {
+  const [startups, setStartups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch startups from Firestore
+  useEffect(() => {
+    const fetchStartups = async () => {
+      try {
+        setLoading(true);
+        const firestoreStartups = await getFirestoreStartups();
+        
+        // Sort by creation date (newest first) and limit to 3 for featured display
+        const sortedStartups = firestoreStartups
+          .sort((a, b) => {
+            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime();
+          })
+          .slice(0, 3);
+          
+        setStartups(sortedStartups);
+      } catch (error) {
+        console.error("Error fetching startups:", error);
+        // Leave startups empty on error
+        setStartups([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStartups();
+  }, []);
+
   return (
     <div className="bg-gray-50 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -60,54 +77,66 @@ const FeaturedStartups = () => {
         </div>
 
         <div className="mt-12 grid gap-5 max-w-lg mx-auto sm:max-w-none md:grid-cols-2 lg:grid-cols-3">
-          {featuredStartups.map((startup) => (
-            <div key={startup.id} className="flex flex-col rounded-lg shadow-lg overflow-hidden">
-              <div className="flex-shrink-0">
-                <img className="h-48 w-full object-cover" src={startup.imageUrl} alt={`${startup.name} team`} />
-              </div>
-              <div className="flex-1 bg-white p-6 flex flex-col justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-primary">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.stage)}`}>
-                      {startup.stage}
-                    </span>
-                  </p>
-                  <a href="#" className="block mt-2">
-                    <p className="text-xl font-semibold text-gray-900">{startup.name}</p>
-                    <p className="mt-3 text-base text-gray-500">
-                      {startup.description}
-                    </p>
-                  </a>
-                </div>
-                <div className="mt-6 flex items-center">
-                  <div className="flex-shrink-0">
-                    <span className="sr-only">Founder</span>
-                    <div className="h-10 w-10 rounded-full bg-primary-200 flex items-center justify-center">
-                      <span className="text-primary-600 font-medium">
-                        {startup.founderName.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
+          {loading ? (
+            // Loading skeletons
+            Array(3).fill(0).map((_, index) => (
+              <div key={index} className="flex flex-col rounded-lg shadow-lg overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="flex-1 bg-white p-6 flex flex-col justify-between">
+                  <div className="flex-1">
+                    <Skeleton className="h-6 w-24 mb-2" />
+                    <Skeleton className="h-8 w-3/4 mb-3" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-2/3" />
                   </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">
-                      {startup.founderName}
-                    </p>
-                    <div className="flex space-x-1 text-sm text-gray-500">
-                      <span>{startup.founderRole}</span>
-                    </div>
+                  <div className="mt-6">
+                    <Skeleton className="h-10 w-full" />
                   </div>
                 </div>
-                <div className="mt-6 flex justify-between">
-                  <Link href={`/startup/${startup.id}`}>
-                    <Button>View Details</Button>
-                  </Link>
-                  <Link href="/signin">
-                    <Button variant="outline">Chat</Button>
-                  </Link>
-                </div>
               </div>
+            ))
+          ) : startups.length === 0 ? (
+            <div className="col-span-full text-center py-10">
+              <p className="text-gray-500">No startups available at this moment. Check back later!</p>
             </div>
-          ))}
+          ) : (
+            startups.map((startup, index) => (
+              <div key={startup.id} className="flex flex-col rounded-lg shadow-lg overflow-hidden">
+                <div className="flex-shrink-0">
+                  <img 
+                    className="h-48 w-full object-cover" 
+                    src={startup.logoUrl || defaultImages[index % defaultImages.length]} 
+                    alt={`${startup.name} logo`} 
+                  />
+                </div>
+                <div className="flex-1 bg-white p-6 flex flex-col justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-primary">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.investmentStage)}`}>
+                        {startup.investmentStage || "Not Specified"}
+                      </span>
+                    </p>
+                    <a href="#" className="block mt-2">
+                      <p className="text-xl font-semibold text-gray-900">{startup.name}</p>
+                      <p className="mt-3 text-base text-gray-500">
+                        {startup.description}
+                      </p>
+                    </a>
+                  </div>
+                  
+                  <div className="mt-6 flex justify-between">
+                    <Link href={`/startup/${startup.id}`}>
+                      <Button>View Details</Button>
+                    </Link>
+                    <Link href="/signin">
+                      <Button variant="outline">Chat</Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         <div className="mt-10 text-center">
