@@ -1,149 +1,258 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import React, { useState } from "react";
 import { useWeb3 } from "@/hooks/useWeb3";
-import { useAuth } from "@/hooks/useAuth";
-import { Wallet, ExternalLink, Check, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { truncateAddress } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Wallet, LogOut, Copy, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 
-const WalletConnect = () => {
-  const { isInstalled, isConnecting, address, connect } = useWeb3();
-  const { user } = useAuth();
+interface WalletConnectProps {
+  onConnect?: (address: string) => void;
+  onDisconnect?: () => void;
+  buttonVariant?: "default" | "outline" | "ghost" | "link" | "destructive" | "secondary";
+  buttonSize?: "default" | "sm" | "lg" | "icon";
+  showBalance?: boolean;
+  showAddress?: boolean;
+  showIcon?: boolean;
+  showChainId?: boolean;
+  showDialogOnConnect?: boolean;
+}
+
+const SUPPORTED_CHAIN_ID = 11155111; // Sepolia testnet
+
+const WalletConnect: React.FC<WalletConnectProps> = ({
+  onConnect,
+  onDisconnect,
+  buttonVariant = "default",
+  buttonSize = "default",
+  showBalance = true,
+  showAddress = true,
+  showIcon = true,
+  showChainId = false,
+  showDialogOnConnect = true,
+}) => {
+  const { 
+    address, 
+    balance, 
+    chainId, 
+    isInstalled, 
+    isConnecting, 
+    connect,
+    switchNetwork
+  } = useWeb3();
   
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
+  
+  // Handle connect button click
   const handleConnect = async () => {
-    await connect();
-  };
-
-  const getWalletStatusIcon = () => {
     if (!isInstalled) {
-      return <AlertCircle className="h-6 w-6 text-yellow-500" />;
+      toast({
+        title: "MetaMask not installed",
+        description: "Please install MetaMask extension first",
+        variant: "destructive",
+      });
+      window.open("https://metamask.io/download/", "_blank");
+      return;
     }
     
-    if (address) {
-      return <Check className="h-6 w-6 text-green-500" />;
-    }
+    const connected = await connect();
     
-    return <AlertCircle className="h-6 w-6 text-red-500" />;
+    if (connected && address) {
+      toast({
+        title: "Wallet Connected",
+        description: `Connected to ${truncateAddress(address)}`,
+      });
+      
+      if (onConnect) {
+        onConnect(address);
+      }
+      
+      if (showDialogOnConnect) {
+        setDialogOpen(true);
+      }
+      
+      // Check if on right network and switch if needed
+      if (chainId !== SUPPORTED_CHAIN_ID) {
+        toast({
+          title: "Switching Network",
+          description: "Switching to Sepolia testnet for this application",
+        });
+        
+        const switched = await switchNetwork(SUPPORTED_CHAIN_ID);
+        
+        if (!switched) {
+          toast({
+            title: "Network switch failed",
+            description: "Please manually switch to Sepolia testnet",
+            variant: "destructive",
+          });
+        }
+      }
+    }
   };
-
-  const getWalletStatusMessage = () => {
-    if (!isInstalled) {
-      return "MetaMask not installed";
+  
+  // Handle disconnect (this is limited with MetaMask, as it doesn't support programmatic disconnect)
+  const handleDisconnect = () => {
+    // Can't actually disconnect from MetaMask programmatically,
+    // but we can inform the app that the user wants to disconnect
+    if (onDisconnect) {
+      onDisconnect();
     }
     
-    if (address) {
-      return "Wallet connected";
-    }
+    toast({
+      title: "Wallet Disconnected",
+      description: "To fully disconnect, please use the MetaMask extension",
+    });
     
-    return "Wallet not connected";
+    setDialogOpen(false);
   };
-
+  
+  // Handle copy address
+  const handleCopyAddress = () => {
+    if (address) {
+      navigator.clipboard.writeText(address);
+      setShowCopied(true);
+      
+      setTimeout(() => {
+        setShowCopied(false);
+      }, 2000);
+      
+      toast({
+        title: "Address Copied",
+        description: "Wallet address copied to clipboard",
+      });
+    }
+  };
+  
+  // Get chain name
+  const getChainName = (id: number | null) => {
+    if (id === 1) return "Ethereum Mainnet";
+    if (id === 11155111) return "Sepolia Testnet";
+    if (id === 137) return "Polygon";
+    if (id === 80001) return "Mumbai Testnet";
+    return id ? `Chain ID: ${id}` : "Unknown Chain";
+  };
+  
+  // Check if connected to the right network
+  const isRightNetwork = chainId === SUPPORTED_CHAIN_ID;
+  
+  if (!address) {
+    return (
+      <Button
+        variant={buttonVariant}
+        size={buttonSize}
+        onClick={handleConnect}
+        disabled={isConnecting}
+      >
+        {showIcon && <Wallet className="mr-2 h-4 w-4" />}
+        {isConnecting ? "Connecting..." : "Connect Wallet"}
+      </Button>
+    );
+  }
+  
   return (
-    <div className="space-y-6">
-      {!isInstalled && (
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-2">
-              <AlertCircle className="h-6 w-6 text-yellow-500 mt-0.5" />
-              <div>
-                <h3 className="font-medium">MetaMask not detected</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  To connect your wallet, you need to install the MetaMask extension.
-                </p>
-                <a 
-                  href="https://metamask.io/download.html" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-primary hover:underline text-sm mt-2"
+    <>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>
+          <Button variant={buttonVariant} size={buttonSize}>
+            {showIcon && <Wallet className="mr-2 h-4 w-4" />}
+            {showAddress && truncateAddress(address)}
+            {showBalance && ` (${parseFloat(balance).toFixed(4)} ETH)`}
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Wallet Information</DialogTitle>
+            <DialogDescription>
+              Your wallet is connected to the application
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!isRightNetwork && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Wrong Network</AlertTitle>
+              <AlertDescription>
+                Please switch to Sepolia testnet to use this application.
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => switchNetwork(SUPPORTED_CHAIN_ID)}
                 >
-                  Install MetaMask
-                  <ExternalLink className="ml-1 h-3 w-3" />
-                </a>
+                  Switch to Sepolia
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Address:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono">{truncateAddress(address)}</span>
+                <Button variant="ghost" size="icon" onClick={handleCopyAddress}>
+                  {showCopied ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex items-center justify-between p-4 border rounded-lg">
-        <div className="flex items-center space-x-3">
-          {getWalletStatusIcon()}
-          <div>
-            <p className="font-medium">{getWalletStatusMessage()}</p>
-            {address && (
-              <p className="text-sm text-gray-600">
-                {truncateAddress(address)}
-              </p>
-            )}
-          </div>
-        </div>
-        
-        {isInstalled && !address && (
-          <Button 
-            onClick={handleConnect} 
-            disabled={isConnecting}
-          >
-            {isConnecting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Connecting...
-              </>
-            ) : (
-              <>
-                <Wallet className="mr-2 h-4 w-4" />
-                Connect Wallet
-              </>
-            )}
-          </Button>
-        )}
-      </div>
-
-      {address && (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="font-medium mb-2">Connected Wallet</h3>
-          <p className="text-sm text-gray-600 mb-3">
-            Your MetaMask wallet is connected to StartupConnect. You can now make crypto investments or receive funds.
-          </p>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">Address</p>
-              <p className="font-mono text-sm">{address}</p>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Balance:</span>
+              <span className="font-medium">{parseFloat(balance).toFixed(4)} ETH</span>
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleConnect}
-              disabled={isConnecting}
-            >
-              Switch Account
-            </Button>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Network:</span>
+              <span className={`font-medium ${isRightNetwork ? "text-green-500" : "text-red-500"}`}>
+                {getChainName(chainId)}
+              </span>
+            </div>
           </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDisconnect}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Disconnect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {showChainId && (
+        <div className={`text-xs ${isRightNetwork ? "text-green-500" : "text-red-500"}`}>
+          {getChainName(chainId)}
         </div>
       )}
-
-      {user?.role === "founder" && (
-        <div className="mt-6">
-          <h3 className="font-medium mb-2">Receive Funds</h3>
-          <p className="text-sm text-gray-600">
-            Your connected wallet address will be used to receive investments from investors via MetaMask.
-          </p>
-        </div>
-      )}
-
-      {user?.role === "investor" && (
-        <div className="mt-6">
-          <h3 className="font-medium mb-2">Make Investments</h3>
-          <p className="text-sm text-gray-600">
-            Your connected wallet address will be used to send funds to startup founders via MetaMask.
-          </p>
-        </div>
-      )}
-    </div>
+    </>
   );
 };
 

@@ -1,77 +1,112 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Transaction, InsertTransaction } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export const useTransactions = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  // Get transactions by founder ID (for startup founders)
-  const getTransactionsByFounderId = (founderId: number) => {
-    return useQuery({
-      queryKey: [`/api/investments?userId=${founderId}&role=founder`],
-      enabled: !!founderId,
+  // Get all transactions
+  const getAllTransactions = () => {
+    return useQuery<{ transactions: Transaction[] }>({
+      queryKey: ["/api/investments"],
+      refetchOnWindowFocus: false,
     });
   };
 
-  // Get transactions by investor ID (for investors)
-  const getTransactionsByInvestorId = (investorId: number) => {
-    return useQuery({
-      queryKey: [`/api/investments?userId=${investorId}&role=investor`],
+  // Get transactions by investor ID
+  const getTransactionsByInvestorId = (investorId?: number) => {
+    if (!investorId) return { data: { transactions: [] }, isLoading: false };
+    
+    return useQuery<{ transactions: Transaction[] }>({
+      queryKey: ["/api/investments", { investorId }],
       enabled: !!investorId,
+      refetchOnWindowFocus: false,
     });
   };
 
-  // Get transaction by ID
-  const getTransactionById = (transactionId: number) => {
-    return useQuery({
-      queryKey: [`/api/investments/${transactionId}`],
-      enabled: !!transactionId,
+  // Get transactions by founder ID
+  const getTransactionsByFounderId = (founderId?: number) => {
+    if (!founderId) return { data: { transactions: [] }, isLoading: false };
+    
+    return useQuery<{ transactions: Transaction[] }>({
+      queryKey: ["/api/investments", { founderId }],
+      enabled: !!founderId,
+      refetchOnWindowFocus: false,
     });
   };
 
-  // Create transaction
-  const createTransaction = () => {
-    return useMutation({
-      mutationFn: async (transactionData: InsertTransaction) => {
-        const response = await apiRequest("POST", "/api/investments", transactionData);
-        return response.json();
-      },
-      onSuccess: (data, variables) => {
-        queryClient.invalidateQueries({ queryKey: [`/api/investments?userId=${variables.investorId}&role=investor`] });
-        // Also invalidate founder's transactions
-        queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
-      },
+  // Get transactions by startup ID
+  const getTransactionsByStartupId = (startupId?: number) => {
+    if (!startupId) return { data: { transactions: [] }, isLoading: false };
+    
+    return useQuery<{ transactions: Transaction[] }>({
+      queryKey: ["/api/investments", { startupId }],
+      enabled: !!startupId,
+      refetchOnWindowFocus: false,
     });
   };
 
-  // Verify transaction (update status)
-  const verifyTransaction = () => {
-    return useMutation({
-      mutationFn: async ({ 
-        transactionId, 
-        status 
-      }: { 
-        transactionId: number; 
-        status: string;
-      }) => {
-        const response = await apiRequest(
-          "POST", 
-          "/api/investments/verify", 
-          { transactionId, status }
-        );
-        return response.json();
-      },
-      onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: [`/api/investments/${data.transaction.id}`] });
-        queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
-      },
-    });
-  };
+  // Create a new transaction
+  const createTransaction = useMutation({
+    mutationFn: async (transactionData: InsertTransaction) => {
+      return apiRequest("/api/investments", {
+        method: "POST",
+        body: JSON.stringify(transactionData),
+      });
+    },
+    onSuccess: () => {
+      // Invalidate all transaction queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
+      
+      toast({
+        title: "Transaction created",
+        description: "Your investment has been recorded successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error creating transaction:", error);
+      toast({
+        title: "Transaction failed",
+        description: error.message || "Failed to record your investment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Verify a transaction
+  const verifyTransaction = useMutation({
+    mutationFn: async ({ transactionId, status }: { transactionId: string; status: string }) => {
+      return apiRequest("/api/investments/verify", {
+        method: "POST",
+        body: JSON.stringify({ transactionId, status }),
+      });
+    },
+    onSuccess: () => {
+      // Invalidate all transaction queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
+      
+      toast({
+        title: "Transaction verified",
+        description: "The investment transaction has been verified",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error verifying transaction:", error);
+      toast({
+        title: "Verification failed",
+        description: error.message || "Failed to verify the transaction",
+        variant: "destructive",
+      });
+    },
+  });
 
   return {
-    getTransactionsByFounderId,
+    getAllTransactions,
     getTransactionsByInvestorId,
-    getTransactionById,
+    getTransactionsByFounderId,
+    getTransactionsByStartupId,
     createTransaction,
     verifyTransaction,
   };

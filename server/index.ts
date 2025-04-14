@@ -2,10 +2,26 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerImageKitRoutes } from "./imagekit";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from 'url';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Get current file path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Serve uploaded files
+app.use('/uploads', express.static(uploadsDir));
 
 app.use((req, res, next) => {
   const start = Date.now();

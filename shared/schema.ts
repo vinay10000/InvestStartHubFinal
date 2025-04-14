@@ -21,6 +21,11 @@ export const startups = pgTable("startups", {
   description: text("description").notNull(),
   pitch: text("pitch").notNull(),
   investmentStage: text("investment_stage").notNull(), // Pre-seed, Seed, Series A, etc.
+  category: text("category"),
+  fundingGoal: text("funding_goal").default("100000"),
+  currentFunding: text("current_funding").default("0"),
+  logoUrl: text("logo_url"),
+  websiteUrl: text("website_url"),
   upiId: text("upi_id"),
   upiQrCode: text("upi_qr_code"),
   createdAt: timestamp("created_at").defaultNow(),

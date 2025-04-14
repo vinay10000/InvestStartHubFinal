@@ -4,12 +4,27 @@ import { log } from './vite';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
-// Server-side ImageKit instance
+// Get current file path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config();
+
+// Default ImageKit credentials for development (will be overridden in production)
+// These are mock keys for local development only
+const defaultPublicKey = 'your_public_key';
+const defaultPrivateKey = 'your_private_key'; 
+const defaultUrlEndpoint = 'https://ik.imagekit.io/your_imagekit_id/';
+
+// Server-side ImageKit instance with fallback values for development
 const imagekit = new ImageKit({
-  publicKey: process.env.VITE_IMAGEKIT_PUBLIC_KEY || '',
-  privateKey: process.env.VITE_IMAGEKIT_PRIVATE_KEY || '',
-  urlEndpoint: process.env.VITE_IMAGEKIT_URL_ENDPOINT || '',
+  publicKey: process.env.VITE_IMAGEKIT_PUBLIC_KEY || defaultPublicKey,
+  privateKey: process.env.VITE_IMAGEKIT_PRIVATE_KEY || defaultPrivateKey,
+  urlEndpoint: process.env.VITE_IMAGEKIT_URL_ENDPOINT || defaultUrlEndpoint,
 });
 
 // Configure multer for file uploads
@@ -31,11 +46,24 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Helper to check if real ImageKit credentials are provided
+const hasRealImageKitCredentials = () => {
+  return (
+    process.env.VITE_IMAGEKIT_PUBLIC_KEY && 
+    process.env.VITE_IMAGEKIT_PUBLIC_KEY !== defaultPublicKey &&
+    process.env.VITE_IMAGEKIT_PRIVATE_KEY && 
+    process.env.VITE_IMAGEKIT_PRIVATE_KEY !== defaultPrivateKey
+  );
+};
+
 // Register ImageKit routes
 export function registerImageKitRoutes(app: Express): void {
   // Authentication endpoint (may still be used for certain operations)
   app.get('/api/imagekit/auth', (req: Request, res: Response) => {
     try {
+      if (!hasRealImageKitCredentials()) {
+        log('Warning: Using development ImageKit credentials', 'imagekit');
+      }
       const authenticationParameters = imagekit.getAuthenticationParameters();
       res.status(200).json(authenticationParameters);
     } catch (error) {
@@ -49,6 +77,29 @@ export function registerImageKitRoutes(app: Express): void {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No file provided' });
+      }
+
+      // For development mode without actual ImageKit credentials
+      if (!hasRealImageKitCredentials()) {
+        log('Warning: Using local file storage instead of ImageKit', 'imagekit');
+        
+        // Generate a relative URL path to access the file
+        const fileName = req.body.fileName || path.basename(req.file.path);
+        const uploadDir = path.join(__dirname, '../uploads');
+        const finalPath = path.join(uploadDir, fileName);
+        
+        // Copy the file to the permanent uploads directory
+        if (req.file.path !== finalPath) {
+          fs.copyFileSync(req.file.path, finalPath);
+          fs.unlinkSync(req.file.path);
+        }
+        
+        // Return a local URL
+        const localUrl = `/uploads/${fileName}`;
+        return res.status(200).json({ 
+          url: localUrl,
+          fileId: fileName
+        });
       }
 
       const folder = req.body.folder || '';
@@ -89,6 +140,18 @@ export function registerImageKitRoutes(app: Express): void {
         return res.status(400).json({ message: 'File ID is required' });
       }
       
+      // For development mode without actual ImageKit credentials
+      if (!hasRealImageKitCredentials()) {
+        log('Warning: Using local file deletion instead of ImageKit', 'imagekit');
+        
+        const filePath = path.join(__dirname, '../uploads', fileId);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        
+        return res.status(200).json({ message: 'File deleted successfully' });
+      }
+      
       await imagekit.deleteFile(fileId);
       res.status(200).json({ message: 'File deleted successfully' });
     } catch (error) {
@@ -100,6 +163,27 @@ export function registerImageKitRoutes(app: Express): void {
   // List files endpoint (useful for debugging and management)
   app.get('/api/imagekit/list', async (req: Request, res: Response) => {
     try {
+      // For development mode without actual ImageKit credentials
+      if (!hasRealImageKitCredentials()) {
+        log('Warning: Using local file listing instead of ImageKit', 'imagekit');
+        
+        const uploadDir = path.join(__dirname, '../uploads');
+        if (!fs.existsSync(uploadDir)) {
+          return res.status(200).json([]);
+        }
+        
+        const files = fs.readdirSync(uploadDir)
+          .filter(file => !file.startsWith('.'))
+          .map(file => ({
+            name: file,
+            filePath: '/uploads/' + file,
+            url: '/uploads/' + file,
+            fileId: file
+          }));
+        
+        return res.status(200).json(files);
+      }
+      
       const files = await imagekit.listFiles({
         path: req.query.path as string,
         skip: req.query.skip ? parseInt(req.query.skip as string) : 0,
