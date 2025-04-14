@@ -120,7 +120,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      await login(email, password);
+      
+      // Login with Firebase
+      const userCredential = await login(email, password);
+      
+      // After login, check if user has a role saved in the database
+      // For now, we'll just retrieve from localStorage
+      const savedRole = localStorage.getItem('user_role');
+      
+      // If no role is found, we need to determine it
+      if (!savedRole) {
+        // Try to detect if this user is a founder based on their email pattern
+        // This is a simple heuristic that can be replaced with a proper DB lookup
+        const isFounder = email.includes('founder') || email.includes('startup');
+        const defaultRole = isFounder ? 'founder' : 'investor';
+        
+        // Store the detected role
+        localStorage.setItem('user_role', defaultRole);
+        console.log(`No role found for user, defaulting to: ${defaultRole}`);
+      } else {
+        console.log(`Using saved role for user: ${savedRole}`);
+      }
+      
     } catch (error: any) {
       setError(error.message || "Login failed");
       throw error;

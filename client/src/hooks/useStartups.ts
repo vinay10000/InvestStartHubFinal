@@ -30,7 +30,7 @@ export const useStartups = (userId?: number | string) => {
   const getStartupById = (startupId?: number) => {
     if (!startupId) return { data: null, isLoading: false };
     
-    return useQuery<Startup>({
+    return useQuery<{ startup: Startup }>({
       queryKey: ["/api/startups", startupId],
       enabled: !!startupId,
       refetchOnWindowFocus: false,
