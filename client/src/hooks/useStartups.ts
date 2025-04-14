@@ -200,7 +200,7 @@ export const useStartups = (userId?: number | string) => {
         type,
         file
       }: { 
-        startupId: number;
+        startupId: number | string;
         name: string;
         type: string;
         file: File; 
@@ -238,6 +238,23 @@ export const useStartups = (userId?: number | string) => {
           fileSize: file.size,
         } as InsertDocument;
         
+        // Check if we're using a string ID (Firebase) or number ID (local storage)
+        if (typeof startupId === 'string' && startupId.toString().length > 10) {
+          // Use Firestore to store document metadata
+          try {
+            const { createFirestoreDocument } = await import("@/firebase/firestore");
+            const documentId = await createFirestoreDocument({
+              ...documentData,
+              startupId: startupId as string
+            });
+            return { document: { id: documentId, ...documentData } };
+          } catch (error) {
+            console.error("Error storing document in Firestore:", error);
+            throw error;
+          }
+        }
+        
+        // Fall back to API for backward compatibility
         return apiRequest(`/api/startups/${startupId}/documents`, {
           method: "POST",
           body: JSON.stringify(documentData),

@@ -78,12 +78,22 @@ const FounderDashboard = () => {
         const { createFirestoreStartup } = await import('@/firebase/firestore');
         const startupId = await createFirestoreStartup(startupPayload);
         console.log('Startup created in Firestore with ID:', startupId);
+        
+        // Redirect to the startup details page
+        setIsCreateDialogOpen(false);
+        // Give a moment for the data to be saved to Firestore
+        setTimeout(() => {
+          window.location.href = `/startup/${startupId}`;
+        }, 1000);
       } else {
         // Use regular API for local testing
-        await createStartupMutation.mutateAsync(startupPayload);
+        const result = await createStartupMutation.mutateAsync(startupPayload);
+        setIsCreateDialogOpen(false);
+        
+        if (result && result.startup && result.startup.id) {
+          window.location.href = `/startup/${result.startup.id}`;
+        }
       }
-      
-      setIsCreateDialogOpen(false);
     } catch (error) {
       console.error("Error creating startup:", error);
     }
