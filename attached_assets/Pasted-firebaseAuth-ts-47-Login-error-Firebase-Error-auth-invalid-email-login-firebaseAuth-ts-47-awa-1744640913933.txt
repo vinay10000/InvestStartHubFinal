@@ -1,0 +1,55 @@
+firebaseAuth.ts:47 Login error: Firebase: Error (auth/invalid-email).
+login @ firebaseAuth.ts:47
+await in login
+signIn @ SimpleAuthContext.tsx:77
+handleSignIn @ SignIn.tsx:27
+handleSubmit @ AuthForm.tsx:50
+(anonymous) @ chunk-YABUFNLM.js?v=e43ce7ec:1675
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=e43ce7ec:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e43ce7ec:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e43ce7ec:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e43ce7ec:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e43ce7ec:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e43ce7ec:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e43ce7ec:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e43ce7ec:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e43ce7ec:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e43ce7ec:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e43ce7ec:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e43ce7ec:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e43ce7ec:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e43ce7ec:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e43ce7ec:5449
+SignIn.tsx:37 Error signing in: FirebaseError: Firebase: Error (auth/invalid-email).
+    at createErrorInternal (firebase_auth.js?v=e43ce7ec:694:37)
+    at _fail (firebase_auth.js?v=e43ce7ec:659:9)
+    at _performFetchWithErrorHandling (firebase_auth.js?v=e43ce7ec:1126:9)
+    at async _performSignInRequest (firebase_auth.js?v=e43ce7ec:1137:26)
+    at async _signInWithCredential (firebase_auth.js?v=e43ce7ec:4619:20)
+    at async login (firebaseAuth.ts:43:28)
+    at async signIn (SimpleAuthContext.tsx:77:7)
+    at async handleSignIn (SignIn.tsx:27:7)
+    at async handleSubmit (AuthForm.tsx:50:7)
+    at async chunk-YABUFNLM.js?v=e43ce7ec:1675:9
+handleSignIn @ SignIn.tsx:37
+await in handleSignIn
+handleSubmit @ AuthForm.tsx:50
+(anonymous) @ chunk-YABUFNLM.js?v=e43ce7ec:1675
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=e43ce7ec:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e43ce7ec:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e43ce7ec:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e43ce7ec:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e43ce7ec:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e43ce7ec:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e43ce7ec:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e43ce7ec:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e43ce7ec:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e43ce7ec:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e43ce7ec:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e43ce7ec:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e43ce7ec:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e43ce7ec:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e43ce7ec:5449
+Header.tsx:26 Header rendering with simplified auth state: {user: null, loading: false}

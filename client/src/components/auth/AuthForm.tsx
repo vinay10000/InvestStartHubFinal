@@ -9,13 +9,15 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 // Form schema for sign in
 const signInSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  username: z.string().email("Please enter a valid email address").min(1, "Email is required"),
   password: z.string().min(1, "Password is required"),
 });
 
-// Form schema for sign up (extends sign in schema)
-const signUpSchema = signInSchema.extend({
+// Create a custom schema for signup that doesn't extend the sign-in schema
+const signUpSchema = z.object({
+  username: z.string().min(1, "Username is required"),
   email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Confirm password is required"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -62,10 +64,11 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>{type === "signin" ? "Email" : "Username"}</FormLabel>
               <FormControl>
                 <Input 
-                  placeholder="Enter your username" 
+                  placeholder={type === "signin" ? "Enter your email" : "Enter your username"} 
+                  type={type === "signin" ? "email" : "text"}
                   {...field} 
                   disabled={isLoading}
                 />

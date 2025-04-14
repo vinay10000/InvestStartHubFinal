@@ -19,12 +19,15 @@ const SignIn = () => {
     return redirectTo || '/'; // Default to home if no redirect specified
   };
 
-  const handleSignIn = async (username: string, password: string) => {
+  const handleSignIn = async (email: string, password: string, username: string) => {
     try {
       setIsLoading(true);
-      console.log("Starting sign-in process for:", username);
+      // If email is empty but username is provided, use username as email
+      // This fixes the auth/invalid-email error
+      const loginEmail = email || username;
+      console.log("Starting sign-in process using email:", loginEmail);
       
-      await signIn(username, password);
+      await signIn(loginEmail, password);
       console.log("Sign-in successful, waiting for auth state update...");
       
       // Give Firebase a moment to update auth state
