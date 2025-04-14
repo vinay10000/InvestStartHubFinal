@@ -34,19 +34,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to login' });
     }
   });
-
-  // User routes
-  app.get('/api/user/profile', async (req: Request, res: Response) => {
+  
+  // Google Authentication endpoint
+  app.post('/api/auth/google', async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(req.query.userId as string);
-      const user = await storage.getUser(userId);
+      const { uid, email, displayName, photoURL } = req.body;
+      
+      if (!uid || !email) {
+        return res.status(400).json({ message: 'User ID and email are required' });
+      }
+      
+      // Check if user already exists
+      let user = await storage.getUserByUsername(email);
       
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        // Create new user with Google credentials
+        const newUser = {
+          username: email, // Using email as unique username
+          email,
+          password: `google_${uid}`, // Special password format for Google users
+          role: "investor", // Default role for Google sign-ins
+          profilePicture: photoURL || "",
+          walletAddress: "",
+        };
+        
+        user = await storage.createUser(newUser);
+        console.log('Created new user from Google auth:', email);
       }
       
       res.status(200).json({ user: { ...user, password: undefined } });
     } catch (error) {
+      console.error('Google auth error:', error);
+      res.status(500).json({ message: 'Failed to authenticate with Google' });
+    }
+  });
+
+  // User routes
+  app.get('/api/user/profile', async (req: Request, res: Response) => {
+    try {
+      // Handle Firebase UID (string) or database user ID (number)
+      const userId = req.query.userId as string;
+      
+      let user;
+      // If userId looks like a Firebase UID (not a number)
+      if (isNaN(Number(userId))) {
+        // This is a Firebase UID, check if we have a user with email containing this UID
+        // In a real app, you'd have a proper mapping from Firebase UID to your user
+        const users = await storage.getAllUsers();
+        user = users.find((u: User) => u.password.includes(userId)); // Check for "google_{uid}" pattern
+        
+        if (!user) {
+          return res.status(404).json({ message: 'Firebase user not found' });
+        }
+      } else {
+        // Regular numeric user ID from our database
+        user = await storage.getUser(parseInt(userId));
+        
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+      }
+      
+      res.status(200).json({ user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
       res.status(500).json({ message: 'Failed to fetch user profile' });
     }
   });
