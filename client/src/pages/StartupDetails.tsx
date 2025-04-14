@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useStartups } from "@/hooks/useStartups";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import { useChat } from "@/hooks/useChat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import UPIPayment from "@/components/payments/UPIPayment";
 const StartupDetails = () => {
   const { id } = useParams();
   const startupId = parseInt(id);
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const { getStartupById, getDocumentsByStartupId, updateStartup, uploadDocument } = useStartups();
   const { createChat } = useChat();
   

@@ -27,8 +27,10 @@ export const useChat = () => {
   const createChat = () => {
     return useMutation({
       mutationFn: async (chatData: InsertChat) => {
-        const response = await apiRequest("POST", "/api/chats", chatData);
-        return response.json();
+        return apiRequest("/api/chats", {
+          method: "POST",
+          body: JSON.stringify(chatData),
+        });
       },
       onSuccess: (data, variables) => {
         queryClient.invalidateQueries({ queryKey: [`/api/chats?userId=${variables.founderId}&role=founder`] });
@@ -63,11 +65,10 @@ export const useChat = () => {
           content,
         };
         
-        const response = await apiRequest(
-          "POST", 
-          `/api/chats/${chatId}/messages`, 
-          messageData
-        );
+        const response = await apiRequest(`/api/chats/${chatId}/messages`, {
+          method: "POST",
+          body: JSON.stringify(messageData),
+        });
         
         // Also send to Firebase Realtime Database for real-time updates
         await sendRealtimeMessage(chatId.toString(), {
@@ -76,7 +77,7 @@ export const useChat = () => {
           chatId: chatId.toString(),
         });
         
-        return response.json();
+        return response;
       },
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: [`/api/chats/${data.message.chatId}/messages`] });
