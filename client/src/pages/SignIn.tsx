@@ -35,9 +35,14 @@ const SignIn = () => {
     try {
       setIsLoading(true);
       await signInWithGoogle();
-      navigate(getRedirectUrl());
+      // Use a slight delay to ensure Firebase auth state is updated
+      setTimeout(() => {
+        navigate(getRedirectUrl());
+      }, 500);
     } catch (error) {
       console.error("Error signing in with Google:", error);
+      // Show error message
+      window.alert("Google sign-in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +89,7 @@ const SignIn = () => {
           <div className="text-sm text-center">
             Don't have an account?{" "}
             <Link href="/signup">
-              <a className="text-primary font-medium hover:underline">Sign up</a>
+              <span className="text-primary font-medium hover:underline cursor-pointer">Sign up</span>
             </Link>
           </div>
         </CardFooter>

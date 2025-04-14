@@ -39,9 +39,19 @@ const SignUp = () => {
     try {
       setIsLoading(true);
       await signInWithGoogle();
-      navigate("/");
+      // Use a slight delay to ensure Firebase auth state is updated
+      setTimeout(() => {
+        // Redirect to appropriate dashboard based on role
+        if (selectedRole === "founder") {
+          navigate("/founder/dashboard");
+        } else {
+          navigate("/investor/dashboard");
+        }
+      }, 500);
     } catch (error) {
       console.error("Error signing in with Google:", error);
+      // Show error message
+      window.alert("Google sign-in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +118,7 @@ const SignUp = () => {
           <div className="text-sm text-center">
             Already have an account?{" "}
             <Link href="/signin">
-              <a className="text-primary font-medium hover:underline">Sign in</a>
+              <span className="text-primary font-medium hover:underline cursor-pointer">Sign in</span>
             </Link>
           </div>
         </CardFooter>

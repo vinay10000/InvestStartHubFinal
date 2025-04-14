@@ -52,24 +52,24 @@ const Header = () => {
             </div>
             <nav className="hidden sm:ml-6 sm:flex sm:space-x-8" aria-label="Global">
               <Link href="/">
-                <a className={`${location === "/" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                <span className={`${location === "/" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
                   Home
-                </a>
+                </span>
               </Link>
               <Link href="/startups">
-                <a className={`${location === "/startups" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                <span className={`${location === "/startups" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
                   Startups
-                </a>
+                </span>
               </Link>
               <Link href="/investors">
-                <a className={`${location === "/investors" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                <span className={`${location === "/investors" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
                   Investors
-                </a>
+                </span>
               </Link>
               <Link href="/how-it-works">
-                <a className={`${location === "/how-it-works" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                <span className={`${location === "/how-it-works" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
                   How It Works
-                </a>
+                </span>
               </Link>
             </nav>
           </div>
@@ -138,24 +138,24 @@ const Header = () => {
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 mt-4">
                   <Link href="/">
-                    <a className={`${location === "/" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`} onClick={() => setIsOpen(false)}>
+                    <span className={`${location === "/" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
                       Home
-                    </a>
+                    </span>
                   </Link>
                   <Link href="/startups">
-                    <a className={`${location === "/startups" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`} onClick={() => setIsOpen(false)}>
+                    <span className={`${location === "/startups" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
                       Startups
-                    </a>
+                    </span>
                   </Link>
                   <Link href="/investors">
-                    <a className={`${location === "/investors" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`} onClick={() => setIsOpen(false)}>
+                    <span className={`${location === "/investors" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
                       Investors
-                    </a>
+                    </span>
                   </Link>
                   <Link href="/how-it-works">
-                    <a className={`${location === "/how-it-works" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`} onClick={() => setIsOpen(false)}>
+                    <span className={`${location === "/how-it-works" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
                       How It Works
-                    </a>
+                    </span>
                   </Link>
                   
                   {user ? (
@@ -174,32 +174,32 @@ const Header = () => {
                         </div>
                         <div className="mt-3 space-y-1">
                           <Link href="/profile">
-                            <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" onClick={() => setIsOpen(false)}>
+                            <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                               Profile
-                            </a>
+                            </span>
                           </Link>
                           <Link href="/transactions">
-                            <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" onClick={() => setIsOpen(false)}>
+                            <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                               Transactions
-                            </a>
+                            </span>
                           </Link>
                           {user.role === "founder" ? (
                             <Link href="/founder/dashboard">
-                              <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" onClick={() => setIsOpen(false)}>
+                              <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                                 My Startups
-                              </a>
+                              </span>
                             </Link>
                           ) : (
                             <Link href="/investor/dashboard">
-                              <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" onClick={() => setIsOpen(false)}>
+                              <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                                 Discover Startups
-                              </a>
+                              </span>
                             </Link>
                           )}
                           <Link href="/chat">
-                            <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" onClick={() => setIsOpen(false)}>
+                            <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                               Messages
-                            </a>
+                            </span>
                           </Link>
                           <button 
                             className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
