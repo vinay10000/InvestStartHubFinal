@@ -20,22 +20,16 @@ export const getAuthenticationParams = async () => {
   }
 };
 
-// Upload file to ImageKit
+// Upload file to ImageKit via our server to avoid CORS issues
 export const uploadFile = async (
   file: File,
   folder: string,
   fileName?: string
 ): Promise<string> => {
   try {
-    const authParams = await getAuthenticationParams();
-    
     // Create form data for upload
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('publicKey', imagekitPublic.publicKey);
-    formData.append('signature', authParams.signature);
-    formData.append('expire', authParams.expire);
-    formData.append('token', authParams.token);
     
     // Generate a unique filename if not provided
     const uniqueFileName = fileName || `${uuidv4()}-${file.name.replace(/\s+/g, '-')}`;
@@ -44,8 +38,8 @@ export const uploadFile = async (
     // Add folder path
     formData.append('folder', folder);
     
-    // Upload to ImageKit
-    const response = await fetch(`${imagekitPublic.urlEndpoint}/api/v1/files/upload`, {
+    // Upload via our server-side proxy endpoint
+    const response = await fetch('/api/imagekit/upload', {
       method: 'POST',
       body: formData,
     });

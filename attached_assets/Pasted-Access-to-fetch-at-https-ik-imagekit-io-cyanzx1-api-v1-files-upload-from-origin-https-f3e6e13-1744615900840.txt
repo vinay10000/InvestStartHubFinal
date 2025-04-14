@@ -1,0 +1,47 @@
+Access to fetch at 'https://ik.imagekit.io/cyanzx1/api/v1/files/upload' from origin 'https://f3e6e133-16c8-4418-ae42-6b45675d32a1-00-3ox83d347j87y.worf.replit.dev' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+imagekit.ts:48 
+            
+            
+           POST https://ik.imagekit.io/cyanzx1/api/v1/files/upload net::ERR_FAILED 403 (Forbidden)
+uploadFile @ imagekit.ts:48
+await in uploadFile
+handleUpload @ not-found.tsx:33
+callCallback2 @ chunk-RPCDYKBN.js?v=37c64ceb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=37c64ceb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=37c64ceb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=37c64ceb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=37c64ceb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=37c64ceb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=37c64ceb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=37c64ceb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=37c64ceb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=37c64ceb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=37c64ceb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=37c64ceb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=37c64ceb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=37c64ceb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=37c64ceb:5449
+imagekit.ts:61 Error uploading file: TypeError: Failed to fetch
+    at uploadFile (imagekit.ts:48:28)
+    at async handleUpload (not-found.tsx:33:19)
+uploadFile @ imagekit.ts:61
+await in uploadFile
+handleUpload @ not-found.tsx:33
+callCallback2 @ chunk-RPCDYKBN.js?v=37c64ceb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=37c64ceb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=37c64ceb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=37c64ceb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=37c64ceb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=37c64ceb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=37c64ceb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=37c64ceb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=37c64ceb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=37c64ceb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=37c64ceb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=37c64ceb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=37c64ceb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=37c64ceb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=37c64ceb:5449
+not-found.tsx:37 Upload failed: Error: Failed to upload file
+    at uploadFile (imagekit.ts:62:11)
+    at async handleUpload (not-found.tsx:33:19)

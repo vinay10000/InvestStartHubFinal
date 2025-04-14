@@ -12,11 +12,18 @@ const SignIn = () => {
   const { signIn, signInWithGoogle } = useAuth();
   const [location, navigate] = useLocation();
 
+  // Extract redirect URL from query parameters if available
+  const getRedirectUrl = () => {
+    const url = new URL(window.location.href);
+    const redirectTo = url.searchParams.get('redirect');
+    return redirectTo || '/'; // Default to home if no redirect specified
+  };
+
   const handleSignIn = async (username: string, password: string) => {
     try {
       setIsLoading(true);
       await signIn(username, password);
-      navigate("/");
+      navigate(getRedirectUrl());
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {
@@ -28,7 +35,7 @@ const SignIn = () => {
     try {
       setIsLoading(true);
       await signInWithGoogle();
-      navigate("/");
+      navigate(getRedirectUrl());
     } catch (error) {
       console.error("Error signing in with Google:", error);
     } finally {

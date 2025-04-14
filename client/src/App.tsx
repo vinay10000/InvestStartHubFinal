@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import NotFound from "@/pages/not-found";
@@ -17,32 +18,56 @@ import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 
 function Router() {
-  const { user, loading } = useAuth();
-
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/signin" component={SignIn} />
       <Route path="/signup" component={SignUp} />
       
-      {/* Protected Routes */}
-      {user && user.role === "founder" && (
-        <Route path="/founder/dashboard" component={FounderDashboard} />
-      )}
+      {/* Protected Founder Routes */}
+      <Route path="/founder/dashboard">
+        <ProtectedRoute requiredRole="founder">
+          <FounderDashboard />
+        </ProtectedRoute>
+      </Route>
       
-      {user && user.role === "investor" && (
-        <Route path="/investor/dashboard" component={InvestorDashboard} />
-      )}
+      {/* Protected Investor Routes */}
+      <Route path="/investor/dashboard">
+        <ProtectedRoute requiredRole="investor">
+          <InvestorDashboard />
+        </ProtectedRoute>
+      </Route>
       
-      {user && (
-        <>
-          <Route path="/startup/:id" component={StartupDetails} />
-          <Route path="/transactions" component={Transactions} />
-          <Route path="/chat" component={Chat} />
-          <Route path="/chat/:id" component={Chat} />
-          <Route path="/profile" component={Profile} />
-        </>
-      )}
+      {/* Protected Routes for All Authenticated Users */}
+      <Route path="/startup/:id">
+        <ProtectedRoute>
+          <StartupDetails />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/transactions">
+        <ProtectedRoute>
+          <Transactions />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/chat">
+        <ProtectedRoute>
+          <Chat />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/chat/:id">
+        <ProtectedRoute>
+          <Chat />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/profile">
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      </Route>
       
       {/* ImageKit Test Page */}
       <Route path="/test-imagekit" component={NotFound} />

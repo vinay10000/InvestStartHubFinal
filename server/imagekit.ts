@@ -1,6 +1,9 @@
 import ImageKit from 'imagekit';
 import { Express, Request, Response } from 'express';
 import { log } from './vite';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 
 // Server-side ImageKit instance
 const imagekit = new ImageKit({
@@ -9,9 +12,28 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.VITE_IMAGEKIT_URL_ENDPOINT || '',
 });
 
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)){
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '-'));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
 // Register ImageKit routes
 export function registerImageKitRoutes(app: Express): void {
-  // Authentication endpoint for client-side uploads
+  // Authentication endpoint (may still be used for certain operations)
   app.get('/api/imagekit/auth', (req: Request, res: Response) => {
     try {
       const authenticationParameters = imagekit.getAuthenticationParameters();
@@ -19,6 +41,42 @@ export function registerImageKitRoutes(app: Express): void {
     } catch (error) {
       log(`Error in ImageKit auth: ${error}`, 'imagekit');
       res.status(500).json({ message: 'Failed to generate authentication parameters' });
+    }
+  });
+
+  // Upload file endpoint (server-side to avoid CORS)
+  app.post('/api/imagekit/upload', upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file provided' });
+      }
+
+      const folder = req.body.folder || '';
+      const customFileName = req.body.fileName || path.basename(req.file.path);
+      
+      // Upload file to ImageKit
+      const uploadResponse = await imagekit.upload({
+        file: fs.readFileSync(req.file.path),
+        fileName: customFileName,
+        folder: folder
+      });
+      
+      // Delete the temporary file
+      fs.unlinkSync(req.file.path);
+      
+      res.status(200).json({ 
+        url: uploadResponse.url,
+        fileId: uploadResponse.fileId
+      });
+    } catch (error) {
+      log(`Error uploading file to ImageKit: ${error}`, 'imagekit');
+      
+      // Clean up temporary file if it exists
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      
+      res.status(500).json({ message: 'Failed to upload file to ImageKit' });
     }
   });
 

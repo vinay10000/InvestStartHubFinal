@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, ReactNode } from "react";
 import { User } from "@shared/schema";
+import { User as FirebaseUser } from "firebase/auth";
 import { 
   signUpWithEmail, 
   signInWithEmail, 
