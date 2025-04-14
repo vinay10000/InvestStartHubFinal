@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { auth } from "./config";
 import { apiRequest } from "@/lib/queryClient";
+import { createFirestoreUser, getFirestoreUser, updateFirestoreUser } from "./firestore";
 
 // Sign up with email/password
 export const signUpWithEmail = async (
@@ -22,13 +23,13 @@ export const signUpWithEmail = async (
     // Create firebase auth user first
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
-    // After successful Firebase auth creation, create user in our backend
-    await apiRequest("POST", "/api/auth/signup", {
-      uid: userCredential.user.uid,
+    // After successful Firebase auth creation, create user in Firestore
+    await createFirestoreUser(userCredential.user.uid, {
       username,
       email,
-      password, // In a real app, we'd use a hashed password
-      role
+      role,
+      walletAddress: null,
+      createdAt: new Date(),
     });
     
     console.log("User created successfully in Firebase:", userCredential.user.uid);
@@ -41,25 +42,28 @@ export const signUpWithEmail = async (
 
 // Sign in with email/password
 export const signInWithEmail = async (
-  username: string, 
+  email: string, 
   password: string
-): Promise<any> => {
+): Promise<UserCredential> => {
   try {
-    // Get user from our backend to get the email
-    const response = await apiRequest("POST", "/api/auth/login", {
-      username,
-      password
-    });
+    // Sign in with Firebase using email
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    console.log("User authenticated successfully with Firebase:", credential.user.uid);
     
-    const userData = await response.json();
-    
-    if (!userData || !userData.user || !userData.user.email) {
-      throw new Error("Invalid user data returned from server");
+    // Check if user exists in Firestore
+    const userData = await getFirestoreUser(credential.user.uid);
+    if (!userData) {
+      console.log("User exists in Firebase Auth but not in Firestore, creating record...");
+      // Create user in Firestore if it doesn't exist (might happen if data gets out of sync)
+      await createFirestoreUser(credential.user.uid, {
+        username: credential.user.displayName || email.split('@')[0],
+        email,
+        role: "investor", // Default role
+        walletAddress: null,
+        createdAt: new Date(),
+      });
     }
     
-    // Sign in with Firebase using email from our backend
-    const credential = await signInWithEmailAndPassword(auth, userData.user.email, password);
-    console.log("User authenticated successfully with Firebase:", credential.user.uid);
     return credential;
   } catch (error) {
     console.error("Error in signin process:", error);

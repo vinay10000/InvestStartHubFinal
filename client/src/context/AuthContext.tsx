@@ -85,7 +85,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, username: string, role: "founder" | "investor") => {
     try {
       setLoading(true);
-      await signUpWithEmail(email, password, username, role);
+      
+      // Sign up using Firebase Auth
+      const { createUserWithEmailAndPassword } = await import("firebase/auth");
+      const { auth } = await import("@/firebase/config");
+      
+      // Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      
+      // Create the user in Firestore
+      const { createFirestoreUser } = await import("@/firebase/firestore");
+      await createFirestoreUser(firebaseUser.uid, {
+        username,
+        email,
+        role,
+        walletAddress: '',
+      });
+      
       toast({
         title: "Account created successfully",
         description: "You are now signed in.",
@@ -105,7 +122,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (username: string, password: string) => {
     try {
       setLoading(true);
-      await signInWithEmail(username, password);
+      
+      // Sign in using Firebase Auth
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
+      const { auth } = await import("@/firebase/config");
+      
+      // Check if username is an email or just a username
+      const isEmail = username.includes('@');
+      
+      if (isEmail) {
+        // Direct login with email/password
+        await signInWithEmailAndPassword(auth, username, password);
+      } else {
+        // TODO: For username login, we would need to query Firestore to find the user's email
+        // For now, we'll assume username is always an email
+        throw new Error("Please use your email address to sign in");
+      }
+      
       toast({
         title: "Signed in successfully",
       });
@@ -124,7 +157,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const googleSignIn = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle();
+      
+      // Sign in with Google using Firebase Auth
+      const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+      const { auth } = await import("@/firebase/config");
+      
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      
+      // Check if user exists in Firestore
+      const { getFirestoreUser, createFirestoreUser } = await import("@/firebase/firestore");
+      let userData = await getFirestoreUser(firebaseUser.uid);
+      
+      if (!userData) {
+        // Create new user in Firestore
+        await createFirestoreUser(firebaseUser.uid, {
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || '',
+          role: "investor", // Default role for Google sign-ins
+          walletAddress: '',
+          profilePicture: firebaseUser.photoURL || '',
+        });
+      }
+      
       toast({
         title: "Signed in with Google successfully",
       });
@@ -143,8 +199,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       setLoading(true);
-      await firebaseSignOut();
+      
+      // Sign out using Firebase Auth
+      const { signOut } = await import("firebase/auth");
+      const { auth } = await import("@/firebase/config");
+      
+      await signOut(auth);
       setUser(null);
+      
       toast({
         title: "Signed out successfully",
       });
@@ -159,19 +221,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateProfile = async (userData: Partial<User>) => {
+  const updateProfile = async (userData: Partial<{
+    username?: string;
+    email?: string;
+    role?: string;
+    walletAddress?: string;
+    profilePicture?: string;
+  }>) => {
     try {
       if (!user) {
         throw new Error("User not authenticated");
       }
       
-      const response = await apiRequest("PUT", "/api/user/profile", {
-        id: user.id,
-        ...userData,
-      });
+      // Get the current auth user
+      const { auth } = await import("@/firebase/config");
+      const currentUser = auth.currentUser;
       
-      const updatedUserData = await response.json();
-      setUser(updatedUserData.user);
+      if (!currentUser) {
+        throw new Error("Firebase user not found");
+      }
+      
+      // Convert null walletAddress to empty string if needed
+      const updatedData = { ...userData };
+      if (updatedData.walletAddress === null) {
+        updatedData.walletAddress = '';
+      }
+      
+      // Update user in Firestore
+      const { updateFirestoreUser } = await import("@/firebase/firestore");
+      await updateFirestoreUser(currentUser.uid, updatedData);
+      
+      // Get the updated user data
+      const { getFirestoreUser } = await import("@/firebase/firestore");
+      const updatedUser = await getFirestoreUser(currentUser.uid);
+      
+      setUser(updatedUser);
       
       toast({
         title: "Profile updated successfully",
@@ -192,13 +276,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("User not authenticated");
       }
       
-      const response = await apiRequest("POST", "/api/user/wallet/connect", {
-        userId: user.id,
-        walletAddress,
-      });
+      // Get the current auth user
+      const { auth } = await import("@/firebase/config");
+      const currentUser = auth.currentUser;
       
-      const updatedUserData = await response.json();
-      setUser(updatedUserData.user);
+      if (!currentUser) {
+        throw new Error("Firebase user not found");
+      }
+      
+      // Update user wallet in Firestore
+      const { updateFirestoreUser } = await import("@/firebase/firestore");
+      await updateFirestoreUser(currentUser.uid, { walletAddress });
+      
+      // Get the updated user data
+      const { getFirestoreUser } = await import("@/firebase/firestore");
+      const updatedUser = await getFirestoreUser(currentUser.uid);
+      
+      setUser(updatedUser);
       
       toast({
         title: "Wallet connected successfully",

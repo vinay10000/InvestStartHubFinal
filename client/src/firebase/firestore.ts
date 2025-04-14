@@ -15,7 +15,16 @@ import { firestore } from "./config";
 import { User, Startup, Document, Transaction } from "@shared/schema";
 
 // User CRUD operations
-export const createFirestoreUser = async (userId: string, userData: Omit<User, "password">): Promise<void> => {
+export const createFirestoreUser = async (
+  userId: string, 
+  userData: { 
+    username: string; 
+    email: string; 
+    role: string; 
+    walletAddress: string; 
+    profilePicture?: string;
+  }
+): Promise<void> => {
   await setDoc(doc(firestore, "users", userId), {
     ...userData,
     createdAt: new Date(),
@@ -30,7 +39,16 @@ export const getFirestoreUser = async (userId: string): Promise<any> => {
   return null;
 };
 
-export const updateFirestoreUser = async (userId: string, userData: Partial<User>): Promise<void> => {
+export const updateFirestoreUser = async (
+  userId: string, 
+  userData: Partial<{
+    username: string;
+    email: string;
+    role: string;
+    walletAddress: string;
+    profilePicture?: string;
+  }>
+): Promise<void> => {
   await updateDoc(doc(firestore, "users", userId), userData);
 };
 
