@@ -33,10 +33,24 @@ const FounderDashboard = () => {
 
   const handleCreateStartup = async (startupData: any) => {
     try {
-      await createStartupMutation.mutateAsync({
+      // Make sure all required fields are present and properly formatted
+      const startupPayload = {
         ...startupData,
-        founderId: userId
-      });
+        founderId: userId,
+        // Ensure these fields are present or set defaults
+        category: startupData.category || null,
+        fundingGoal: startupData.fundingGoal || "100000",
+        currentFunding: startupData.currentFunding || "0",
+        logoUrl: startupData.logoUrl || null,
+        websiteUrl: startupData.websiteUrl || null,
+        // Handle empty strings for optional fields
+        upiId: startupData.upiId || null,
+        upiQrCode: startupData.upiQrCode || null,
+      };
+      
+      console.log("Creating startup with data:", startupPayload);
+      
+      await createStartupMutation.mutateAsync(startupPayload);
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error("Error creating startup:", error);
@@ -144,7 +158,7 @@ const FounderDashboard = () => {
                   Create Startup
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[700px] max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Startup</DialogTitle>
                   <DialogDescription>
