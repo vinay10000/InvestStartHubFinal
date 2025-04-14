@@ -44,6 +44,9 @@ function Router() {
         </>
       )}
       
+      {/* ImageKit Test Page */}
+      <Route path="/test-imagekit" component={NotFound} />
+      
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
