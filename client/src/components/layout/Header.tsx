@@ -42,9 +42,23 @@ const Header = () => {
 
   const getDashboardPath = () => {
     if (!user) return "/";
-    // Get role from user object
-    const role = user.customClaims?.role || user.providerData?.[0]?.role || "investor";
-    return role === "founder" ? "/founder/dashboard" : "/investor/dashboard";
+    
+    // First check for role in customClaims (our added property)
+    if (user.customClaims?.role) {
+      console.log("Using role from customClaims:", user.customClaims.role);
+      return user.customClaims.role === "founder" ? "/founder/dashboard" : "/investor/dashboard";
+    }
+    
+    // Fallback to localStorage if available
+    const savedRole = localStorage.getItem('user_role');
+    if (savedRole) {
+      console.log("Using role from localStorage:", savedRole);
+      return savedRole === "founder" ? "/founder/dashboard" : "/investor/dashboard";
+    }
+    
+    // Final fallback
+    console.log("No role found, defaulting to investor");
+    return "/investor/dashboard";
   };
 
   return (
@@ -97,12 +111,12 @@ const Header = () => {
                     <DropdownMenuItem onClick={() => navigate("/transactions")}>
                       <span>Transactions</span>
                     </DropdownMenuItem>
-                    {user.role === "founder" && (
+                    {(user.customClaims?.role === "founder" || localStorage.getItem('user_role') === "founder") && (
                       <DropdownMenuItem onClick={() => navigate("/founder/dashboard")}>
                         <span>My Startups</span>
                       </DropdownMenuItem>
                     )}
-                    {user.role === "investor" && (
+                    {(user.customClaims?.role === "investor" || localStorage.getItem('user_role') === "investor") && (
                       <DropdownMenuItem onClick={() => navigate("/investor/dashboard")}>
                         <span>Discover Startups</span>
                       </DropdownMenuItem>
@@ -185,7 +199,7 @@ const Header = () => {
                               Transactions
                             </span>
                           </Link>
-                          {user.role === "founder" ? (
+                          {(user.customClaims?.role === "founder" || localStorage.getItem('user_role') === "founder") ? (
                             <Link href="/founder/dashboard">
                               <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                                 My Startups

@@ -20,10 +20,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         return;
       }
       
-      // For Firebase auth, extract role from either customClaims or a default value
+      // Get role from user object or localStorage
       const userRole = user.customClaims?.role || 
-                      user.providerData?.[0]?.role || 
-                      'investor'; // Default role
+                       localStorage.getItem('user_role') || 
+                       'investor'; // Default role
       
       // If role-specific route and user doesn't have the required role
       if (requiredRole && userRole !== requiredRole) {
@@ -48,7 +48,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     // For Firebase auth, extract role and check
     if (requiredRole) {
       const userRole = user.customClaims?.role || 
-                      user.providerData?.[0]?.role || 
+                      localStorage.getItem('user_role') || 
                       'investor'; // Default role
       
       if (userRole !== requiredRole) {

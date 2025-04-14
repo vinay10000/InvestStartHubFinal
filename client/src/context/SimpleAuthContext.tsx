@@ -39,7 +39,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = observeAuthState((user) => {
-      setUser(user);
+      if (user) {
+        // Try to retrieve the role from localStorage if available
+        const savedRole = localStorage.getItem('user_role');
+        if (savedRole) {
+          // Enhance the user object with the saved role as a custom claim
+          const enhancedUser = {
+            ...user,
+            customClaims: { role: savedRole }
+          };
+          setUser(enhancedUser);
+        } else {
+          // Default to a role if none is found
+          const enhancedUser = {
+            ...user,
+            customClaims: { role: 'investor' }
+          };
+          setUser(enhancedUser);
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -59,7 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update user profile with display name
       await updateUserProfile(username);
       
-      // Store role and other user data in Firestore (this would be in a separate function)
+      // Store the user's role in localStorage so we can retrieve it later
+      // This is a simple solution until we implement Firestore
+      localStorage.setItem('user_role', role);
+      
+      // Set custom claims in the user object (this is a client-side workaround)
+      if (user) {
+        // @ts-ignore - Add role to the user object
+        user.customClaims = { role };
+        
+        // Update the state with the role included
+        setUser({
+          ...user,
+          customClaims: { role }
+        });
+      }
+      
       console.log(`User role set to: ${role}`);
     } catch (error: any) {
       setError(error.message || "Signup failed");
