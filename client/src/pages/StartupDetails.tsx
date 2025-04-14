@@ -126,8 +126,12 @@ const StartupDetails = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">{name}</h1>
-            <div className="flex items-center mb-2">
+            <div className="flex items-center gap-2 mb-2">
               <Badge className={`${stageBg} ${stageText}`}>{investmentStage}</Badge>
+              <Badge variant="outline" className="font-semibold">
+                <DollarSign className="h-3.5 w-3.5 mr-1" />
+                Goal: {startup.fundingGoalEth || startup.fundingGoal} {startup.fundingGoalEth ? 'ETH' : ''}
+              </Badge>
             </div>
           </div>
           
@@ -183,12 +187,12 @@ const StartupDetails = () => {
               <>
                 <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Invest
+                    <Button size="lg" className="font-semibold">
+                      <DollarSign className="mr-2 h-5 w-5" />
+                      Invest Now
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="sm:max-w-[550px]">
                     <DialogHeader>
                       <DialogTitle>Invest in {name}</DialogTitle>
                       <DialogDescription>

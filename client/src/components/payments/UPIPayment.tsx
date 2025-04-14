@@ -17,6 +17,9 @@ const formSchema = z.object({
     .min(1, "Amount is required")
     .refine(val => !isNaN(parseFloat(val)), "Amount must be a number")
     .refine(val => parseFloat(val) > 0, "Amount must be greater than 0"),
+  fullName: z.string()
+    .min(1, "Full name is required")
+    .min(3, "Full name must be at least 3 characters"),
   referenceId: z.string()
     .min(1, "Reference ID is required")
     .min(6, "Reference ID must be at least 6 characters")
@@ -49,6 +52,7 @@ const UPIPayment = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       amount: "",
+      fullName: "",
       referenceId: ""
     }
   });
@@ -67,14 +71,15 @@ const UPIPayment = ({
     setIsProcessing(true);
     
     try {
-      // Record transaction in our backend
+      // Record transaction in our backend with additional details
       await createTransaction.mutateAsync({
         startupId,
         investorId: user.id,
         amount: values.amount, // Use string directly as our schema expects
         paymentMethod: "upi",
         transactionId: values.referenceId,
-        status: "pending" // Will be verified by admin
+        status: "pending", // Will be verified by admin
+        notes: `UPI Payment by ${values.fullName} with Ref ID: ${values.referenceId}` // Include full name in notes
       });
       
       // Notify user
@@ -261,6 +266,27 @@ const UPIPayment = ({
                   </FormControl>
                   <FormDescription>
                     Enter the exact amount you transferred
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="fullName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name (as it appears in your UPI app)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="e.g., John Smith"
+                      disabled={isProcessing}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Enter your full name as registered in your UPI payment app
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
