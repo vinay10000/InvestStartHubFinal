@@ -61,9 +61,7 @@ const SignIn = () => {
       
       // Redirect to the dashboard route that will handle role-based redirection
       setTimeout(() => {
-        // Access the user's role from localStorage - it should be set in the auth context
-        const userRole = localStorage.getItem('user_role') || 'investor';
-        console.log("Retrieved user role for redirection:", userRole);
+        // After login, we should use the user role directly from Firestore/auth context
         console.log("Redirecting to the dashboard");
         
         // Use the dashboard route which will automatically redirect based on role
@@ -111,9 +109,7 @@ const SignIn = () => {
       
       // Redirect to the dashboard route that will handle role-based redirection
       setTimeout(() => {
-        // After signin, check the role again
-        const userRole = localStorage.getItem('user_role') || 'investor';
-        console.log("Using role for redirection:", userRole);
+        // After login, we should use the user role directly from auth context
         console.log("Redirecting to the dashboard");
         
         // Use the dashboard route which will automatically redirect based on role
