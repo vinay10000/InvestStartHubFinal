@@ -14,15 +14,25 @@ export const useStartups = (userId?: number | string) => {
       refetchOnWindowFocus: false,
       queryFn: async () => {
         try {
-          // Try to get startups from Firestore first
+          // Try to get startups from Supabase first (our primary storage)
+          const { getSupabaseStartups } = await import("@/services/supabase");
+          const supabaseStartups = await getSupabaseStartups();
+          
+          if (supabaseStartups && supabaseStartups.length > 0) {
+            console.log("Retrieved startups from Supabase:", supabaseStartups);
+            return { startups: supabaseStartups };
+          }
+          
+          // If no startups in Supabase, try Firestore
           const { getFirestoreStartups } = await import("@/firebase/firestore");
           const firestoreStartups = await getFirestoreStartups();
           
           if (firestoreStartups && firestoreStartups.length > 0) {
+            console.log("Retrieved startups from Firestore:", firestoreStartups);
             return { startups: firestoreStartups };
           }
           
-          // If no startups in Firestore, fall back to the API
+          // If still no startups, fall back to the API
           const response = await fetch('/api/startups');
           if (!response.ok) {
             throw new Error('Failed to fetch startups');
@@ -31,12 +41,17 @@ export const useStartups = (userId?: number | string) => {
         } catch (error) {
           console.error("Error fetching startups:", error);
           
-          // Fall back to API if Firestore fails
-          const response = await fetch('/api/startups');
-          if (!response.ok) {
-            throw new Error('Failed to fetch startups');
+          // Final fallback to API if everything else fails
+          try {
+            const response = await fetch('/api/startups');
+            if (!response.ok) {
+              throw new Error('Failed to fetch startups');
+            }
+            return response.json();
+          } catch (apiError) {
+            console.error("API error:", apiError);
+            return { startups: [] }; // Return empty array as last resort
           }
-          return response.json();
         }
       }
     });
@@ -63,28 +78,46 @@ export const useStartups = (userId?: number | string) => {
       refetchOnWindowFocus: false,
       retry: 1,
       queryFn: async () => {
-        // Check if we're using a string ID (Firebase) or number ID (local storage)
+        try {
+          // Try to get startup from Supabase first (primary storage)
+          const { getSupabaseStartupById } = await import("@/services/supabase");
+          const supabaseStartup = await getSupabaseStartupById(startupId);
+          
+          if (supabaseStartup) {
+            console.log("Retrieved startup from Supabase:", supabaseStartup);
+            return { startup: supabaseStartup };
+          }
+        } catch (supabaseError) {
+          console.error("Error fetching startup from Supabase:", supabaseError);
+          // Continue to fallbacks if Supabase fails
+        }
+        
+        // If not found in Supabase or error occurred, try Firestore as fallback
         if (typeof startupId === 'string' && startupId.toString().length > 10) {
-          // Use Firestore to get the startup
           try {
             const { getFirestoreStartup } = await import("@/firebase/firestore");
             const startup = await getFirestoreStartup(startupId);
-            if (!startup) {
-              throw new Error("Startup not found");
+            if (startup) {
+              console.log("Retrieved startup from Firestore:", startup);
+              return { startup };
             }
-            return { startup };
-          } catch (error) {
-            console.error("Error fetching startup from Firestore:", error);
-            throw error;
+          } catch (firestoreError) {
+            console.error("Error fetching startup from Firestore:", firestoreError);
+            // Continue to API fallback if Firestore also fails
           }
         }
         
-        // Fall back to API for backward compatibility
-        const response = await fetch(`/api/startups/${startupId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch startup");
+        // Final fallback to API for backward compatibility
+        try {
+          const response = await fetch(`/api/startups/${startupId}`);
+          if (!response.ok) {
+            throw new Error("Failed to fetch startup");
+          }
+          return response.json();
+        } catch (apiError) {
+          console.error("API error fetching startup:", apiError);
+          throw new Error("Startup not found in any storage");
         }
-        return response.json();
       }
     });
   };
@@ -106,6 +139,11 @@ export const useStartups = (userId?: number | string) => {
         websiteUrl?: string | null;
         upiId?: string | null;
         upiQrCode?: string | null;
+        documents?: {
+          pitchDeck?: string | null;
+          financialReport?: string | null;
+          investorAgreement?: string | null;
+        };
       }) => {
         // Convert any nulls to empty strings to avoid type errors
         const sanitizedData = {
@@ -118,31 +156,53 @@ export const useStartups = (userId?: number | string) => {
           websiteUrl: startupData.websiteUrl || null,
           upiId: startupData.upiId || null,
           upiQrCode: startupData.upiQrCode || null,
+          documents: startupData.documents || null,
         };
         
-        // Check if we're using Firebase with a string ID
-        if (typeof sanitizedData.founderId === 'string' && sanitizedData.founderId.toString().length > 10) {
-          // Use Firestore directly
-          const { createFirestoreStartup } = await import("@/firebase/firestore");
-          const startupId = await createFirestoreStartup(sanitizedData);
-          return { id: startupId, ...sanitizedData };
+        try {
+          // First try to save to Supabase (our new primary storage)
+          const { createSupabaseStartup } = await import("@/services/supabase");
+          const supabaseStartup = await createSupabaseStartup(sanitizedData);
+          
+          // If successful, return the new startup
+          if (supabaseStartup) {
+            console.log("Startup created in Supabase:", supabaseStartup);
+            return supabaseStartup;
+          }
+        } catch (supabaseError) {
+          console.error("Supabase startup creation failed, falling back to alternatives:", supabaseError);
+          
+          // If Supabase fails, try Firebase as a fallback
+          if (typeof sanitizedData.founderId === 'string' && sanitizedData.founderId.toString().length > 10) {
+            try {
+              const { createFirestoreStartup } = await import("@/firebase/firestore");
+              const startupId = await createFirestoreStartup(sanitizedData);
+              return { id: startupId, ...sanitizedData };
+            } catch (firestoreError) {
+              console.error("Firestore startup creation also failed:", firestoreError);
+              // Let it fall through to the API fallback
+            }
+          }
         }
         
-        // Fall back to API for backward compatibility
+        // Final fallback to API
         return apiRequest("/api/startups", {
           method: "POST",
           body: JSON.stringify(sanitizedData),
         });
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
         // Invalidate startups query to refetch data
         queryClient.invalidateQueries({ queryKey: ["/api/startups"] });
         queryClient.invalidateQueries({ queryKey: ["firebase/startups"] });
+        queryClient.invalidateQueries({ queryKey: ["supabase/startups"] });
         
         toast({
           title: "Startup Created",
           description: "Your startup has been registered successfully",
         });
+        
+        console.log("Startup created successfully:", data);
       },
       onError: (error: any) => {
         console.error("Error creating startup:", error);
@@ -230,13 +290,13 @@ export const useStartups = (userId?: number | string) => {
         const documentData = {
           name,
           type,
-          startupId,
+          startupId: typeof startupId === 'string' ? startupId : Number(startupId),
           fileUrl: uploadResponse.url,
           fileId: uploadResponse.fileId, // Store ImageKit fileId for future reference
           fileName: cleanFileName,
           mimeType: file.type,
           fileSize: file.size,
-        } as InsertDocument;
+        } as unknown as InsertDocument;
         
         // Check if we're using a string ID (Firebase) or number ID (local storage)
         if (typeof startupId === 'string' && startupId.toString().length > 10) {
@@ -341,29 +401,48 @@ export const useStartups = (userId?: number | string) => {
       enabled: !!startupId,
       refetchOnWindowFocus: false,
       queryFn: async () => {
-        // Check if we're using a string ID (Firebase) or number ID (local storage)
+        try {
+          // Try Supabase first (primary storage)
+          const { getSupabaseDocumentsByStartupId } = await import("@/services/supabase");
+          const supabaseDocuments = await getSupabaseDocumentsByStartupId(startupId);
+          
+          if (supabaseDocuments && supabaseDocuments.length > 0) {
+            console.log("Retrieved documents from Supabase:", supabaseDocuments);
+            return { documents: supabaseDocuments };
+          }
+        } catch (supabaseError) {
+          console.error("Error fetching documents from Supabase:", supabaseError);
+          // Continue to fallbacks if Supabase fails
+        }
+        
+        // If not found in Supabase or error occurred, try Firestore
         if (typeof startupId === 'string' && startupId.toString().length > 10) {
-          // Use Firestore to get the documents
           try {
             const { getFirestoreDocumentsByStartupId } = await import("@/firebase/firestore");
-            const documents = await getFirestoreDocumentsByStartupId(startupId);
-            return { documents };
-          } catch (error) {
-            console.error("Error fetching documents from Firestore:", error);
-            return { documents: [] };
+            const firestoreDocuments = await getFirestoreDocumentsByStartupId(startupId);
+            
+            if (firestoreDocuments && firestoreDocuments.length > 0) {
+              console.log("Retrieved documents from Firestore:", firestoreDocuments);
+              return { documents: firestoreDocuments };
+            }
+          } catch (firestoreError) {
+            console.error("Error fetching documents from Firestore:", firestoreError);
+            // Continue to API fallback if Firestore also fails
           }
         }
         
-        // Fall back to API for backward compatibility
+        // Final fallback to API
         try {
           const response = await fetch(`/api/startups/${startupId}/documents`);
           if (!response.ok) {
             throw new Error("Failed to fetch documents");
           }
-          return response.json();
-        } catch (error) {
-          console.error("Error fetching documents:", error);
-          return { documents: [] };
+          const apiDocuments = await response.json();
+          console.log("Retrieved documents from API:", apiDocuments);
+          return apiDocuments;
+        } catch (apiError) {
+          console.error("Error fetching documents from API:", apiError);
+          return { documents: [] }; // Return empty array if all methods fail
         }
       }
     });
