@@ -49,8 +49,8 @@ const StartupDetails = () => {
     ? documentsData.documents as any[] 
     : [];
 
-  // Handle both camelCase (from schema) and snake_case (from DB) property names
-  const founderId = startup?.founderId || startup?.founder_id;
+  // Use snake_case property names to match database fields
+  const founderId = startup?.founder_id;
   const isFounder = user?.id === founderId;
   const isInvestor = user?.role === "investor";
 
@@ -125,14 +125,14 @@ const StartupDetails = () => {
     );
   }
 
-  // Handle both camelCase and snake_case property access
+  // Use snake_case property access to match database fields
   const name = startup.name;
   const description = startup.description;
   const pitch = startup.pitch;
-  const investmentStage = startup.investmentStage || startup.investment_stage;
-  const upiId = startup.upiId || startup.upi_id;
-  const upiQrCode = startup.upiQrCode || startup.upi_qr_code;
-  const fundingGoal = startup.fundingGoal || startup.funding_goal;
+  const investmentStage = startup.investment_stage;
+  const upiId = startup.upi_id;
+  const upiQrCode = startup.upi_qr_code;
+  const fundingGoal = startup.funding_goal;
   
   const { bg: stageBg, text: stageText } = getInvestmentStageColor(investmentStage);
 
@@ -224,7 +224,7 @@ const StartupDetails = () => {
                       
                       <TabsContent value="metamask">
                         <MetaMaskPayment 
-                          startupId={startup.id}
+                          startupId={Number(startup.id)}
                           startupName={startup.name}
                           onPaymentComplete={() => setIsInvestDialogOpen(false)}
                         />
@@ -232,7 +232,7 @@ const StartupDetails = () => {
                       
                       <TabsContent value="upi">
                         <UPIPayment 
-                          startupId={startup.id}
+                          startupId={Number(startup.id)}
                           startupName={startup.name}
                           upiId={upiId || ""}
                           upiQrCode={upiQrCode || ""}
