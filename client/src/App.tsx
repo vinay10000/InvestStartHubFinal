@@ -26,7 +26,8 @@ function AutoRedirect() {
 
   useEffect(() => {
     if (!loading && user) {
-      const userRole = localStorage.getItem('user_role') || 'investor';
+      // Use user.role directly from the auth context instead of localStorage
+      const userRole = user.role || 'investor';
       
       if (userRole === 'founder') {
         console.log("Auto-redirecting to founder dashboard");

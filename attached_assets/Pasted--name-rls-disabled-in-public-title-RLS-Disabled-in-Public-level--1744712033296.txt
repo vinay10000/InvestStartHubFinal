@@ -1,0 +1,110 @@
+[
+  {
+    "name": "rls_disabled_in_public",
+    "title": "RLS Disabled in Public",
+    "level": "ERROR",
+    "facing": "EXTERNAL",
+    "categories": [
+      "SECURITY"
+    ],
+    "description": "Detects cases where row level security (RLS) has not been enabled on tables in schemas exposed to PostgREST",
+    "detail": "Table \\`public.users\\` is public, but RLS has not been enabled.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+    "metadata": {
+      "name": "users",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "rls_disabled_in_public_public_users"
+  },
+  {
+    "name": "rls_disabled_in_public",
+    "title": "RLS Disabled in Public",
+    "level": "ERROR",
+    "facing": "EXTERNAL",
+    "categories": [
+      "SECURITY"
+    ],
+    "description": "Detects cases where row level security (RLS) has not been enabled on tables in schemas exposed to PostgREST",
+    "detail": "Table \\`public.startups\\` is public, but RLS has not been enabled.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+    "metadata": {
+      "name": "startups",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "rls_disabled_in_public_public_startups"
+  },
+  {
+    "name": "rls_disabled_in_public",
+    "title": "RLS Disabled in Public",
+    "level": "ERROR",
+    "facing": "EXTERNAL",
+    "categories": [
+      "SECURITY"
+    ],
+    "description": "Detects cases where row level security (RLS) has not been enabled on tables in schemas exposed to PostgREST",
+    "detail": "Table \\`public.documents\\` is public, but RLS has not been enabled.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+    "metadata": {
+      "name": "documents",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "rls_disabled_in_public_public_documents"
+  },
+  {
+    "name": "rls_disabled_in_public",
+    "title": "RLS Disabled in Public",
+    "level": "ERROR",
+    "facing": "EXTERNAL",
+    "categories": [
+      "SECURITY"
+    ],
+    "description": "Detects cases where row level security (RLS) has not been enabled on tables in schemas exposed to PostgREST",
+    "detail": "Table \\`public.transactions\\` is public, but RLS has not been enabled.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+    "metadata": {
+      "name": "transactions",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "rls_disabled_in_public_public_transactions"
+  },
+  {
+    "name": "rls_disabled_in_public",
+    "title": "RLS Disabled in Public",
+    "level": "ERROR",
+    "facing": "EXTERNAL",
+    "categories": [
+      "SECURITY"
+    ],
+    "description": "Detects cases where row level security (RLS) has not been enabled on tables in schemas exposed to PostgREST",
+    "detail": "Table \\`public.chats\\` is public, but RLS has not been enabled.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+    "metadata": {
+      "name": "chats",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "rls_disabled_in_public_public_chats"
+  },
+  {
+    "name": "rls_disabled_in_public",
+    "title": "RLS Disabled in Public",
+    "level": "ERROR",
+    "facing": "EXTERNAL",
+    "categories": [
+      "SECURITY"
+    ],
+    "description": "Detects cases where row level security (RLS) has not been enabled on tables in schemas exposed to PostgREST",
+    "detail": "Table \\`public.messages\\` is public, but RLS has not been enabled.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+    "metadata": {
+      "name": "messages",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "rls_disabled_in_public_public_messages"
+  }
+]
