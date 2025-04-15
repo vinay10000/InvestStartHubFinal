@@ -24,9 +24,30 @@ const FounderDashboard = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
+  const [myStartups, setMyStartups] = useState<any[]>([]); // Store startups in state
 
   // Wait for auth to resolve before making data queries
   const { data: startupsData, isLoading: startupsLoading } = useFounderStartups();
+  
+  // Load startups from Firebase if using Firebase auth
+  useEffect(() => {
+    const fetchStartups = async () => {
+      if (userId && typeof userId === 'string' && userId.length > 20) {
+        try {
+          const { getFirestoreStartupsByFounderId } = await import('@/firebase/firestore');
+          const founderStartups = await getFirestoreStartupsByFounderId(userId);
+          console.log("Fetched founder startups from Firestore:", founderStartups);
+          setMyStartups(founderStartups);
+        } catch (error) {
+          console.error("Error fetching startups from Firestore:", error);
+        }
+      }
+    };
+    
+    if (userId) {
+      fetchStartups();
+    }
+  }, [userId]);
   
   // Convert to a number for API call
   const userIdNumber = userId ? (typeof userId === 'string' ? 
@@ -79,31 +100,41 @@ const FounderDashboard = () => {
       // Use Firebase directly if we have a firebase auth user
       if (typeof userId === 'string' && userId.length > 20) {
         // Import firebase operations dynamically
-        const { createFirestoreStartup } = await import('@/firebase/firestore');
+        const { createFirestoreStartup, getFirestoreStartup } = await import('@/firebase/firestore');
         const startupId = await createFirestoreStartup(startupPayload);
         console.log('Startup created in Firestore with ID:', startupId);
         
-        // Redirect to the startup details page
+        // Fetch the newly created startup and add it to our local state
+        try {
+          const startupData = await getFirestoreStartup(startupId);
+          if (startupData) {
+            setMyStartups(prev => [...prev, startupData]);
+            console.log("Added new startup to local state:", startupData);
+          }
+        } catch (error) {
+          console.error("Error fetching new startup:", error);
+        }
+        
         setIsCreateDialogOpen(false);
-        // Give a moment for the data to be saved to Firestore
-        setTimeout(() => {
-          window.location.href = `/startup/${startupId}`;
-        }, 1000);
       } else {
         // Use regular API for local testing
         const result = await createStartupMutation.mutateAsync(startupPayload);
-        setIsCreateDialogOpen(false);
         
-        if (result && result.startup && result.startup.id) {
-          window.location.href = `/startup/${result.startup.id}`;
+        // Add the startup to local state immediately
+        if (result) {
+          setMyStartups(prev => [...prev, result]);
         }
+        
+        setIsCreateDialogOpen(false);
       }
     } catch (error) {
       console.error("Error creating startup:", error);
     }
   };
 
-  const startups = startupsData?.startups || [];
+  // Combine startups from both sources (Firebase and API)
+  const apiStartups = startupsData?.startups || [];
+  const combinedStartups = myStartups.length > 0 ? myStartups : apiStartups;
   const transactions = transactionsData?.transactions || [];
 
   // Calculate metrics safely
@@ -138,7 +169,7 @@ const FounderDashboard = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Startups</p>
                 <h3 className="text-2xl font-bold">
-                  {startupsLoading ? <Skeleton className="h-8 w-16" /> : startups.length}
+                  {startupsLoading && myStartups.length === 0 ? <Skeleton className="h-8 w-16" /> : combinedStartups.length}
                 </h3>
               </div>
             </div>
@@ -217,7 +248,7 @@ const FounderDashboard = () => {
             </Dialog>
           </div>
 
-          {startupsLoading ? (
+          {startupsLoading && myStartups.length === 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
                 <Card key={i}>
@@ -233,7 +264,7 @@ const FounderDashboard = () => {
                 </Card>
               ))}
             </div>
-          ) : startups.length === 0 ? (
+          ) : combinedStartups.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center p-8">
                 <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
@@ -247,7 +278,7 @@ const FounderDashboard = () => {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {startups.map((startup) => (
+              {combinedStartups.map((startup) => (
                 <StartupCard key={startup.id} startup={startup} view="founder" />
               ))}
             </div>
@@ -257,7 +288,7 @@ const FounderDashboard = () => {
         <TabsContent value="documents">
           <h2 className="text-2xl font-bold mb-6">Startup Documents</h2>
           
-          {startupsLoading ? (
+          {startupsLoading && myStartups.length === 0 ? (
             <Card>
               <CardContent className="p-6">
                 <Skeleton className="h-12 w-3/4 mb-4" />
@@ -266,7 +297,7 @@ const FounderDashboard = () => {
                 <Skeleton className="h-8 w-full" />
               </CardContent>
             </Card>
-          ) : startups.length === 0 ? (
+          ) : combinedStartups.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center p-8">
                 <FileText className="h-16 w-16 text-muted-foreground mb-4" />
@@ -290,7 +321,7 @@ const FounderDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {startups.map((startup) => (
+                    {combinedStartups.map((startup) => (
                       <Card 
                         key={startup.id} 
                         className={`cursor-pointer transition-all ${selectedStartupId === startup.id ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
