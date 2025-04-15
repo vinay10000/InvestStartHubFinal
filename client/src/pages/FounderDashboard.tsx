@@ -44,17 +44,39 @@ const FounderDashboard = () => {
   // Wait for auth to resolve before making data queries
   const { data: startupsData, isLoading: startupsLoading } = useFounderStartups();
   
-  // Load startups from Firebase if using Firebase auth
+  // Load startups from Supabase directly
   useEffect(() => {
     const fetchStartups = async () => {
-      if (userId && typeof userId === 'string' && userId.length > 20) {
+      if (userId) {
         try {
-          const { getFirestoreStartupsByFounderId } = await import('@/firebase/firestore');
-          const founderStartups = await getFirestoreStartupsByFounderId(userId);
-          console.log("Fetched founder startups from Firestore:", founderStartups);
-          setMyStartups(founderStartups);
+          const { getStartupsByFounderId } = await import('@/services/supabase');
+          const founderStartups = await getStartupsByFounderId(userId.toString());
+          console.log("Fetched founder startups from Supabase:", founderStartups);
+          
+          // Convert startups to the format expected by the UI
+          const formattedStartups = founderStartups.map(startup => {
+            return {
+              id: startup.id,
+              name: startup.name,
+              description: startup.description,
+              category: startup.category,
+              investment_stage: startup.investment_stage,
+              investmentStage: startup.investment_stage,
+              founder_id: startup.founder_id,
+              founderId: startup.founder_id,
+              logo_url: startup.logo_url,
+              logoUrl: startup.logo_url,
+              upi_qr_code: startup.upi_qr_code,
+              upiQrCode: startup.upi_qr_code,
+              pitch: startup.pitch,
+              funding_goal: startup.funding_goal,
+              upi_id: startup.upi_id
+            } as FirebaseStartup;
+          });
+          
+          setMyStartups(formattedStartups);
         } catch (error) {
-          console.error("Error fetching startups from Firestore:", error);
+          console.error("Error fetching startups from Supabase:", error);
         }
       }
     };
@@ -130,7 +152,7 @@ const FounderDashboard = () => {
           website_url: startupPayload.websiteUrl,
           upi_id: startupPayload.upiId,
           upi_qr_code: startupPayload.upiQrCode,
-          founder_id: userId
+          founder_id: userId.toString()
         };
         
         console.log('Creating startup in Supabase with data:', supabasePayload);
@@ -192,21 +214,25 @@ const FounderDashboard = () => {
     }[];
   }
   
-  // Transform API startups to match Firebase format
-  const apiStartups = startupsData?.startups 
-    ? startupsData.startups.map(startup => {
+  // Transform API startups to match expected format
+  const apiStartups = Array.isArray(startupsData)
+    ? startupsData.map(startup => {
         const typedStartup: FirebaseStartup = {
           id: startup.id.toString(),
           name: startup.name,
           description: startup.description,
           category: startup.category,
-          investmentStage: startup.investmentStage,
+          investmentStage: startup.investment_stage,
           investment_stage: startup.investment_stage,
-          founderId: startup.founderId || startup.founder_id,
-          founder_id: startup.founder_id || startup.founderId,
-          logoUrl: startup.logoUrl || startup.logo_url,
-          upiQrCode: startup.upiQrCode || startup.upi_qr_code,
-          ...startup
+          founderId: startup.founder_id,
+          founder_id: startup.founder_id,
+          logoUrl: startup.logo_url,
+          logo_url: startup.logo_url,
+          upiQrCode: startup.upi_qr_code,
+          upi_qr_code: startup.upi_qr_code,
+          pitch: startup.pitch,
+          funding_goal: startup.funding_goal,
+          upi_id: startup.upi_id
         };
         return typedStartup;
       })
