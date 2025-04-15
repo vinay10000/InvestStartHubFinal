@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,45 +20,84 @@ const InvestorDashboard = () => {
   const [filter, setFilter] = useState("");
   const [stage, setStage] = useState("all");
   const [activeTab, setActiveTab] = useState("discover");
+  const [firebaseStartups, setFirebaseStartups] = useState<any[]>([]);
+  const [firebaseTransactions, setFirebaseTransactions] = useState<any[]>([]);
 
+  // Load startups and transactions from Firebase if using Firebase auth
+  useEffect(() => {
+    const fetchAllStartups = async () => {
+      try {
+        const { getFirestoreStartups } = await import('@/firebase/firestore');
+        const startups = await getFirestoreStartups();
+        console.log("Fetched startups from Firestore:", startups);
+        setFirebaseStartups(startups);
+      } catch (error) {
+        console.error("Error fetching startups from Firestore:", error);
+      }
+    };
+    
+    const fetchTransactions = async () => {
+      if (userId && typeof userId === 'string' && userId.length > 20) {
+        try {
+          const { getFirestoreTransactionsByInvestorId } = await import('@/firebase/firestore');
+          const transactions = await getFirestoreTransactionsByInvestorId(userId);
+          console.log("Fetched transactions from Firestore:", transactions);
+          setFirebaseTransactions(transactions);
+        } catch (error) {
+          console.error("Error fetching transactions from Firestore:", error);
+        }
+      }
+    };
+    
+    fetchAllStartups();
+    fetchTransactions();
+  }, [userId]);
+  
   // Only fetch transactions when we have a valid userId
   const { data: startupsData, isLoading: startupsLoading } = useAllStartups();
   const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByInvestorId(
     userId && typeof userId === 'string' && userId.length > 0 ? userId : undefined
   );
   
-  const startups = startupsData?.startups || [];
-  const transactions = transactionsData?.transactions || [];
+  // Combine startups and transactions from both sources (Firebase and API)
+  const apiStartups = startupsData?.startups || [];
+  const apiTransactions = transactionsData?.transactions || [];
+  
+  const combinedStartups = firebaseStartups.length > 0 ? firebaseStartups : apiStartups;
+  const combinedTransactions = firebaseTransactions.length > 0 ? firebaseTransactions : apiTransactions;
 
   // Calculate metrics safely using memoization
   const totalInvested = useMemo(() => {
-    return transactions
+    return combinedTransactions
       .filter(t => t.status === "completed")
       .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-  }, [transactions]);
+  }, [combinedTransactions]);
   
   // Calculate unique startups invested in without using a Set iterator
   const investedStartups = useMemo(() => {
     const startupIds: Record<string, boolean> = {};
-    transactions.forEach(t => {
-      if (t.startupId) {
-        const id = String(t.startupId);
+    combinedTransactions.forEach(t => {
+      if (t.startupId || t.startup_id) {
+        const id = String(t.startupId || t.startup_id);
         startupIds[id] = true;
       }
     });
     return Object.keys(startupIds).length;
-  }, [transactions]);
+  }, [combinedTransactions]);
 
   // Filter startups
-  const filteredStartups = startups.filter(startup => {
+  const filteredStartups = combinedStartups.filter(startup => {
     const matchesFilter = 
       filter === "" || 
       startup.name.toLowerCase().includes(filter.toLowerCase()) || 
       startup.description.toLowerCase().includes(filter.toLowerCase());
     
+    // Handle different field names between Firebase and API
+    const investmentStage = startup.investmentStage || startup.investment_stage || '';
+    
     const matchesStage = 
       stage === "all" || 
-      startup.investmentStage.toLowerCase() === stage.toLowerCase();
+      investmentStage.toLowerCase() === stage.toLowerCase();
     
     return matchesFilter && matchesStage;
   });
@@ -77,7 +116,7 @@ const InvestorDashboard = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Invested</p>
                 <h3 className="text-2xl font-bold">
-                  {transactionsLoading ? <Skeleton className="h-8 w-20" /> : `$${totalInvested.toFixed(2)}`}
+                  {transactionsLoading && firebaseTransactions.length === 0 ? <Skeleton className="h-8 w-20" /> : `$${totalInvested.toFixed(2)}`}
                 </h3>
               </div>
             </div>
@@ -136,7 +175,7 @@ const InvestorDashboard = () => {
             </Select>
           </div>
 
-          {startupsLoading ? (
+          {startupsLoading && firebaseStartups.length === 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
                 <Card key={i}>
@@ -171,7 +210,7 @@ const InvestorDashboard = () => {
         
         <TabsContent value="investments">
           <h2 className="text-2xl font-bold mb-6">My Investments</h2>
-          <TransactionList transactions={transactions} isLoading={transactionsLoading} />
+          <TransactionList transactions={combinedTransactions} isLoading={transactionsLoading && firebaseTransactions.length === 0} />
         </TabsContent>
       </Tabs>
     </div>
