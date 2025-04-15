@@ -39,6 +39,10 @@ export const documents = pgTable("documents", {
   name: text("name").notNull(),
   type: text("type").notNull(), // "pitch_deck", "financial_report", "investor_agreement", "risk_disclosure"
   fileUrl: text("file_url").notNull(),
+  fileId: text("file_id"),
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  fileSize: integer("file_size"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
