@@ -112,63 +112,60 @@ const FounderDashboard = () => {
       
       console.log("Creating startup with data:", startupPayload);
       
-      // Use Firebase directly if we have a firebase auth user
-      if (typeof userId === 'string' && userId.length > 20) {
-        // Import firebase operations dynamically
-        const { createFirestoreStartup, getFirestoreStartup } = await import('@/firebase/firestore');
-        const startupId = await createFirestoreStartup(startupPayload);
-        console.log('Startup created in Firestore with ID:', startupId);
+      // Use Supabase for all users - this is our primary storage now
+      try {
+        const { createStartup } = await import('@/services/supabase');
         
-        // Fetch the newly created startup and add it to our local state
-        try {
-          const startupData = await getFirestoreStartup(startupId);
-          if (startupData) {
-            // Ensure the startup data matches our FirebaseStartup type
-            const typedStartupData: FirebaseStartup = {
-              id: startupData.id,
-              name: startupData.name,
-              description: startupData.description,
-              category: startupData.category || null,
-              investment_stage: startupData.investment_stage || startupData.investmentStage,
-              investmentStage: startupData.investmentStage || startupData.investment_stage,
-              founderId: startupData.founderId || startupData.founder_id,
-              founder_id: startupData.founder_id || startupData.founderId,
-              logoUrl: startupData.logoUrl || startupData.logo_url,
-              upiQrCode: startupData.upiQrCode || startupData.upi_qr_code,
-              ...startupData
-            };
-            
-            setMyStartups(prev => [...prev, typedStartupData]);
-            console.log("Added new startup to local state:", typedStartupData);
-          }
-        } catch (error) {
-          console.error("Error fetching new startup:", error);
-        }
+        // Convert the payload to match Supabase format
+        const supabasePayload = {
+          name: startupPayload.name,
+          description: startupPayload.description,
+          pitch: startupPayload.pitch || "",
+          investment_stage: startupPayload.investmentStage,
+          category: startupPayload.category,
+          funding_goal: startupPayload.fundingGoal,
+          funding_goal_eth: startupPayload.fundingGoalEth,
+          current_funding: startupPayload.currentFunding || "0",
+          logo_url: startupPayload.logoUrl,
+          website_url: startupPayload.websiteUrl,
+          upi_id: startupPayload.upiId,
+          upi_qr_code: startupPayload.upiQrCode,
+          founder_id: userId
+        };
         
-        setIsCreateDialogOpen(false);
-      } else {
-        // Use regular API for local testing
-        const result = await createStartupMutation.mutateAsync(startupPayload);
+        console.log('Creating startup in Supabase with data:', supabasePayload);
+        const result = await createStartup(supabasePayload);
         
-        // Add the startup to local state immediately
         if (result) {
-          // Convert API result to FirebaseStartup type
+          console.log('Startup created in Supabase with ID:', result.id);
+          
+          // Convert to a format compatible with our UI components
           const typedStartupData: FirebaseStartup = {
-            id: result.id.toString(),
+            id: result.id,
             name: result.name,
             description: result.description,
             category: result.category,
-            investmentStage: result.investmentStage,
-            founderId: result.founderId,
-            logoUrl: result.logoUrl,
-            upiQrCode: result.upiQrCode,
-            ...result
+            investment_stage: result.investment_stage,
+            investmentStage: result.investment_stage,
+            founder_id: result.founder_id,
+            founderId: result.founder_id,
+            logo_url: result.logo_url,
+            logoUrl: result.logo_url,
+            upi_qr_code: result.upi_qr_code,
+            upiQrCode: result.upi_qr_code,
+            pitch: result.pitch,
+            funding_goal: result.funding_goal,
+            upi_id: result.upi_id
           };
           
+          // Add to local state for immediate UI update
           setMyStartups(prev => [...prev, typedStartupData]);
+          console.log("Added new startup to local state:", typedStartupData);
         }
         
         setIsCreateDialogOpen(false);
+      } catch (error) {
+        console.error("Error creating startup in Supabase:", error);
       }
     } catch (error) {
       console.error("Error creating startup:", error);
