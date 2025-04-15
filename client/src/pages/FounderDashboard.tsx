@@ -9,6 +9,7 @@ import { Plus, Building2, FileText, DollarSign, Users } from "lucide-react";
 import StartupForm from "@/components/startups/StartupForm";
 import StartupCard from "@/components/startups/StartupCard";
 import DocumentUpload from "@/components/startups/DocumentUpload";
+import DocumentUploadSection from "@/components/startups/DocumentUploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";

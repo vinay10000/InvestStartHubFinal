@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getInvestmentStageColor } from "@/lib/utils";
 import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode } from "lucide-react";
 import DocumentUpload from "@/components/startups/DocumentUpload";
+import DocumentViewer from "@/components/startups/DocumentViewer";
 import StartupForm from "@/components/startups/StartupForm";
 import MetaMaskPayment from "@/components/payments/MetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
@@ -317,74 +318,56 @@ const StartupDetails = () => {
           </Card>
         )}
 
-        <h2 className="text-2xl font-bold mb-4">Documents</h2>
-        {documentsLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
-            ))}
-          </div>
-        ) : documents.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center p-8">
-              <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium mb-2">No documents yet</h3>
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Documents
+              </CardTitle>
               {isFounder && (
-                <p className="text-muted-foreground text-center mb-4">Upload documents to share with potential investors</p>
+                <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Document
+                </Button>
               )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {documents.map((document: any) => (
-              <Card key={document.id} className="overflow-hidden">
-                <CardHeader className="p-4">
-                  <CardTitle className="text-lg">{document.name}</CardTitle>
-                  <CardDescription>
-                    {document.type === "pitch_deck" && "Pitch Deck"}
-                    {document.type === "financial_report" && "Financial Report"}
-                    {document.type === "investor_agreement" && "Investor Agreement / Terms Sheet"}
-                    {document.type === "risk_disclosure" && "Risk Disclosure"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="flex flex-col space-y-2">
-                    <a 
-                      href={document.fileUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-primary hover:text-primary-600"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      View Document
-                    </a>
-                    <a 
-                      href={document.fileUrl} 
-                      download={document.name}
-                      className="inline-flex items-center text-primary hover:text-primary-600"
-                    >
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className="mr-2 h-4 w-4"
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                      </svg>
-                      Download
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+            </div>
+            <CardDescription>
+              Essential documents for investor due diligence
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {documentsLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-6 text-center">
+                <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-medium mb-2">No documents available</h3>
+                <p className="text-muted-foreground text-center">
+                  {isFounder 
+                    ? "Upload key documents like pitch deck and financial reports to share with potential investors." 
+                    : "The founder hasn't uploaded any documents yet."}
+                </p>
+                {isFounder && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setIsUploadDialogOpen(true)}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Upload First Document
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <DocumentViewer documents={documents} isLoading={false} />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
