@@ -1,41 +1,117 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import documentService from '../services/documentService';
-import { Document } from '@shared/schema';
+import { useState } from 'react';
+import { useQuery, useMutation, QueryClient } from '@tanstack/react-query';
+import * as documentService from '@/services/documentService';
+import * as imagekit from '@/services/imagekit';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient } from '@/lib/queryClient';
 
+// Define document types
+export type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure';
+
+// Hook for document operations
 export function useDocuments() {
-  const queryClient = useQueryClient();
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
-  // Get documents by startup ID
-  const useStartupDocuments = (startupId?: number | string) => {
+  // Get documents for a specific startup
+  const getDocumentsByStartupId = (startupId: string | number | undefined) => {
     return useQuery({
-      queryKey: ['documents', 'startup', startupId],
-      queryFn: () => startupId ? documentService.getStartupDocuments(startupId) : Promise.resolve([]),
+      queryKey: ['/api/startups/documents', startupId],
+      queryFn: () => startupId ? documentService.getDocumentsByStartupId(startupId) : { documents: [] },
       enabled: !!startupId,
     });
   };
 
-  // Upload document
-  const useUploadDocument = () => {
-    return useMutation({
-      mutationFn: ({ 
-        file, 
-        documentType, 
-        startupId 
-      }: { 
-        file: File; 
-        documentType: 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure'; 
-        startupId: number | string 
-      }) => documentService.uploadDocument(file, documentType, startupId),
-      onSuccess: (_, variables) => {
-        queryClient.invalidateQueries({ queryKey: ['documents', 'startup', variables.startupId] });
-      },
-    });
+  // Upload a document file
+  const uploadDocumentFile = async ({
+    startupId,
+    documentType,
+    file,
+    name
+  }: {
+    startupId: string | number;
+    documentType: DocumentType;
+    file: File; 
+    name: string;
+  }) => {
+    try {
+      setIsUploading(true);
+      
+      // 1. Upload file to ImageKit
+      const parsedStartupId = typeof startupId === 'string' ? parseInt(startupId) : startupId;
+      const uploadResult = await imagekit.uploadStartupDocument(
+        parsedStartupId,
+        documentType,
+        file
+      );
+      
+      // 2. Create document record in Supabase
+      const document = await documentService.createDocument({
+        startupId,
+        type: documentType,
+        name: name || file.name,
+        fileUrl: uploadResult.url,
+        fileId: uploadResult.fileId,
+        fileName: uploadResult.fileName,
+        mimeType: uploadResult.mimeType,
+        fileSize: uploadResult.fileSize
+      });
+      
+      // 3. Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/startups/documents', startupId] });
+      
+      toast({
+        title: 'Document uploaded',
+        description: `${name || file.name} has been uploaded successfully.`,
+      });
+      
+      return document;
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'There was an error uploading your document. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Delete a document
+  const deleteDocument = async (documentId: string | number, fileUrl: string) => {
+    try {
+      // 1. Delete file from ImageKit
+      await imagekit.deleteFile(fileUrl);
+      
+      // 2. Delete record from Supabase
+      await documentService.deleteDocument(documentId);
+      
+      // 3. Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/startups/documents'] });
+      
+      toast({
+        title: 'Document deleted',
+        description: 'The document has been deleted successfully.',
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: 'Delete failed',
+        description: 'There was an error deleting your document. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   return {
-    useStartupDocuments,
-    useUploadDocument,
+    isUploading,
+    getDocumentsByStartupId,
+    uploadDocumentFile,
+    deleteDocument,
   };
 }
-
-export default useDocuments;

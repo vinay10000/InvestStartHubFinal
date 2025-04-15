@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useStartups } from "@/hooks/useStartups";
 import { useSimpleAuth } from "@/hooks/useSimpleAuth";
+import { useDocuments } from "@/hooks/useDocuments";
 import { useChat } from "@/hooks/useChat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,8 @@ const StartupDetails = () => {
   // Handle both numeric IDs (for local storage) and string IDs (for Firestore)
   const startupId = id && !isNaN(parseInt(id)) ? parseInt(id) : id;
   const { user } = useSimpleAuth();
-  const { getStartupById, getDocumentsByStartupId, updateStartup, uploadDocument } = useStartups();
+  const { getStartupById, updateStartup } = useStartups();
+  const { getDocumentsByStartupId } = useDocuments();
   const { createChat } = useChat();
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

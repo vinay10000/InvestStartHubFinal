@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FileText, BarChart2, FileCheck, AlertCircle } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { 
+  Check, 
+  Upload, 
+  X, 
+  FileText, 
+  BarChart2, 
+  FileCheck, 
+  AlertTriangle,
+  AlertCircle,
+  Info
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import DocumentUpload from './DocumentUpload';
-import useDocuments from '@/hooks/useDocuments';
-
-type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useDocuments } from '@/hooks/useDocuments';
+import type { DocumentType } from '@/hooks/useDocuments';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface StartupDocumentUploadProps {
   startupId: number | string;
@@ -16,238 +26,289 @@ interface StartupDocumentUploadProps {
 }
 
 export default function StartupDocumentUpload({ startupId, onComplete }: StartupDocumentUploadProps) {
-  const [activeTab, setActiveTab] = useState<DocumentType>('pitch_deck');
-  const { toast } = useToast();
-  const { useUploadDocument, useStartupDocuments } = useDocuments();
-  const uploadMutation = useUploadDocument();
-  const { data: existingDocuments, isLoading } = useStartupDocuments(startupId);
-
-  // Check which documents already exist for this startup
-  const documentExists = (type: DocumentType): boolean => {
-    if (isLoading || !existingDocuments) return false;
-    return existingDocuments.some(doc => doc.type === type);
-  };
+  const { isUploading, uploadDocumentFile, getDocumentsByStartupId } = useDocuments();
+  const { data: documentsData } = getDocumentsByStartupId(startupId);
   
-  const getPendingDocuments = (): DocumentType[] => {
-    const allTypes: DocumentType[] = ['pitch_deck', 'financial_report', 'investor_agreement'];
-    return allTypes.filter(type => !documentExists(type));
+  const documents = documentsData?.documents || [];
+  
+  const [uploadProgress, setUploadProgress] = useState<Record<DocumentType, number>>({
+    pitch_deck: 0,
+    financial_report: 0,
+    investor_agreement: 0,
+    risk_disclosure: 0
+  });
+  
+  const [uploadStatus, setUploadStatus] = useState<Record<DocumentType, 'idle' | 'uploading' | 'success' | 'error'>>({
+    pitch_deck: 'idle',
+    financial_report: 'idle',
+    investor_agreement: 'idle',
+    risk_disclosure: 'idle'
+  });
+  
+  const [uploadError, setUploadError] = useState<Record<DocumentType, string | null>>({
+    pitch_deck: null,
+    financial_report: null,
+    investor_agreement: null,
+    risk_disclosure: null
+  });
+
+  // Check if document of a specific type already exists
+  const documentExists = (type: DocumentType): boolean => {
+    return documents.some(doc => doc.type === type);
   };
 
-  // Handle file upload for a specific document type
+  // Handle document upload
   const handleUpload = async (file: File, documentType: DocumentType) => {
+    if (!file) return;
+    
     try {
-      await uploadMutation.mutateAsync({
-        file,
-        documentType,
-        startupId
-      });
+      setUploadStatus(prev => ({ ...prev, [documentType]: 'uploading' }));
+      setUploadProgress(prev => ({ ...prev, [documentType]: 10 }));
+      setUploadError(prev => ({ ...prev, [documentType]: null }));
       
-      toast({
-        title: "Document uploaded",
-        description: `Your ${getDocumentTypeLabel(documentType)} has been uploaded successfully.`
-      });
-      
-      // Move to the next tab after successful upload
-      const pendingDocs = getPendingDocuments();
-      if (pendingDocs.length > 0 && pendingDocs[0] !== documentType) {
-        // Find the next document type that needs to be uploaded
-        const currentIndex = pendingDocs.indexOf(documentType);
-        if (currentIndex >= 0 && currentIndex < pendingDocs.length - 1) {
-          setActiveTab(pendingDocs[currentIndex + 1]);
-        }
-      } else if (pendingDocs.length === 1 && pendingDocs[0] === documentType) {
-        // This was the last document to upload
-        toast({
-          title: "All documents uploaded",
-          description: "You've successfully uploaded all required documents!"
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const currentProgress = prev[documentType];
+          if (currentProgress < 90) {
+            return { ...prev, [documentType]: currentProgress + 10 };
+          }
+          return prev;
         });
-        
-        if (onComplete) {
-          onComplete();
-        }
-      }
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      toast({
-        title: "Upload failed",
-        description: "There was an error uploading your document. Please try again.",
-        variant: "destructive"
+      }, 300);
+      
+      await uploadDocumentFile({
+        startupId,
+        documentType,
+        file,
+        name: getDocumentTypeLabel(documentType)
       });
+      
+      clearInterval(progressInterval);
+      setUploadProgress(prev => ({ ...prev, [documentType]: 100 }));
+      setUploadStatus(prev => ({ ...prev, [documentType]: 'success' }));
+      
+      // Reset status after a delay
+      setTimeout(() => {
+        if (onComplete) onComplete();
+      }, 1500);
+      
+    } catch (error) {
+      setUploadStatus(prev => ({ ...prev, [documentType]: 'error' }));
+      setUploadError(prev => ({ 
+        ...prev, 
+        [documentType]: error instanceof Error ? error.message : 'Failed to upload document' 
+      }));
     }
   };
 
+  // Get human-readable label for document type
   const getDocumentTypeLabel = (type: DocumentType): string => {
-    const labels: Record<DocumentType, string> = {
-      'pitch_deck': 'Pitch Deck',
-      'financial_report': 'Financial Report',
-      'investor_agreement': 'Investor Agreement',
-      'risk_disclosure': 'Risk Disclosure'
-    };
-    return labels[type];
+    switch (type) {
+      case 'pitch_deck':
+        return 'Pitch Deck';
+      case 'financial_report':
+        return 'Financial Report';
+      case 'investor_agreement':
+        return 'Investor Agreement';
+      case 'risk_disclosure':
+        return 'Risk Disclosure';
+      default:
+        return type;
+    }
   };
 
+  // Get accepted file types for specific document types
   const getDocumentAcceptedTypes = (type: DocumentType): string[] => {
-    switch(type) {
+    switch (type) {
       case 'pitch_deck':
         return ['.pdf', '.ppt', '.pptx'];
       case 'financial_report':
-        return ['.pdf', '.xls', '.xlsx', '.csv'];
+        return ['.pdf', '.xlsx', '.xls', '.csv'];
       case 'investor_agreement':
         return ['.pdf', '.doc', '.docx'];
-      default:
+      case 'risk_disclosure':
         return ['.pdf', '.doc', '.docx'];
+      default:
+        return ['.pdf'];
     }
   };
 
+  // Get description for document types
   const getDocumentDescription = (type: DocumentType): string => {
-    switch(type) {
+    switch (type) {
       case 'pitch_deck':
-        return "Your pitch deck should include your vision, market opportunity, business model, team information, and growth strategy.";
+        return 'Upload your pitch presentation (PDF, PowerPoint)';
       case 'financial_report':
-        return "Upload your financial projections, current revenue/expenses, and funding requirements to help investors understand your financial position.";
+        return 'Upload financial projections and reports (PDF, Excel, CSV)';
       case 'investor_agreement':
-        return "Provide a template of your investor agreement outlining the terms and conditions for potential investors.";
+        return 'Upload investor term sheet or agreement (PDF, Word)';
+      case 'risk_disclosure':
+        return 'Upload risk disclosure document (PDF, Word)';
       default:
-        return "";
+        return 'Upload document';
     }
   };
 
-  const allUploaded = getPendingDocuments().length === 0;
+  // Get icon for document types
+  const getDocumentIcon = (type: DocumentType) => {
+    switch (type) {
+      case 'pitch_deck':
+        return <FileText className="w-5 h-5" />;
+      case 'financial_report':
+        return <BarChart2 className="w-5 h-5" />;
+      case 'investor_agreement':
+        return <FileCheck className="w-5 h-5" />;
+      case 'risk_disclosure':
+        return <AlertTriangle className="w-5 h-5" />;
+      default:
+        return <FileText className="w-5 h-5" />;
+    }
+  };
 
-  if (allUploaded) {
+  // Create dropzone for each document type
+  const DocumentDropzone = ({ type }: { type: DocumentType }) => {
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        handleUpload(acceptedFiles[0], type);
+      }
+    }, [type]);
+
+    const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+      accept: getDocumentAcceptedTypes(type).reduce((acc, ext) => {
+        if (ext === '.pdf') acc['application/pdf'] = [];
+        if (['.doc', '.docx'].includes(ext)) acc['application/msword'] = [];
+        if (['.ppt', '.pptx'].includes(ext)) acc['application/vnd.ms-powerpoint'] = [];
+        if (['.xls', '.xlsx'].includes(ext)) acc['application/vnd.ms-excel'] = [];
+        if (ext === '.csv') acc['text/csv'] = [];
+        return acc;
+      }, {} as Record<string, string[]>),
+      maxFiles: 1,
+      onDrop,
+      disabled: uploadStatus[type] === 'uploading' || uploadStatus[type] === 'success' || documentExists(type)
+    });
+
+    const isError = fileRejections.length > 0 || uploadStatus[type] === 'error';
+    const errorMessage = fileRejections.length > 0
+      ? 'Invalid file type. Please upload the correct format.'
+      : uploadError[type];
+
+    const exists = documentExists(type);
+
     return (
-      <Alert className="mb-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>All documents uploaded</AlertTitle>
-        <AlertDescription>
-          You have already uploaded all required documents. Investors can now view these documents on your startup profile.
-        </AlertDescription>
-      </Alert>
+      <div className="mb-4">
+        <div className="flex items-center mb-2">
+          <div className="mr-2">
+            {getDocumentIcon(type)}
+          </div>
+          <h3 className="text-lg font-medium">{getDocumentTypeLabel(type)}</h3>
+          {exists && (
+            <Badge variant="outline" className="ml-2 bg-green-50 text-green-600 border-green-200">
+              <Check className="w-3 h-3 mr-1" /> Uploaded
+            </Badge>
+          )}
+        </div>
+        <p className="text-sm text-gray-500 mb-3">{getDocumentDescription(type)}</p>
+        
+        {exists ? (
+          <Alert className="bg-green-50 border-green-200">
+            <Check className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-700">Document already uploaded</AlertTitle>
+            <AlertDescription className="text-green-600">
+              This document has already been uploaded. You can view it in the documents section.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div>
+            <div 
+              {...getRootProps()} 
+              className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer transition-colors
+                ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'}
+                ${isError ? 'border-red-300 bg-red-50' : ''}
+                ${uploadStatus[type] === 'uploading' ? 'bg-blue-50 border-blue-200' : ''}
+                ${uploadStatus[type] === 'success' ? 'bg-green-50 border-green-200' : ''}
+              `}
+            >
+              <input {...getInputProps()} />
+              
+              {uploadStatus[type] === 'uploading' ? (
+                <div className="text-center">
+                  <Upload className="w-10 h-10 text-blue-500 mx-auto mb-2" />
+                  <p className="text-sm text-blue-600 font-medium">Uploading...</p>
+                  <Progress value={uploadProgress[type]} className="mt-2 h-2" />
+                </div>
+              ) : uploadStatus[type] === 'success' ? (
+                <div className="text-center">
+                  <Check className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-green-600 font-medium">Upload successful!</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Upload className={`w-10 h-10 mx-auto mb-2 ${isError ? 'text-red-500' : 'text-gray-400'}`} />
+                  <p className={`text-sm ${isError ? 'text-red-600' : 'text-gray-500'}`}>
+                    {isError 
+                      ? 'Error uploading file' 
+                      : isDragActive 
+                        ? 'Drop the file here...' 
+                        : 'Drag & drop or click to select file'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Accepted formats: {getDocumentAcceptedTypes(type).join(', ')}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {isError && errorMessage && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+      </div>
     );
-  }
+  };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Upload Required Documents</CardTitle>
-        <CardDescription>
-          Provide essential documents for potential investors to review
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs 
-          defaultValue="pitch_deck" 
-          value={activeTab} 
-          onValueChange={(value) => setActiveTab(value as DocumentType)}
+    <div className="space-y-6">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Important Documents</AlertTitle>
+        <AlertDescription>
+          Upload the required documents below for investors to review before making investment decisions. 
+          All documents should be up-to-date and accurate.
+        </AlertDescription>
+      </Alert>
+      
+      <Tabs defaultValue="primary_docs">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="primary_docs">Primary Documents</TabsTrigger>
+          <TabsTrigger value="additional_docs">Additional Documents</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="primary_docs" className="space-y-4 pt-4">
+          <DocumentDropzone type="pitch_deck" />
+          <DocumentDropzone type="financial_report" />
+        </TabsContent>
+        
+        <TabsContent value="additional_docs" className="space-y-4 pt-4">
+          <DocumentDropzone type="investor_agreement" />
+          <DocumentDropzone type="risk_disclosure" />
+        </TabsContent>
+      </Tabs>
+      
+      <div className="flex justify-end space-x-2 mt-6">
+        <Button
+          variant="outline"
+          onClick={onComplete}
+          disabled={isUploading}
         >
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger 
-              value="pitch_deck" 
-              className="flex items-center"
-              disabled={documentExists('pitch_deck')}
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Pitch Deck</span>
-              <span className="sm:hidden">Pitch</span>
-              {documentExists('pitch_deck') && " ✓"}
-            </TabsTrigger>
-            <TabsTrigger 
-              value="financial_report" 
-              className="flex items-center"
-              disabled={documentExists('financial_report')}
-            >
-              <BarChart2 className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Financial Report</span>
-              <span className="sm:hidden">Financial</span>
-              {documentExists('financial_report') && " ✓"}
-            </TabsTrigger>
-            <TabsTrigger 
-              value="investor_agreement" 
-              className="flex items-center"
-              disabled={documentExists('investor_agreement')}
-            >
-              <FileCheck className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Investor Agreement</span>
-              <span className="sm:hidden">Agreement</span>
-              {documentExists('investor_agreement') && " ✓"}
-            </TabsTrigger>
-          </TabsList>
-          
-          <div className="mt-6">
-            <TabsContent value="pitch_deck">
-              <div className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  {getDocumentDescription('pitch_deck')}
-                </p>
-                {!documentExists('pitch_deck') && (
-                  <DocumentUpload 
-                    onUpload={(file) => handleUpload(file, 'pitch_deck')}
-                    documentType="pitch_deck"
-                    acceptedTypes={getDocumentAcceptedTypes('pitch_deck')}
-                  />
-                )}
-                {documentExists('pitch_deck') && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Document already uploaded</AlertTitle>
-                    <AlertDescription>
-                      You have already uploaded a Pitch Deck for this startup.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="financial_report">
-              <div className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  {getDocumentDescription('financial_report')}
-                </p>
-                {!documentExists('financial_report') && (
-                  <DocumentUpload 
-                    onUpload={(file) => handleUpload(file, 'financial_report')}
-                    documentType="financial_report"
-                    acceptedTypes={getDocumentAcceptedTypes('financial_report')}
-                  />
-                )}
-                {documentExists('financial_report') && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Document already uploaded</AlertTitle>
-                    <AlertDescription>
-                      You have already uploaded a Financial Report for this startup.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="investor_agreement">
-              <div className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  {getDocumentDescription('investor_agreement')}
-                </p>
-                {!documentExists('investor_agreement') && (
-                  <DocumentUpload 
-                    onUpload={(file) => handleUpload(file, 'investor_agreement')}
-                    documentType="investor_agreement"
-                    acceptedTypes={getDocumentAcceptedTypes('investor_agreement')}
-                  />
-                )}
-                {documentExists('investor_agreement') && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Document already uploaded</AlertTitle>
-                    <AlertDescription>
-                      You have already uploaded an Investor Agreement for this startup.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </TabsContent>
-          </div>
-        </Tabs>
-      </CardContent>
-    </Card>
+          Close
+        </Button>
+      </div>
+    </div>
   );
 }

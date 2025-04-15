@@ -10,15 +10,22 @@ import { Badge } from '@/components/ui/badge';
 type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure' | 'all';
 
 interface Document {
-  id: string;
+  id: string | number;
+  startupId?: number;
   name: string;
   type: DocumentType;
   fileUrl: string;
+  file_url?: string; // For compatibility with snake_case APIs
+  fileId?: string;
   file_id?: string;
+  fileName?: string;
   file_name?: string;
+  mimeType?: string;
   mime_type?: string;
+  fileSize?: number;
   file_size?: number;
   createdAt: string;
+  created_at?: string;
 }
 
 interface DocumentViewerProps {
@@ -45,7 +52,7 @@ const documentTypeLabels: Record<DocumentType, string> = {
   'all': 'All Documents'
 };
 
-export default function DocumentViewer({ documents, startupName }: DocumentViewerProps) {
+export default function DocumentViewer({ documents, startupName, isLoading }: DocumentViewerProps) {
   const [activeTab, setActiveTab] = useState<DocumentType>('all');
 
   // Filter documents by type
@@ -163,7 +170,7 @@ export default function DocumentViewer({ documents, startupName }: DocumentViewe
                     <div className="flex items-center text-sm text-gray-500 mt-1">
                       <Badge variant="outline">{documentTypeLabels[doc.type]}</Badge>
                       <span className="mx-2">•</span>
-                      <span>{formatDate(doc.createdAt)}</span>
+                      <span>{formatDate(doc.createdAt || doc.created_at || '')}</span>
                       {(doc.fileSize || doc.file_size) && (
                         <>
                           <span className="mx-2">•</span>
@@ -175,13 +182,13 @@ export default function DocumentViewer({ documents, startupName }: DocumentViewe
                 </div>
                 <div className="flex space-x-2">
                   <Button variant="outline" size="sm" asChild>
-                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={doc.fileUrl || doc.file_url} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-4 h-4 mr-1" />
                       View
                     </a>
                   </Button>
                   <Button variant="outline" size="sm" asChild>
-                    <a href={doc.fileUrl} download={doc.fileName || doc.file_name || doc.name}>
+                    <a href={doc.fileUrl || doc.file_url} download={doc.fileName || doc.file_name || doc.name}>
                       <Download className="w-4 h-4 mr-1" />
                       Download
                     </a>

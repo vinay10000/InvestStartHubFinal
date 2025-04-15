@@ -1,116 +1,94 @@
-import supabase from '../lib/supabase';
-import { uploadFile } from './imagekit';
-import type { Document } from '@shared/schema';
-
-type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure';
+import { supabase } from '@/lib/supabase';
+import { Document } from '@shared/schema';
 
 /**
- * Upload a document to ImageKit and then save the reference in Supabase
+ * Retrieves all documents for a specific startup
+ * @param startupId - The ID of the startup
+ * @returns Promise containing the fetched documents
  */
-export const uploadDocument = async (
-  file: File,
-  documentType: DocumentType,
-  startupId: number | string
-): Promise<Document> => {
-  try {
-    // First, upload the file to ImageKit
-    const folder = `startups/${startupId}/documents/${documentType}`;
-    const uploadResponse = await uploadFile(file, folder);
-    
-    // Create a document record in Supabase
-    const { data, error } = await supabase
-      .from('documents')
-      .insert({
-        startup_id: startupId,
-        name: getDocumentName(documentType, file.name),
-        type: documentType,
-        file_url: uploadResponse.url,
-        file_id: uploadResponse.fileId,
-        file_name: file.name,
-        mime_type: file.type,
-        file_size: file.size
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating document in Supabase:', error);
-      throw new Error(`Failed to save document: ${error.message}`);
-    }
-    
-    // Map Supabase snake_case to camelCase for our frontend
-    return {
-      id: data.id,
-      startupId: data.startup_id,
-      name: data.name,
-      type: data.type,
-      fileUrl: data.file_url,
-      fileId: data.file_id,
-      fileName: data.file_name,
-      mimeType: data.mime_type,
-      fileSize: data.file_size,
-      createdAt: data.created_at
-    };
-  } catch (error) {
-    console.error('Error in uploadDocument:', error);
-    throw new Error('Failed to upload document');
-  }
-};
-
-/**
- * Get documents for a startup from Supabase
- */
-export const getStartupDocuments = async (startupId: number | string): Promise<Document[]> => {
+export const getDocumentsByStartupId = async (startupId: string | number) => {
   try {
     const { data, error } = await supabase
       .from('documents')
       .select('*')
-      .eq('startup_id', startupId)
-      .order('created_at', { ascending: false });
+      .eq('startup_id', startupId);
     
     if (error) {
-      console.error('Error fetching documents:', error);
-      throw new Error(`Failed to fetch documents: ${error.message}`);
+      throw error;
     }
     
-    // Map Supabase snake_case to camelCase for our frontend
-    return data.map(doc => ({
-      id: doc.id,
-      startupId: doc.startup_id,
-      name: doc.name,
-      type: doc.type,
-      fileUrl: doc.file_url,
-      fileId: doc.file_id,
-      fileName: doc.file_name,
-      mimeType: doc.mime_type,
-      fileSize: doc.file_size,
-      createdAt: doc.created_at
-    }));
+    return { documents: data || [] };
   } catch (error) {
-    console.error('Error in getStartupDocuments:', error);
-    return [];
+    console.error('Error fetching documents:', error);
+    throw error;
   }
 };
 
 /**
- * Generate a user-friendly document name
+ * Creates a new document record in Supabase
+ * @param document - The document data to create
+ * @returns Promise containing the created document
  */
-function getDocumentName(documentType: DocumentType, originalFileName: string): string {
-  const typeLabels = {
-    'pitch_deck': 'Pitch Deck',
-    'financial_report': 'Financial Report',
-    'investor_agreement': 'Investor Agreement',
-    'risk_disclosure': 'Risk Disclosure'
-  };
-  
-  // Get file extension
-  const ext = originalFileName.split('.').pop();
-  
-  // Create a readable name
-  return `${typeLabels[documentType]} (${new Date().toLocaleDateString()}).${ext}`;
-}
+export const createDocument = async (document: Partial<Document>) => {
+  try {
+    // Convert camelCase to snake_case for Supabase
+    const { 
+      startupId, 
+      fileUrl, 
+      fileId, 
+      fileName, 
+      mimeType, 
+      fileSize,
+      ...restOfDocument 
+    } = document;
 
-export default {
-  uploadDocument,
-  getStartupDocuments
+    const documentData = {
+      ...restOfDocument,
+      startup_id: startupId,
+      file_url: fileUrl,
+      file_id: fileId,
+      file_name: fileName,
+      mime_type: mimeType,
+      file_size: fileSize,
+      created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('documents')
+      .insert(documentData)
+      .select()
+      .single();
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { document: data };
+  } catch (error) {
+    console.error('Error creating document:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes a specific document 
+ * @param documentId - The ID of the document to delete
+ * @returns Promise indicating success/failure
+ */
+export const deleteDocument = async (documentId: string | number) => {
+  try {
+    const { error } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', documentId);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    throw error;
+  }
 };

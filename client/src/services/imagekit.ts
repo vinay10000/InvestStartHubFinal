@@ -25,7 +25,13 @@ export const uploadFile = async (
   file: File,
   folder: string,
   fileName?: string
-): Promise<{url: string, fileId: string, fileName: string}> => {
+): Promise<{
+  url: string, 
+  fileId: string, 
+  fileName: string,
+  mimeType: string,
+  fileSize: number
+}> => {
   try {
     // Create form data for upload
     const formData = new FormData();
@@ -53,7 +59,9 @@ export const uploadFile = async (
     return {
       url: data.url,
       fileId: data.fileId || '',
-      fileName: uniqueFileName
+      fileName: uniqueFileName,
+      mimeType: file.type,
+      fileSize: file.size
     };
   } catch (error) {
     console.error('Error uploading file:', error);
@@ -66,7 +74,13 @@ export const uploadStartupDocument = async (
   startupId: number,
   documentType: string,
   file: File
-): Promise<{url: string, fileId: string, fileName: string}> => {
+): Promise<{
+  url: string,
+  fileId: string,
+  fileName: string,
+  mimeType: string,
+  fileSize: number
+}> => {
   return uploadFile(file, `startups/${startupId}/documents/${documentType}`);
 };
 
@@ -74,7 +88,13 @@ export const uploadStartupDocument = async (
 export const uploadUpiQRCode = async (
   startupId: number,
   file: File
-): Promise<{url: string, fileId: string, fileName: string}> => {
+): Promise<{
+  url: string,
+  fileId: string,
+  fileName: string,
+  mimeType: string,
+  fileSize: number
+}> => {
   return uploadFile(file, `startups/${startupId}/upi`);
 };
 
