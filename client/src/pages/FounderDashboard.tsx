@@ -19,7 +19,7 @@ const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id || "";
   const { useFounderStartups, useCreateStartup } = useStartups();
-  const { useFounderTransactions } = useTransactions();
+  const { getTransactionsByFounderId } = useTransactions();
   const { useCreateDocument } = useDocuments();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
@@ -32,7 +32,7 @@ const FounderDashboard = () => {
   const userIdNumber = userId ? (typeof userId === 'string' ? 
     parseInt(userId) : userId) : undefined;
     
-  const { data: transactionsData, isLoading: transactionsLoading } = useFounderTransactions(userIdNumber?.toString());
+  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(userIdNumber?.toString());
   
   // Create startup mutation
   const createStartupMutation = useCreateStartup();
@@ -322,8 +322,8 @@ const FounderDashboard = () => {
               {selectedStartupId ? (
                 <DocumentUploadSection 
                   startupId={selectedStartupId} 
-                  uploadDocument={uploadDocument}
-                  getDocumentsByStartupId={getDocumentsByStartupId}
+                  uploadDocument={useCreateDocument()}
+                  getDocumentsByStartupId={() => ({ data: [], isLoading: false })}
                 />
               ) : (
                 <Card>

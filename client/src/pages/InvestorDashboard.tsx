@@ -15,14 +15,14 @@ import TransactionList from "@/components/transactions/TransactionList";
 const InvestorDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id || "";
-  const { getAllStartups } = useStartups();
+  const { useAllStartups } = useStartups();
   const { getTransactionsByInvestorId } = useTransactions();
   const [filter, setFilter] = useState("");
   const [stage, setStage] = useState("all");
   const [activeTab, setActiveTab] = useState("discover");
 
   // Only fetch transactions when we have a valid userId
-  const { data: startupsData, isLoading: startupsLoading } = getAllStartups();
+  const { data: startupsData, isLoading: startupsLoading } = useAllStartups();
   const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByInvestorId(
     userId && typeof userId === 'string' && userId.length > 0 ? userId : undefined
   );
