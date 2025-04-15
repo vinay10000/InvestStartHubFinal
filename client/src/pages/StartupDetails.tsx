@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getInvestmentStageColor } from "@/lib/utils";
 import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode } from "lucide-react";
 import DocumentUpload from "@/components/startups/DocumentUpload";
+import StartupDocumentUpload from "@/components/startups/StartupDocumentUpload";
 import DocumentViewer from "@/components/startups/DocumentViewer";
 import StartupForm from "@/components/startups/StartupForm";
 import MetaMaskPayment from "@/components/payments/MetaMaskPayment";
@@ -165,19 +166,19 @@ const StartupDetails = () => {
                   <DialogTrigger asChild>
                     <Button variant="outline">
                       <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Document
+                      Add Documents
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="sm:max-w-[700px]">
                     <DialogHeader>
-                      <DialogTitle>Upload Document</DialogTitle>
+                      <DialogTitle>Upload Documents</DialogTitle>
                       <DialogDescription>
-                        Upload a document for investors to review
+                        Upload essential documents for investors to review
                       </DialogDescription>
                     </DialogHeader>
-                    <DocumentUpload 
-                      onSubmit={handleUploadDocument} 
-                      isLoading={uploadDocumentMutation.isPending}
+                    <StartupDocumentUpload 
+                      startupId={startupId} 
+                      onComplete={() => setIsUploadDialogOpen(false)}
                     />
                   </DialogContent>
                 </Dialog>
@@ -328,7 +329,7 @@ const StartupDetails = () => {
               {isFounder && (
                 <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Document
+                  Add Documents
                 </Button>
               )}
             </div>
@@ -359,7 +360,7 @@ const StartupDetails = () => {
                     onClick={() => setIsUploadDialogOpen(true)}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Upload First Document
+                    Upload Documents
                   </Button>
                 )}
               </div>

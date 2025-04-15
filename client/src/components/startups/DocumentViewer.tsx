@@ -23,7 +23,8 @@ interface Document {
 
 interface DocumentViewerProps {
   documents: Document[];
-  startupName: string;
+  startupName?: string;
+  isLoading?: boolean;
 }
 
 // Document type icons
@@ -163,10 +164,10 @@ export default function DocumentViewer({ documents, startupName }: DocumentViewe
                       <Badge variant="outline">{documentTypeLabels[doc.type]}</Badge>
                       <span className="mx-2">•</span>
                       <span>{formatDate(doc.createdAt)}</span>
-                      {doc.file_size && (
+                      {(doc.fileSize || doc.file_size) && (
                         <>
                           <span className="mx-2">•</span>
-                          <span>{formatFileSize(doc.file_size)}</span>
+                          <span>{formatFileSize(doc.fileSize || doc.file_size)}</span>
                         </>
                       )}
                     </div>
@@ -180,7 +181,7 @@ export default function DocumentViewer({ documents, startupName }: DocumentViewe
                     </a>
                   </Button>
                   <Button variant="outline" size="sm" asChild>
-                    <a href={doc.fileUrl} download={doc.file_name || doc.name}>
+                    <a href={doc.fileUrl} download={doc.fileName || doc.file_name || doc.name}>
                       <Download className="w-4 h-4 mr-1" />
                       Download
                     </a>
