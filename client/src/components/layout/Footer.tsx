@@ -40,23 +40,23 @@ const Footer = () => {
                 <ul className="mt-4 space-y-4">
                   <li>
                     <Link href="/signup">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         Create Profile
-                      </a>
+                      </span>
                     </Link>
                   </li>
                   <li>
                     <Link href="/founder/dashboard">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         Upload Documents
-                      </a>
+                      </span>
                     </Link>
                   </li>
                   <li>
                     <Link href="/transactions">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         Track Investments
-                      </a>
+                      </span>
                     </Link>
                   </li>
                   <li>
@@ -73,9 +73,9 @@ const Footer = () => {
                 <ul className="mt-4 space-y-4">
                   <li>
                     <Link href="/investor/dashboard">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         Browse Startups
-                      </a>
+                      </span>
                     </Link>
                   </li>
                   <li>
@@ -85,16 +85,16 @@ const Footer = () => {
                   </li>
                   <li>
                     <Link href="/profile">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         Connect Wallet
-                      </a>
+                      </span>
                     </Link>
                   </li>
                   <li>
                     <Link href="/transactions">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         Portfolio Management
-                      </a>
+                      </span>
                     </Link>
                   </li>
                 </ul>
@@ -108,9 +108,9 @@ const Footer = () => {
                 <ul className="mt-4 space-y-4">
                   <li>
                     <Link href="/how-it-works">
-                      <a className="text-base text-gray-400 hover:text-gray-300">
+                      <span className="text-base text-gray-400 hover:text-gray-300 cursor-pointer">
                         How It Works
-                      </a>
+                      </span>
                     </Link>
                   </li>
                   <li>
