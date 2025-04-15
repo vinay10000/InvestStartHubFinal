@@ -16,10 +16,11 @@ import TransactionList from "@/components/transactions/TransactionList";
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id || "";
-  const { getStartupsByFounderId, createStartup } = useStartups();
+  const { getStartupsByFounderId, createStartup, uploadDocument, getDocumentsByStartupId } = useStartups();
   const { getTransactionsByFounderId } = useTransactions();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
+  const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
 
   // Wait for auth to resolve before making data queries
   const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId();
@@ -187,6 +188,7 @@ const FounderDashboard = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
         <TabsList>
           <TabsTrigger value="startups">My Startups</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
         
@@ -246,6 +248,92 @@ const FounderDashboard = () => {
                 <StartupCard key={startup.id} startup={startup} view="founder" />
               ))}
             </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="documents">
+          <h2 className="text-2xl font-bold mb-6">Startup Documents</h2>
+          
+          {startupsLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-12 w-3/4 mb-4" />
+                <Skeleton className="h-8 w-full mb-2" />
+                <Skeleton className="h-8 w-full mb-2" />
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          ) : startups.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center p-8">
+                <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-medium mb-2">No startups to upload documents for</h3>
+                <p className="text-muted-foreground text-center mb-4">Create a startup first to upload essential documents</p>
+                <Button onClick={() => {
+                  setActiveTab("startups");
+                  setTimeout(() => setIsCreateDialogOpen(true), 100);
+                }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Startup
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Select a Startup</CardTitle>
+                  <CardDescription>Choose the startup you want to upload documents for</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {startups.map((startup) => (
+                      <Card 
+                        key={startup.id} 
+                        className={`cursor-pointer transition-all ${selectedStartupId === startup.id ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
+                        onClick={() => setSelectedStartupId(startup.id)}
+                      >
+                        <CardContent className="p-4 flex items-center gap-3">
+                          {startup.logoUrl ? (
+                            <img 
+                              src={startup.logoUrl} 
+                              alt={startup.name} 
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                              <Building2 className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-medium">{startup.name}</h3>
+                            <p className="text-sm text-muted-foreground">{startup.category}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {selectedStartupId ? (
+                <DocumentUploadSection 
+                  startupId={selectedStartupId} 
+                  uploadDocument={uploadDocument}
+                  getDocumentsByStartupId={getDocumentsByStartupId}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center p-8">
+                    <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-medium mb-2">Select a startup</h3>
+                    <p className="text-muted-foreground text-center">
+                      Choose a startup from above to upload documents
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </TabsContent>
         

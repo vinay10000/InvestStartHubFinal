@@ -298,9 +298,22 @@ export const useStartups = (userId?: number | string) => {
           fileSize: file.size,
         } as unknown as InsertDocument;
         
-        // Check if we're using a string ID (Firebase) or number ID (local storage)
+        try {
+          // Try to save document to Supabase first (primary storage)
+          const { createSupabaseDocument } = await import("@/services/supabase");
+          const supabaseDocument = await createSupabaseDocument(documentData);
+          
+          if (supabaseDocument) {
+            console.log("Document metadata saved to Supabase:", supabaseDocument);
+            return { document: supabaseDocument };
+          }
+        } catch (supabaseError) {
+          console.error("Error storing document in Supabase:", supabaseError);
+          // Continue with fallbacks if Supabase fails
+        }
+        
+        // If Supabase fails and we're using Firebase (string ID), try Firestore
         if (typeof startupId === 'string' && startupId.toString().length > 10) {
-          // Use Firestore to store document metadata
           try {
             const { createFirestoreDocument } = await import("@/firebase/firestore");
             const documentId = await createFirestoreDocument({
@@ -308,13 +321,13 @@ export const useStartups = (userId?: number | string) => {
               startupId: startupId as string
             });
             return { document: { id: documentId, ...documentData } };
-          } catch (error) {
-            console.error("Error storing document in Firestore:", error);
-            throw error;
+          } catch (firestoreError) {
+            console.error("Error storing document in Firestore:", firestoreError);
+            // Let it fall through to the API fallback
           }
         }
         
-        // Fall back to API for backward compatibility
+        // Final fallback to API
         return apiRequest(`/api/startups/${startupId}/documents`, {
           method: "POST",
           body: JSON.stringify(documentData),
@@ -326,9 +339,15 @@ export const useStartups = (userId?: number | string) => {
           queryKey: ["/api/startups", variables.startupId, "documents"] 
         });
         
+        // Also invalidate the startup query since document info might be displayed in startup details
+        queryClient.invalidateQueries({
+          queryKey: ["/api/startups", variables.startupId]
+        });
+        
+        // Add toast notification
         toast({
           title: "Document Uploaded",
-          description: "Your document has been uploaded successfully",
+          description: `Your ${variables.type.replace('_', ' ')} has been uploaded successfully`,
         });
       },
       onError: (error: any) => {
