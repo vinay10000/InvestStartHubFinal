@@ -20,7 +20,7 @@ const FounderDashboard = () => {
   const userId = user?.id || "";
   const { useFounderStartups, useCreateStartup } = useStartups();
   const { getTransactionsByFounderId } = useTransactions();
-  const { useCreateDocument } = useDocuments();
+  const documents = useDocuments();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
@@ -321,9 +321,15 @@ const FounderDashboard = () => {
               
               {selectedStartupId ? (
                 <DocumentUploadSection 
-                  startupId={selectedStartupId} 
-                  uploadDocument={useCreateDocument()}
-                  getDocumentsByStartupId={() => ({ data: [], isLoading: false })}
+                  startupId={String(selectedStartupId)}
+                  onDocumentUpload={async (file, documentType, startupId) => {
+                    await documents.uploadDocumentFile({
+                      startupId,
+                      documentType,
+                      file,
+                      name: file.name
+                    });
+                  }}
                 />
               ) : (
                 <Card>
