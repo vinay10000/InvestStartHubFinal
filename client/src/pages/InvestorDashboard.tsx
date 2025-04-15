@@ -20,8 +20,34 @@ const InvestorDashboard = () => {
   const [filter, setFilter] = useState("");
   const [stage, setStage] = useState("all");
   const [activeTab, setActiveTab] = useState("discover");
-  const [firebaseStartups, setFirebaseStartups] = useState<any[]>([]);
-  const [firebaseTransactions, setFirebaseTransactions] = useState<any[]>([]);
+  // Use explicit types for Firebase data
+  interface FirebaseStartup {
+    id: string;
+    name: string;
+    description: string;
+    category?: string | null;
+    investment_stage?: string;
+    investmentStage?: string;
+    founderId: string | number;
+    founder_id?: string | number;
+    logoUrl?: string | null;
+    upiQrCode?: string | null;
+    [key: string]: any; // Allow for other properties
+  }
+  
+  interface FirebaseTransaction {
+    id: string;
+    amount: string;
+    status: string;
+    startupId?: string | number;
+    startup_id?: string | number;
+    investorId?: string | number;
+    investor_id?: string | number;
+    [key: string]: any; // Allow for other properties
+  }
+  
+  const [firebaseStartups, setFirebaseStartups] = useState<FirebaseStartup[]>([]);
+  const [firebaseTransactions, setFirebaseTransactions] = useState<FirebaseTransaction[]>([]);
 
   // Load startups and transactions from Firebase if using Firebase auth
   useEffect(() => {
@@ -60,8 +86,50 @@ const InvestorDashboard = () => {
   );
   
   // Combine startups and transactions from both sources (Firebase and API)
-  const apiStartups = startupsData?.startups || [];
-  const apiTransactions = transactionsData?.transactions || [];
+  // Type the API responses explicitly 
+  interface ApiStartupResponse {
+    startups: FirebaseStartup[];
+  }
+  
+  interface ApiTransactionResponse {
+    transactions: FirebaseTransaction[];
+  }
+  
+  // Transform API responses to match Firebase format
+  const apiStartups = startupsData?.startups 
+    ? startupsData.startups.map(startup => {
+        const typedStartup: FirebaseStartup = {
+          id: startup.id.toString(),
+          name: startup.name,
+          description: startup.description,
+          category: startup.category,
+          investmentStage: startup.investmentStage,
+          investment_stage: startup.investment_stage,
+          founderId: startup.founderId || startup.founder_id,
+          founder_id: startup.founder_id || startup.founderId,
+          logoUrl: startup.logoUrl || startup.logo_url,
+          upiQrCode: startup.upiQrCode || startup.upi_qr_code,
+          ...startup
+        };
+        return typedStartup;
+      })
+    : [];
+    
+  const apiTransactions = transactionsData?.transactions
+    ? transactionsData.transactions.map(transaction => {
+        const typedTransaction: FirebaseTransaction = {
+          id: transaction.id.toString(),
+          amount: transaction.amount,
+          status: transaction.status,
+          startupId: transaction.startupId,
+          startup_id: transaction.startup_id,
+          investorId: transaction.investorId,
+          investor_id: transaction.investor_id,
+          ...transaction
+        };
+        return typedTransaction;
+      })
+    : [];
   
   const combinedStartups = firebaseStartups.length > 0 ? firebaseStartups : apiStartups;
   const combinedTransactions = firebaseTransactions.length > 0 ? firebaseTransactions : apiTransactions;

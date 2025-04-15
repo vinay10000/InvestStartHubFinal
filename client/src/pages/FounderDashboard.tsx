@@ -24,7 +24,22 @@ const FounderDashboard = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
-  const [myStartups, setMyStartups] = useState<any[]>([]); // Store startups in state
+  // Define types for Firebase data
+  interface FirebaseStartup {
+    id: string;
+    name: string;
+    description: string;
+    category?: string | null;
+    investment_stage?: string;
+    investmentStage?: string;
+    founderId: string | number;
+    founder_id?: string | number;
+    logoUrl?: string | null;
+    upiQrCode?: string | null;
+    [key: string]: any; // Allow for other properties
+  }
+  
+  const [myStartups, setMyStartups] = useState<FirebaseStartup[]>([]); // Store startups in state
 
   // Wait for auth to resolve before making data queries
   const { data: startupsData, isLoading: startupsLoading } = useFounderStartups();
@@ -108,8 +123,23 @@ const FounderDashboard = () => {
         try {
           const startupData = await getFirestoreStartup(startupId);
           if (startupData) {
-            setMyStartups(prev => [...prev, startupData]);
-            console.log("Added new startup to local state:", startupData);
+            // Ensure the startup data matches our FirebaseStartup type
+            const typedStartupData: FirebaseStartup = {
+              id: startupData.id,
+              name: startupData.name,
+              description: startupData.description,
+              category: startupData.category || null,
+              investment_stage: startupData.investment_stage || startupData.investmentStage,
+              investmentStage: startupData.investmentStage || startupData.investment_stage,
+              founderId: startupData.founderId || startupData.founder_id,
+              founder_id: startupData.founder_id || startupData.founderId,
+              logoUrl: startupData.logoUrl || startupData.logo_url,
+              upiQrCode: startupData.upiQrCode || startupData.upi_qr_code,
+              ...startupData
+            };
+            
+            setMyStartups(prev => [...prev, typedStartupData]);
+            console.log("Added new startup to local state:", typedStartupData);
           }
         } catch (error) {
           console.error("Error fetching new startup:", error);
@@ -122,7 +152,20 @@ const FounderDashboard = () => {
         
         // Add the startup to local state immediately
         if (result) {
-          setMyStartups(prev => [...prev, result]);
+          // Convert API result to FirebaseStartup type
+          const typedStartupData: FirebaseStartup = {
+            id: result.id.toString(),
+            name: result.name,
+            description: result.description,
+            category: result.category,
+            investmentStage: result.investmentStage,
+            founderId: result.founderId,
+            logoUrl: result.logoUrl,
+            upiQrCode: result.upiQrCode,
+            ...result
+          };
+          
+          setMyStartups(prev => [...prev, typedStartupData]);
         }
         
         setIsCreateDialogOpen(false);
@@ -133,9 +176,47 @@ const FounderDashboard = () => {
   };
 
   // Combine startups from both sources (Firebase and API)
-  const apiStartups = startupsData?.startups || [];
+  // Type the API responses explicitly
+  interface ApiStartupResponse {
+    startups: FirebaseStartup[];
+  }
+  
+  interface ApiTransactionResponse {
+    transactions: {
+      id: number;
+      startupId: number;
+      investorId: number;
+      amount: string;
+      status: string;
+      paymentMethod: string;
+      transactionId?: string | null;
+      createdAt?: Date | null;
+      [key: string]: any; // Allow for other properties
+    }[];
+  }
+  
+  // Transform API startups to match Firebase format
+  const apiStartups = startupsData?.startups 
+    ? startupsData.startups.map(startup => {
+        const typedStartup: FirebaseStartup = {
+          id: startup.id.toString(),
+          name: startup.name,
+          description: startup.description,
+          category: startup.category,
+          investmentStage: startup.investmentStage,
+          investment_stage: startup.investment_stage,
+          founderId: startup.founderId || startup.founder_id,
+          founder_id: startup.founder_id || startup.founderId,
+          logoUrl: startup.logoUrl || startup.logo_url,
+          upiQrCode: startup.upiQrCode || startup.upi_qr_code,
+          ...startup
+        };
+        return typedStartup;
+      })
+    : [];
+    
   const combinedStartups = myStartups.length > 0 ? myStartups : apiStartups;
-  const transactions = transactionsData?.transactions || [];
+  const transactions = (transactionsData as ApiTransactionResponse)?.transactions || [];
 
   // Calculate metrics safely
   const totalInvestors = useMemo(() => {
