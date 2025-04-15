@@ -24,7 +24,7 @@ const StartupDetails = () => {
   // Handle both numeric IDs (for local storage) and string IDs (for Firestore)
   const startupId = id && !isNaN(parseInt(id)) ? parseInt(id) : id;
   const { user } = useSimpleAuth();
-  const { getStartupById, updateStartup } = useStartups();
+  const { useStartup, useUpdateStartup } = useStartups();
   const { getDocumentsByStartupId } = useDocuments();
   const { createChat } = useChat();
   
@@ -34,10 +34,10 @@ const StartupDetails = () => {
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
 
   // Only fetch if we have a valid ID
-  const { data: startupData, isLoading: startupLoading } = getStartupById(startupId);
+  const { data: startupData, isLoading: startupLoading } = useStartup(startupId?.toString());
   const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(startupId);
   
-  const updateStartupMutation = updateStartup();
+  const updateStartupMutation = useUpdateStartup();
   const createChatMutation = createChat();
 
   // Safely extract data with null checks and type handling
