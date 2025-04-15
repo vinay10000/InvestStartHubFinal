@@ -69,7 +69,7 @@ export const uploadFile = async (
   }
 };
 
-// Upload startup document
+// Upload startup document with enhanced metadata
 export const uploadStartupDocument = async (
   startupId: number,
   documentType: string,
@@ -81,7 +81,42 @@ export const uploadStartupDocument = async (
   mimeType: string,
   fileSize: number
 }> => {
-  return uploadFile(file, `startups/${startupId}/documents/${documentType}`);
+  try {
+    // Format a clean filename with timestamp for uniqueness
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    const fileName = `${documentType}_${Date.now()}.${fileExtension}`;
+    
+    // Create form data for upload
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileName', fileName);
+    formData.append('folder', `startups/${startupId}/documents`);
+    formData.append('useUniqueFileName', 'false');
+    formData.append('tags', documentType);
+    
+    // Upload via our server-side proxy endpoint
+    const response = await fetch('/api/imagekit/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to upload document');
+    }
+    
+    return {
+      url: data.url,
+      fileId: data.fileId || '',
+      fileName: file.name, // Original file name
+      mimeType: file.type,
+      fileSize: file.size
+    };
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    throw new Error('Failed to upload document');
+  }
 };
 
 // Upload UPI QR code

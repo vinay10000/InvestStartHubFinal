@@ -38,7 +38,6 @@ const StartupDetails = () => {
   const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(startupId);
   
   const updateStartupMutation = updateStartup();
-  const uploadDocumentMutation = uploadDocument();
   const createChatMutation = createChat();
 
   // Safely extract data with null checks and type handling
@@ -65,16 +64,9 @@ const StartupDetails = () => {
     }
   };
 
-  const handleUploadDocument = async (documentData: any) => {
-    try {
-      await uploadDocumentMutation.mutateAsync({
-        startupId,
-        ...documentData,
-      });
-      setIsUploadDialogOpen(false);
-    } catch (error) {
-      console.error("Error uploading document:", error);
-    }
+  // Document uploading is now handled directly in the StartupDocumentUpload component
+  const handleUploadComplete = () => {
+    setIsUploadDialogOpen(false);
   };
 
   const handleStartChat = async () => {
@@ -180,7 +172,7 @@ const StartupDetails = () => {
                     </DialogHeader>
                     <StartupDocumentUpload 
                       startupId={startupId} 
-                      onComplete={() => setIsUploadDialogOpen(false)}
+                      onComplete={handleUploadComplete}
                     />
                   </DialogContent>
                 </Dialog>

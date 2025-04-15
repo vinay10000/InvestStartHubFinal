@@ -54,7 +54,8 @@ export default function StartupDocumentUpload({ startupId, onComplete }: Startup
 
   // Check if document of a specific type already exists
   const documentExists = (type: DocumentType): boolean => {
-    return documents.some(doc => doc.type === type);
+    if (!documents || !Array.isArray(documents)) return false;
+    return documents.some((doc: { type: string }) => doc.type === type);
   };
 
   // Handle document upload

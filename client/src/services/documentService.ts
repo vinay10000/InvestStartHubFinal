@@ -1,5 +1,25 @@
-import { supabase } from '@/lib/supabase';
-import { Document } from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+
+/**
+ * Document type definition - matches backend document schema
+ */
+export interface Document {
+  id: string | number;
+  startupId: string | number;
+  type: string;
+  name: string;
+  fileUrl: string;
+  fileId?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  createdAt: string;
+}
+
+/**
+ * Partial document for creating a new document
+ */
+export type CreateDocumentDto = Omit<Document, 'id' | 'createdAt'>;
 
 /**
  * Retrieves all documents for a specific startup
@@ -7,21 +27,10 @@ import { Document } from '@shared/schema';
  * @returns Promise containing the fetched documents
  */
 export const getDocumentsByStartupId = async (startupId: string | number) => {
-  try {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('startup_id', startupId);
-    
-    if (error) {
-      throw error;
-    }
-    
-    return { documents: data || [] };
-  } catch (error) {
-    console.error('Error fetching documents:', error);
-    throw error;
-  }
+  const response = await apiRequest(`/api/startups/${startupId}/documents`, {
+    method: 'GET',
+  });
+  return response.documents || [];
 };
 
 /**
@@ -29,45 +38,12 @@ export const getDocumentsByStartupId = async (startupId: string | number) => {
  * @param document - The document data to create
  * @returns Promise containing the created document
  */
-export const createDocument = async (document: Partial<Document>) => {
-  try {
-    // Convert camelCase to snake_case for Supabase
-    const { 
-      startupId, 
-      fileUrl, 
-      fileId, 
-      fileName, 
-      mimeType, 
-      fileSize,
-      ...restOfDocument 
-    } = document;
-
-    const documentData = {
-      ...restOfDocument,
-      startup_id: startupId,
-      file_url: fileUrl,
-      file_id: fileId,
-      file_name: fileName,
-      mime_type: mimeType,
-      file_size: fileSize,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('documents')
-      .insert(documentData)
-      .select()
-      .single();
-    
-    if (error) {
-      throw error;
-    }
-    
-    return { document: data };
-  } catch (error) {
-    console.error('Error creating document:', error);
-    throw error;
-  }
+export const createDocument = async (document: CreateDocumentDto) => {
+  const response = await apiRequest(`/api/startups/${document.startupId}/documents`, {
+    method: 'POST',
+    body: JSON.stringify(document),
+  });
+  return response.document;
 };
 
 /**
@@ -76,19 +52,75 @@ export const createDocument = async (document: Partial<Document>) => {
  * @returns Promise indicating success/failure
  */
 export const deleteDocument = async (documentId: string | number) => {
-  try {
-    const { error } = await supabase
-      .from('documents')
-      .delete()
-      .eq('id', documentId);
-    
-    if (error) {
-      throw error;
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting document:', error);
-    throw error;
+  const response = await apiRequest(`/api/documents/${documentId}`, {
+    method: 'DELETE',
+  });
+  return response;
+};
+
+/**
+ * Downloads a document by URL
+ * @param url - The document URL to download
+ * @param filename - The suggested filename for the download
+ */
+export const downloadDocument = (url: string, filename: string) => {
+  // Create an invisible anchor element
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'document';
+  document.body.appendChild(a);
+  a.click();
+  
+  // Cleanup
+  setTimeout(() => {
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }, 100);
+};
+
+/**
+ * Get appropriate icon for document type/MIME type
+ * @param type - Document type or MIME type
+ * @returns Icon identifier
+ */
+export const getDocumentIcon = (type: string, mimeType?: string) => {
+  // Check document type first
+  if (type === 'pitch_deck') return 'presentation';
+  if (type === 'financial_report') return 'chart';
+  if (type === 'investor_agreement') return 'file-check';
+  if (type === 'risk_disclosure') return 'alert-triangle';
+  
+  // Fall back to MIME type check
+  if (mimeType) {
+    if (mimeType.includes('pdf')) return 'file-text';
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) 
+      return 'table';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) 
+      return 'presentation';
+    if (mimeType.includes('image')) 
+      return 'image';
   }
+  
+  // Default
+  return 'file';
+};
+
+/**
+ * Get human-readable label for document type
+ * @param type - Document type
+ * @returns Human-readable label
+ */
+export const getDocumentTypeLabel = (type: string): string => {
+  // Convert snake_case to Title Case
+  if (type.includes('_')) {
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  
+  // Convert camelCase to Title Case
+  return type
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase());
 };

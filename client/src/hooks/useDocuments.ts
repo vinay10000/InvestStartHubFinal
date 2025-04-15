@@ -1,23 +1,33 @@
 import { useState } from 'react';
-import { useQuery, useMutation, QueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as documentService from '@/services/documentService';
 import * as imagekit from '@/services/imagekit';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient } from '@/lib/queryClient';
 
-// Define document types
+// Document types supported by the application
 export type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure';
 
-// Hook for document operations
+type UploadDocumentParams = {
+  startupId: string | number;
+  documentType: DocumentType;
+  file: File;
+  name?: string;
+};
+
 export function useDocuments() {
   const [isUploading, setIsUploading] = useState(false);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   // Get documents for a specific startup
   const getDocumentsByStartupId = (startupId: string | number | undefined) => {
     return useQuery({
       queryKey: ['/api/startups/documents', startupId],
-      queryFn: () => startupId ? documentService.getDocumentsByStartupId(startupId) : { documents: [] },
+      queryFn: async () => {
+        if (!startupId) return { documents: [] };
+        const documents = await documentService.getDocumentsByStartupId(startupId);
+        return { documents };
+      },
       enabled: !!startupId,
     });
   };
@@ -28,12 +38,7 @@ export function useDocuments() {
     documentType,
     file,
     name
-  }: {
-    startupId: string | number;
-    documentType: DocumentType;
-    file: File; 
-    name: string;
-  }) => {
+  }: UploadDocumentParams) => {
     try {
       setIsUploading(true);
       
@@ -47,7 +52,7 @@ export function useDocuments() {
       
       // 2. Create document record in Supabase
       const document = await documentService.createDocument({
-        startupId,
+        startupId: parsedStartupId,
         type: documentType,
         name: name || file.name,
         fileUrl: uploadResult.url,
