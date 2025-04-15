@@ -71,7 +71,7 @@ export const uploadFile = async (
 
 // Upload startup document with enhanced metadata
 export const uploadStartupDocument = async (
-  startupId: number,
+  startupId: number | undefined,
   documentType: string,
   file: File
 ): Promise<{

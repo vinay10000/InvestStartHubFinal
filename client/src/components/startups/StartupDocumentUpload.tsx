@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface StartupDocumentUploadProps {
-  startupId: number | string;
+  startupId: number | string | undefined;
   onComplete?: () => void;
 }
 

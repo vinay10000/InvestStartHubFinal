@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 export type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement' | 'risk_disclosure';
 
 type UploadDocumentParams = {
-  startupId: string | number;
+  startupId: string | number | undefined;
   documentType: DocumentType;
   file: File;
   name?: string;
@@ -41,6 +41,10 @@ export function useDocuments() {
   }: UploadDocumentParams) => {
     try {
       setIsUploading(true);
+      
+      if (!startupId) {
+        throw new Error('Startup ID is required to upload documents');
+      }
       
       // 1. Upload file to ImageKit
       const parsedStartupId = typeof startupId === 'string' ? parseInt(startupId) : startupId;

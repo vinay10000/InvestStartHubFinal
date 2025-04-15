@@ -39,6 +39,10 @@ export const getDocumentsByStartupId = async (startupId: string | number) => {
  * @returns Promise containing the created document
  */
 export const createDocument = async (document: CreateDocumentDto) => {
+  if (!document.startupId) {
+    throw new Error('startupId is required to create a document');
+  }
+  
   const response = await apiRequest(`/api/startups/${document.startupId}/documents`, {
     method: 'POST',
     body: JSON.stringify(document),
