@@ -4,6 +4,7 @@ import { useStartups } from "@/hooks/useStartups";
 import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useChat } from "@/hooks/useChat";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ const StartupDetails = () => {
   const { useStartup, useUpdateStartup } = useStartups();
   const { getDocumentsByStartupId } = useDocuments();
   const { createChat } = useChat();
+  const { toast } = useToast();
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -91,12 +93,30 @@ const StartupDetails = () => {
         startupId: startupIdNumber,
       };
       
+      // Show loading state or message
+      toast({
+        title: "Creating chat...",
+        description: "Connecting you with the startup founder",
+      });
+      
       const result = await createChatMutation.mutateAsync(chatData);
+      
+      toast({
+        title: "Chat created!",
+        description: "You can now communicate with the startup founder",
+        variant: "default",
+      });
       
       // Redirect to chat
       window.location.href = `/chat/${result.chat.id}`;
     } catch (error) {
       console.error("Error creating chat:", error);
+      
+      toast({
+        title: "Error creating chat",
+        description: "Please try again later",
+        variant: "destructive",
+      });
     }
   };
 

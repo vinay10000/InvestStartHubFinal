@@ -15,7 +15,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, LogOut, User } from "lucide-react";
+import { Menu, LogOut, User, MessageSquare } from "lucide-react";
+import NotificationIcon from "../chat/NotificationIcon";
 
 const Header = () => {
   const [location, navigate] = useLocation();
@@ -91,6 +92,17 @@ const Header = () => {
                 <Link href={getDashboardPath()}>
                   <Button variant="ghost">Dashboard</Button>
                 </Link>
+                
+                {/* Chat link with message icon */}
+                <Link href="/chat">
+                  <Button variant="ghost" size="icon">
+                    <MessageSquare className="h-5 w-5" />
+                  </Button>
+                </Link>
+                
+                {/* Notification Icon */}
+                <NotificationIcon />
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="p-0">
