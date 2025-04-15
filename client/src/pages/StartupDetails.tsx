@@ -41,7 +41,7 @@ const StartupDetails = () => {
   const createChatMutation = createChat();
 
   // Safely extract data with null checks and type handling
-  const startup = startupData?.startup;
+  const startup = startupData;
   
   // Handle documents data with proper type safety
   const documents = documentsData && documentsData !== null && 
@@ -49,7 +49,9 @@ const StartupDetails = () => {
     ? documentsData.documents as any[] 
     : [];
 
-  const isFounder = user?.id === startup?.founderId;
+  // Handle both camelCase (from schema) and snake_case (from DB) property names
+  const founderId = startup?.founderId || startup?.founder_id;
+  const isFounder = user?.id === founderId;
   const isInvestor = user?.role === "investor";
 
   const handleEditStartup = async (startupData: any) => {
@@ -73,10 +75,20 @@ const StartupDetails = () => {
     if (!user || !startup) return;
     
     try {
+      // Convert string IDs to numbers if needed
+      const startupIdNumber = typeof startup.id === 'string' ? parseInt(startup.id) : startup.id;
+      const founderIdNumber = founderId ? (typeof founderId === 'string' ? parseInt(founderId) : founderId) : null;
+      const investorIdNumber = user.id ? (typeof user.id === 'string' ? parseInt(user.id) : user.id) : null;
+      
+      if (!founderIdNumber || !investorIdNumber) {
+        console.error("Missing required IDs for chat creation");
+        return;
+      }
+      
       const chatData = {
-        founderId: startup.founderId,
-        investorId: user.id,
-        startupId: startup.id,
+        founderId: founderIdNumber,
+        investorId: investorIdNumber,
+        startupId: startupIdNumber,
       };
       
       const result = await createChatMutation.mutateAsync(chatData);
@@ -113,7 +125,15 @@ const StartupDetails = () => {
     );
   }
 
-  const { name, description, pitch, investmentStage, upiId, upiQrCode } = startup;
+  // Handle both camelCase and snake_case property access
+  const name = startup.name;
+  const description = startup.description;
+  const pitch = startup.pitch;
+  const investmentStage = startup.investmentStage || startup.investment_stage;
+  const upiId = startup.upiId || startup.upi_id;
+  const upiQrCode = startup.upiQrCode || startup.upi_qr_code;
+  const fundingGoal = startup.fundingGoal || startup.funding_goal;
+  
   const { bg: stageBg, text: stageText } = getInvestmentStageColor(investmentStage);
 
   return (
@@ -126,7 +146,7 @@ const StartupDetails = () => {
               <Badge className={`${stageBg} ${stageText}`}>{investmentStage}</Badge>
               <Badge variant="outline" className="font-semibold">
                 <DollarSign className="h-3.5 w-3.5 mr-1" />
-                Funding Goal: {startup.fundingGoal || "0"} {startup.fundingGoal ? (typeof startup.fundingGoal === 'string' && startup.fundingGoal.includes('ETH') ? 'ETH' : '') : ''}
+                Funding Goal: {fundingGoal || "0"} {fundingGoal ? (typeof fundingGoal === 'string' && fundingGoal.includes('ETH') ? 'ETH' : '') : ''}
               </Badge>
             </div>
           </div>
@@ -214,8 +234,8 @@ const StartupDetails = () => {
                         <UPIPayment 
                           startupId={startup.id}
                           startupName={startup.name}
-                          upiId={startup.upiId || ""}
-                          upiQrCode={startup.upiQrCode || ""}
+                          upiId={upiId || ""}
+                          upiQrCode={upiQrCode || ""}
                           onPaymentComplete={() => setIsInvestDialogOpen(false)}
                         />
                       </TabsContent>
