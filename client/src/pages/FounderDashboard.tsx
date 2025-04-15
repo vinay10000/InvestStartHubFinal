@@ -17,23 +17,24 @@ import TransactionList from "@/components/transactions/TransactionList";
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id || "";
-  const { getStartupsByFounderId, createStartup, uploadDocument, getDocumentsByStartupId } = useStartups();
-  const { getTransactionsByFounderId } = useTransactions();
+  const { useFounderStartups, useCreateStartup } = useStartups();
+  const { useFounderTransactions } = useTransactions();
+  const { useCreateDocument } = useDocuments();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
 
   // Wait for auth to resolve before making data queries
-  const { data: startupsData, isLoading: startupsLoading } = getStartupsByFounderId();
+  const { data: startupsData, isLoading: startupsLoading } = useFounderStartups();
   
   // Convert to a number for API call
   const userIdNumber = userId ? (typeof userId === 'string' ? 
     parseInt(userId) : userId) : undefined;
     
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(userIdNumber);
+  const { data: transactionsData, isLoading: transactionsLoading } = useFounderTransactions(userIdNumber?.toString());
   
   // Create startup mutation
-  const createStartupMutation = createStartup();
+  const createStartupMutation = useCreateStartup();
 
   const handleCreateStartup = async (startupData: any) => {
     try {
