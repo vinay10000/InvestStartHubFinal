@@ -130,7 +130,7 @@ const InvestorDashboard = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Startups Invested</p>
                 <h3 className="text-2xl font-bold">
-                  {transactionsLoading ? <Skeleton className="h-8 w-16" /> : investedStartups}
+                  {transactionsLoading && firebaseTransactions.length === 0 ? <Skeleton className="h-8 w-16" /> : investedStartups}
                 </h3>
               </div>
             </div>
