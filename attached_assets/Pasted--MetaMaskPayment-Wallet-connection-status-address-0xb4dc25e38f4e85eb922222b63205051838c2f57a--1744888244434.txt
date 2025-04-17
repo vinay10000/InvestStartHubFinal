@@ -1,0 +1,72 @@
+[MetaMaskPayment] Wallet connection status: {address: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', isWalletConnected: true, hasUserWallet: false, localStorage: 'true'}
+MetaMaskPayment.tsx:42 [MetaMaskPayment] Wallet connection status: {address: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', isWalletConnected: true, hasUserWallet: false, localStorage: 'true'}
+contractInteraction.ts:131 Error investing in startup: Error: Contract address not configured
+    at getContract (contractInteraction.ts:25:11)
+    at getInvestmentContract (contractInteraction.ts:54:10)
+    at Module.investInStartup (contractInteraction.ts:113:28)
+    at investInStartup (useContractInteraction.ts:51:48)
+    at async onSubmit (MetaMaskPayment.tsx:86:22)
+    at async chunk-BW5TH624.js?v=3568d0c6:1675:9
+investInStartup @ contractInteraction.ts:131
+await in investInStartup
+investInStartup @ useContractInteraction.ts:51
+await in investInStartup
+onSubmit @ MetaMaskPayment.tsx:86
+(anonymous) @ chunk-BW5TH624.js?v=3568d0c6:1675
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=3568d0c6:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=3568d0c6:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=3568d0c6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=3568d0c6:3736
+executeDispatch @ chunk-276SZO74.js?v=3568d0c6:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=3568d0c6:7034
+processDispatchQueue @ chunk-276SZO74.js?v=3568d0c6:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=3568d0c6:7051
+(anonymous) @ chunk-276SZO74.js?v=3568d0c6:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=3568d0c6:18913
+batchedUpdates @ chunk-276SZO74.js?v=3568d0c6:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=3568d0c6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=3568d0c6:5478
+dispatchEvent @ chunk-276SZO74.js?v=3568d0c6:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=3568d0c6:5449
+useContractInteraction.ts:60 Error investing in startup: Error: Investment failed: Contract address not configured
+    at Module.investInStartup (contractInteraction.ts:138:11)
+    at async investInStartup (useContractInteraction.ts:51:22)
+    at async onSubmit (MetaMaskPayment.tsx:86:22)
+    at async chunk-BW5TH624.js?v=3568d0c6:1675:9
+investInStartup @ useContractInteraction.ts:60
+await in investInStartup
+onSubmit @ MetaMaskPayment.tsx:86
+(anonymous) @ chunk-BW5TH624.js?v=3568d0c6:1675
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=3568d0c6:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=3568d0c6:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=3568d0c6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=3568d0c6:3736
+executeDispatch @ chunk-276SZO74.js?v=3568d0c6:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=3568d0c6:7034
+processDispatchQueue @ chunk-276SZO74.js?v=3568d0c6:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=3568d0c6:7051
+(anonymous) @ chunk-276SZO74.js?v=3568d0c6:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=3568d0c6:18913
+batchedUpdates @ chunk-276SZO74.js?v=3568d0c6:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=3568d0c6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=3568d0c6:5478
+dispatchEvent @ chunk-276SZO74.js?v=3568d0c6:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=3568d0c6:5449
+Header.tsx:27 Header rendering with auth state: {user: {…}, loading: false}
+Header.tsx:49 Header - Using role from user object: investor
+StartupDetails.tsx:50 StartupDetails - ID from params: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:51 StartupDetails - Startup ID being used for query: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:52 StartupDetails - Current user: {id: 'QyubptBhMNSW7tiM6Ccuijikszi2', uid: 'QyubptBhMNSW7tiM6Ccuijikszi2', username: 'chunk', email: 'chunk@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256', …}
+StartupDetails.tsx:53 StartupDetails - User role: investor
+StartupDetails.tsx:54 StartupDetails - Fetched startup data: {createdAt: '2025-04-17T11:07:14.509Z', current_funding: '0', description: 'Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations', founderId: 'pTvcMD9S4iWaIfrMjuX0HkTjB4v1', funding_goal: '80', …}
+StartupDetails.tsx:55 StartupDetails - Fetched documents data: {documents: Array(0)}
+StartupDetails.tsx:60 StartupDetails - UPI QR code URL: {fileId: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileName: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileSize: 5053, mimeType: 'image/png', url: '/uploads/8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png'}
+StartupDetails.tsx:62 StartupDetails - UPI ID: ferb@ixl
+StartupDetails.tsx:78 Wallet connection status: {userWalletAddress: '', metamaskAddress: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', localStorageWalletConnected: 'true', isWalletConnectedMethod: true, hasWalletConnected: true}
+StartupDetails.tsx:115 Startup details - founderId: pTvcMD9S4iWaIfrMjuX0HkTjB4v1 user.id: QyubptBhMNSW7tiM6Ccuijikszi2 user.uid: QyubptBhMNSW7tiM6Ccuijikszi2
+StartupDetails.tsx:133 User role check: user: {id: 'QyubptBhMNSW7tiM6Ccuijikszi2', uid: 'QyubptBhMNSW7tiM6Ccuijikszi2', username: 'chunk', email: 'chunk@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256', …} role: investor isInvestor: true isFounder: false
+MetaMaskPayment.tsx:42 [MetaMaskPayment] Wallet connection status: {address: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', isWalletConnected: true, hasUserWallet: false, localStorage: 'true'}
+MetaMaskPayment.tsx:42 [MetaMaskPayment] Wallet connection status: {address: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', isWalletConnected: true, hasUserWallet: false, localStorage: 'true'}
+MetaMaskPayment.tsx:42 [MetaMaskPayment] Wallet connection status: {address: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', isWalletConnected: true, hasUserWallet: false, localStorage: 'true'}

@@ -291,6 +291,9 @@ const FounderDashboard = () => {
           // Show success message
           alert(`Startup ${result.name} created successfully!`);
           
+          // Redirect to the startup details page using the Firebase ID
+          window.location.href = `/startup/${result.id}`;
+          
         } else {
           throw new Error("Failed to create startup - no ID returned");
         }
