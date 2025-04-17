@@ -51,10 +51,26 @@ const StartupDetails = () => {
   // Safely extract data with null checks and type handling
   const startup = startupData;
   
+  // Convert FirebaseDocument to Document type expected by DocumentViewer
+  const convertToDocumentType = (doc: FirebaseDocument | any): Document => {
+    return {
+      id: doc.id || '',
+      startupId: doc.startupId || '',
+      type: doc.type || '',
+      name: doc.name || doc.fileName || 'Untitled',
+      fileUrl: doc.fileUrl || '',
+      fileId: doc.fileId,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      fileSize: doc.fileSize,
+      createdAt: doc.createdAt || new Date().toISOString(),
+    };
+  };
+  
   // Handle documents data with proper type safety
   const documents = documentsData && documentsData !== null && 
     typeof documentsData === 'object' && 'documents' in documentsData 
-    ? (documentsData.documents as Document[]) || [] 
+    ? (documentsData.documents || []).map(convertToDocumentType)
     : [];
 
   // Extract founderId with proper fallbacks
