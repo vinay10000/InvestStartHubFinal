@@ -31,9 +31,26 @@ const WalletPrompt: React.FC<WalletPromptProps> = ({ children }) => {
     // Check if user has connected a wallet
     const hasWallet = user.walletAddress && user.walletAddress !== '';
     
-    if (!hasWallet && !hasChecked) {
-      // Only show prompt if no wallet is connected and we haven't checked yet
+    // Also check localStorage to avoid showing prompt too frequently
+    const lastPromptTime = localStorage.getItem('wallet_prompt_last_shown');
+    const currentTime = Date.now();
+    const promptCooldown = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    
+    // Show prompt if:
+    // 1. No wallet is connected
+    // 2. We haven't checked this session
+    // 3. We haven't shown the prompt in the last 24 hours
+    const showDueToTime = !lastPromptTime || (currentTime - Number(lastPromptTime)) > promptCooldown;
+    
+    if (!hasWallet && !hasChecked && showDueToTime) {
+      // Update last prompt time
+      localStorage.setItem('wallet_prompt_last_shown', currentTime.toString());
+      
+      // Show prompt
       setShowPrompt(true);
+      setHasChecked(true);
+    } else if (!hasChecked) {
+      // Just mark as checked without showing
       setHasChecked(true);
     }
   }, [user, hasChecked]);

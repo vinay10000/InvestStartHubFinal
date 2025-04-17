@@ -16,8 +16,9 @@ import StartupDetails from "@/pages/StartupDetails";
 import Transactions from "@/pages/Transactions";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
+import WalletPrompt from "@/components/auth/WalletPrompt";
 
 // AutoRedirect component to handle automatic redirection after login
 function AutoRedirect() {
@@ -115,6 +116,54 @@ function Router() {
   );
 }
 
+// Global wallet prompt checker that runs on any authenticated route
+function GlobalWalletChecker() {
+  const { user } = useAuth();
+  const [showWalletPrompt, setShowWalletPrompt] = useState(false);
+  
+  useEffect(() => {
+    if (!user) return;
+    
+    // Check if user has wallet address
+    const hasWallet = user.walletAddress && user.walletAddress !== '';
+    
+    // Check if this is a new user (set during signup)
+    const isNewUser = localStorage.getItem('new_user_wallet_prompt') === 'true';
+    
+    // Check cooldown period for existing users
+    const lastPromptTime = localStorage.getItem('wallet_prompt_last_shown');
+    const currentTime = Date.now();
+    const promptCooldown = 24 * 60 * 60 * 1000; // 24 hours
+    const showDueToTime = !lastPromptTime || (currentTime - Number(lastPromptTime)) > promptCooldown;
+    
+    // Show prompt if:
+    // 1. User has no wallet, AND
+    // 2. Either it's a new user OR the cooldown period has passed
+    if (!hasWallet && (isNewUser || showDueToTime)) {
+      // Update last shown time
+      localStorage.setItem('wallet_prompt_last_shown', currentTime.toString());
+      
+      // Clear new user flag
+      if (isNewUser) {
+        localStorage.removeItem('new_user_wallet_prompt');
+      }
+      
+      // Show the prompt
+      setShowWalletPrompt(true);
+    }
+  }, [user]);
+  
+  // No need to render anything if not showing prompt
+  if (!showWalletPrompt) return null;
+  
+  return (
+    <WalletPrompt 
+      open={showWalletPrompt} 
+      onOpenChange={setShowWalletPrompt}
+    />
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -125,6 +174,7 @@ function App() {
             <Router />
           </main>
           <Footer />
+          <GlobalWalletChecker />
         </div>
         <Toaster />
       </AuthProvider>

@@ -60,6 +60,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       }
     }
     
+    // Use React.lazy for dynamic imports in Vite
     return <>{children}</>;
   }
 
