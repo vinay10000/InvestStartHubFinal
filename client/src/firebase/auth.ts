@@ -67,6 +67,14 @@ export const signUpWithEmail = async (
     localStorage.setItem('user_role', normalizedRole);
     console.log("⭐ IMPORTANT: Saved user role to localStorage during signup:", normalizedRole);
     
+    // Make sure to check the role is saved correctly
+    const storedRole = localStorage.getItem('user_role');
+    if (storedRole !== normalizedRole) {
+      console.error("Role mismatch in localStorage. Expected:", normalizedRole, "Got:", storedRole);
+      // Try setting it again
+      localStorage.setItem('user_role', normalizedRole);
+    }
+    
     // Force a refresh of the auth token to ensure updated claims
     await user.getIdToken(true);
     

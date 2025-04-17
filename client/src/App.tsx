@@ -29,7 +29,9 @@ function AutoRedirect() {
     if (!loading && user) {
       // First check localStorage, then fallback to user object, then default to investor
       const storedRole = localStorage.getItem('user_role');
-      const userRole = storedRole || user.role || 'investor';
+      
+      // Normalize role to lowercase for consistency
+      const userRole = (storedRole || user.role || 'investor').toLowerCase();
       
       console.log("AutoRedirect - User authenticated with role:", userRole, 
                   "stored role:", storedRole, 
@@ -39,11 +41,14 @@ function AutoRedirect() {
       localStorage.setItem('user_role', userRole);
       console.log("AutoRedirect - Ensuring role is in localStorage:", userRole);
       
+      // Double-check the role was saved correctly
+      const confirmedStoredRole = localStorage.getItem('user_role');
+      
       if (userRole === 'founder') {
-        console.log("Auto-redirecting to founder dashboard");
+        console.log("Auto-redirecting to founder dashboard. Stored role:", confirmedStoredRole);
         navigate('/founder/dashboard');
       } else {
-        console.log("Auto-redirecting to investor dashboard");
+        console.log("Auto-redirecting to investor dashboard. Stored role:", confirmedStoredRole);
         navigate('/investor/dashboard');
       }
     } else if (!loading && !user) {
