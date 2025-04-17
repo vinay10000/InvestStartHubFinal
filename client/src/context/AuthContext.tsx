@@ -33,6 +33,7 @@ interface AuthContextType {
     profilePicture?: string;
   }>) => Promise<void>;
   connectWallet: (walletAddress: string) => Promise<void>;
+  disconnectWallet: () => Promise<void>;
 }
 
 const DEFAULT_AUTH_CONTEXT: AuthContextType = {
@@ -44,6 +45,7 @@ const DEFAULT_AUTH_CONTEXT: AuthContextType = {
   signOut: async () => {},
   updateProfile: async () => {},
   connectWallet: async () => {},
+  disconnectWallet: async () => {},
 };
 
 export const AuthContext = createContext<AuthContextType>(DEFAULT_AUTH_CONTEXT);
@@ -406,6 +408,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update user wallet in Firebase Realtime Database
       await updateUser(currentUser.uid, { walletAddress });
       
+      // Set the wallet connected flag in localStorage
+      localStorage.setItem('wallet_connected', 'true');
+      
       // Force synchronization to get updated user data
       await synchronizeUserData(currentUser);
       
@@ -416,6 +421,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error in connectWallet:", error);
       toast({
         title: "Error connecting wallet",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+  
+  // Disconnect wallet
+  const disconnectWallet = async () => {
+    try {
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      console.log("Disconnecting wallet");
+      
+      // Get the current auth user
+      const { auth } = await import("@/firebase/config");
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        throw new Error("Firebase user not found");
+      }
+      
+      // Update user wallet in Firebase Realtime Database with empty string
+      await updateUser(currentUser.uid, { walletAddress: '' });
+      
+      // Remove the wallet connected flag from localStorage
+      localStorage.removeItem('wallet_connected');
+      
+      // Force synchronization to get updated user data
+      await synchronizeUserData(currentUser);
+      
+      toast({
+        title: "Wallet disconnected successfully",
+      });
+    } catch (error: any) {
+      console.error("Error in disconnectWallet:", error);
+      toast({
+        title: "Error disconnecting wallet",
         description: error.message,
         variant: "destructive",
       });

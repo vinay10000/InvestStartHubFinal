@@ -27,11 +27,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       const hasWallet = user.walletAddress && user.walletAddress !== '';
       const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
       
-      // If no wallet is connected and not previously connected, force wallet connection
+      // No longer forcing wallet connection in ProtectedRoute
       if (!hasWallet && !hasConnectedWallet) {
-        console.log('ProtectedRoute: User has no wallet connected, showing wallet prompt');
-        setShowWalletPrompt(true);
-        return;
+        console.log('ProtectedRoute: User has no wallet connected, but continuing without forcing connection');
+        // setShowWalletPrompt(true); // Removed wallet prompt as requested
       }
       
       // First check localStorage, then user object, then default to investor
