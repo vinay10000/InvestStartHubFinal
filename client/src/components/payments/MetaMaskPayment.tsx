@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWeb3 } from "@/hooks/useWeb3";
 import { useContractInteraction } from "@/hooks/useContractInteraction";
 import { formatCurrency, truncateAddress } from "@/lib/utils";
+import { sendDirectETH } from "@/lib/directTransfer";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
@@ -206,6 +207,14 @@ const MetaMaskPayment = ({
       // This was loaded in the useEffect when startup data changed
       let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
       
+      // IMPORTANT: Hard-code founder address for testing if we didn't get it from the database
+      // This is for development only - replace with proper address lookup in production
+      if (!founderWalletAddress) {
+        // Use a known valid wallet address for testing
+        founderWalletAddress = "0xb4dc25e38f4e85eb922222b63205051838c2f57a";
+        console.log("[MetaMaskPayment] WARNING: Using default founder address for testing:", founderWalletAddress);
+      }
+      
       // Ensure startupId is a valid number for blockchain
       const numericStartupId = typeof startupId === 'number' ? 
         startupId : 
@@ -223,34 +232,21 @@ const MetaMaskPayment = ({
       
       let result;
       
+      // For debugging - check if the address is valid
+      console.log("[MetaMaskPayment] Address validation:", {
+        founderWalletAddress,
+        isValidAddress: founderWalletAddress ? ethers.isAddress(founderWalletAddress) : false,
+        ethersVersion: ethers.version
+      });
+      
       // Use direct ETH transfer to founder wallet if we have a valid address
       if (founderWalletAddress && ethers.isAddress(founderWalletAddress)) {
         console.log("[MetaMaskPayment] Using direct ETH transfer to:", founderWalletAddress);
         
         try {
-          // Get the signer to send directly (bypassing the contract)
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const signer = await provider.getSigner();
-          
-          // Calculate amount in wei
-          const amountInWei = ethers.parseEther(cleanAmount);
-          
-          // Send transaction directly to the founder's wallet
-          const tx = await signer.sendTransaction({
-            to: founderWalletAddress,
-            value: amountInWei
-          });
-          
-          console.log("[MetaMaskPayment] Direct transfer tx hash:", tx.hash);
-          const receipt = await tx.wait();
-          console.log("[MetaMaskPayment] Transfer confirmed:", receipt);
-          
-          // Format the result to match our expected format
-          result = {
-            transactionHash: tx.hash,
-            blockNumber: receipt.blockNumber,
-            status: receipt.status === 1 ? "success" : "failed"
-          };
+          // Use our dedicated direct transfer utility
+          result = await sendDirectETH(founderWalletAddress, cleanAmount);
+          console.log("[MetaMaskPayment] Direct transfer result:", result);
         } catch (error) {
           console.error("[MetaMaskPayment] Direct transfer error:", error);
           throw error;
