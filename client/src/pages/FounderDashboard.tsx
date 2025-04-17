@@ -22,11 +22,11 @@ import {
 
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  // Make sure userId is correctly extracted from the auth state
-  // Handle both database-style user.id and Firebase-style user.uid
-  const userId = user ? (user.id || (user as any)?.uid || "") : "";
+  // Handle extracting the user ID from the auth context
+  // Firebase UID should be available as user.uid added in AuthContext
+  const userId = user ? (user.uid || user.id || "") : "";
   
-  console.log("Current auth state:", { user, userId, authLoading });
+  console.log("Current auth state:", { user, userId, authLoading, userDetails: JSON.stringify(user) });
   
   // No longer using hooks that depend on Supabase
   // We'll use Firebase functions directly

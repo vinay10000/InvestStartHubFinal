@@ -14,7 +14,11 @@ import TransactionList from "@/components/transactions/TransactionList";
 
 const InvestorDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const userId = user?.id || "";
+  // Handle extracting the user ID from the auth context
+  // Firebase UID should be available as user.uid added in AuthContext
+  const userId = user ? (user.uid || user.id || "") : "";
+  console.log("Current auth state (investor):", { user, userId, authLoading, userDetails: JSON.stringify(user) });
+  
   const { useAllStartups } = useStartups();
   const { getTransactionsByInvestorId } = useTransactions();
   const [filter, setFilter] = useState("");

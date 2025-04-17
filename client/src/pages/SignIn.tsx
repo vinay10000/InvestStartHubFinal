@@ -3,15 +3,15 @@ import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our simplified auth context
+import { useAuth } from "@/hooks/useAuth"; // Use our main auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
-import { getFirestoreUser } from "@/firebase/firestore";
+import { getUserByUid } from "@/firebase/database"; // Use Firebase Realtime Database
 import { auth } from "@/firebase/config"; // Import Firebase auth
 
 const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useSimpleAuth(); // Use our simplified auth context
+  const { signIn, signInWithGoogle } = useAuth(); // Use our main auth context
   const [location, navigate] = useLocation();
 
   // Extract redirect URL from query parameters if available
@@ -29,42 +29,31 @@ const SignIn = () => {
       const loginEmail = email || username;
       console.log("Starting sign-in process using email:", loginEmail);
       
-      // Before signin, check if there's an existing role in localStorage
-      // We'll use this to handle redirection after successful login
-      let existingRole = localStorage.getItem('user_role');
-      
       await signIn(loginEmail, password);
       console.log("Sign-in successful");
-      
-      // After successful login, get the user role from localStorage
-      // Use userData stored in localStorage to determine the role
-      const redirectUrl = getRedirectUrl();
       
       // Get the user from Firebase Authentication
       const currentUser = auth.currentUser;
       
       if (currentUser && currentUser.uid) {
         try {
-          // Try to get the user's role from Firestore
-          const firestoreUser = await getFirestoreUser(currentUser.uid);
-          console.log("Firestore user data:", firestoreUser);
+          // Try to get the user's role from Firebase Realtime Database
+          const dbUser = await getUserByUid(currentUser.uid);
+          console.log("Database user data:", dbUser);
           
-          if (firestoreUser && firestoreUser.role) {
-            // Update the role in localStorage with the correct one from Firestore
-            localStorage.setItem('user_role', firestoreUser.role);
-            console.log("Set user role from Firestore:", firestoreUser.role);
+          if (dbUser && dbUser.role) {
+            // Store the role in localStorage for convenience
+            localStorage.setItem('user_role', dbUser.role);
+            console.log("Set user role from Firebase DB:", dbUser.role);
           }
         } catch (error) {
-          console.error("Error getting user from Firestore:", error);
+          console.error("Error getting user from Firebase DB:", error);
         }
       }
       
       // Redirect to the dashboard route that will handle role-based redirection
       setTimeout(() => {
-        // After login, we should use the user role directly from Firestore/auth context
         console.log("Redirecting to the dashboard");
-        
-        // Use the dashboard route which will automatically redirect based on role
         navigate('/dashboard');
       }, 500);
     } catch (error) {

@@ -1,6 +1,11 @@
 import { createContext, useState, useEffect, ReactNode } from "react";
-import { User } from "@shared/schema";
+import { User as SchemaUser } from "@shared/schema";
 import { User as FirebaseUser } from "firebase/auth";
+
+// Extend the User type to include Firebase UID
+interface User extends SchemaUser {
+  uid: string; // Firebase UID for direct access
+}
 import { 
   signUpWithEmail as firebaseSignUpWithEmail, 
   signInWithEmail as firebaseSignInWithEmail, 
@@ -321,8 +326,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updatedData.walletAddress = '';
       }
       
-      // Update user in Firestore
-      await updateFirestoreUser(currentUser.uid, updatedData);
+      // Update user in Firebase Realtime Database
+      await updateUser(currentUser.uid, updatedData);
       
       // Force synchronization to get updated user data
       await synchronizeUserData(currentUser);
@@ -358,8 +363,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase user not found");
       }
       
-      // Update user wallet in Firestore
-      await updateFirestoreUser(currentUser.uid, { walletAddress });
+      // Update user wallet in Firebase Realtime Database
+      await updateUser(currentUser.uid, { walletAddress });
       
       // Force synchronization to get updated user data
       await synchronizeUserData(currentUser);
