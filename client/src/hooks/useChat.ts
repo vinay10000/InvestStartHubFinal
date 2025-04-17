@@ -27,10 +27,41 @@ export const useChat = () => {
   const createChat = () => {
     return useMutation({
       mutationFn: async (chatData: InsertChat) => {
-        return apiRequest("/api/chats", {
+        // First create the chat in our local storage API
+        const response = await apiRequest("/api/chats", {
           method: "POST",
           body: JSON.stringify(chatData),
         });
+
+        // Then also create a corresponding entry in Firebase Realtime DB
+        try {
+          // Import needed for createRealtimeChat
+          const { createRealtimeChat } = await import('@/firebase/realtime');
+          
+          // Create the chat in Firebase realtime database which accepts any data structure
+          // This is separate from the Drizzle schema types
+          const firebaseChatId = await createRealtimeChat({
+            // Convert IDs to strings for Firebase (it prefers string keys)
+            founderId: chatData.founderId.toString(),
+            investorId: chatData.investorId.toString(), 
+            startupId: chatData.startupId.toString(),
+            // Additional metadata for the Firebase chat
+            timestamp: Date.now(),
+            lastMessage: "",
+            founderUnread: 0,
+            investorUnread: 0
+          });
+          
+          // Enhance the response with the Firebase chat ID if needed
+          if (response && response.chat) {
+            response.chat.firebaseId = firebaseChatId;
+          }
+        } catch (err) {
+          console.error("Failed to create Firebase chat entry:", err);
+          // We continue even if Firebase fails since we have our local storage
+        }
+        
+        return response;
       },
       onSuccess: (data, variables) => {
         queryClient.invalidateQueries({ queryKey: [`/api/chats?userId=${variables.founderId}&role=founder`] });

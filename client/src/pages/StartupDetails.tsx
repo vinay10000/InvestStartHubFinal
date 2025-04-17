@@ -246,7 +246,18 @@ const StartupDetails = () => {
         description: "Connecting you with the startup founder",
       });
       
+      // Create the chat using the mutation 
       const result = await createChatMutation.mutateAsync(chatData);
+      
+      // Get the chat ID and Firebase ID if available
+      const chatId = result.chat.id;
+      const firebaseId = result.chat.firebaseId;
+      
+      console.log("Chat created successfully:", {
+        chatId,
+        firebaseId,
+        result
+      });
       
       toast({
         title: "Chat created!",
@@ -254,8 +265,11 @@ const StartupDetails = () => {
         variant: "default",
       });
       
-      // Redirect to chat
-      window.location.href = `/chat/${result.chat.id}`;
+      // Use the Firebase ID if available (for realtime features), otherwise use the local ID
+      const redirectId = firebaseId || chatId;
+      
+      // Redirect to chat using wouter navigation instead of window.location
+      setLocation(`/chat/${redirectId}`);
     } catch (error) {
       console.error("Error creating chat:", error);
       

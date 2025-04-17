@@ -3,7 +3,8 @@ import { database } from "./config";
 import { Chat, Message } from "@shared/schema";
 
 // Chat CRUD operations
-export const createRealtimeChat = async (chatData: Omit<Chat, "id" | "createdAt">): Promise<string> => {
+// Use a more flexible type for Firebase which accepts any properties
+export const createRealtimeChat = async (chatData: Record<string, any>): Promise<string> => {
   const chatRef = ref(database, "chats");
   const newChatRef = push(chatRef);
   
