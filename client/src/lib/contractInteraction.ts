@@ -119,15 +119,33 @@ export const investInStartup = async (startupId: number, amount: string) => {
   try {
     const contract = await getInvestmentContract(true);
     
-    // Ensure we have a clean amount string without scientific notation
-    // This prevents issues where 0.0001 becomes 1e-4 which parseEther can't handle
-    const cleanAmount = Number(amount).toString();
+    // Ensure we have a valid number before proceeding
+    if (!amount || amount.trim() === "" || isNaN(Number(amount))) {
+      throw new Error("Invalid amount: please enter a valid number");
+    }
     
-    // Log the amount being used for debugging
+    // Parse the input amount safely
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      throw new Error("Amount must be a positive number");
+    }
+    
+    // Convert to a fixed decimal string to avoid scientific notation
+    // Format with up to 18 decimal places (Ethereum max precision)
+    // This ensures numbers like 0.0001 don't become 1e-4
+    const decimalPlaces = amount.includes('.') ? 
+      amount.split('.')[1].length : 0;
+    
+    // Use fixed notation with appropriate precision
+    const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
+    
+    console.log(`[Contract Interaction] Input amount: ${amount}`);
+    console.log(`[Contract Interaction] Parsed amount: ${numericAmount}`);
+    console.log(`[Contract Interaction] Clean amount: ${cleanAmount}`);
     console.log(`[Contract Interaction] Investing in startup ${startupId} with ${cleanAmount} ETH`);
     
     try {
-      // Convert ETH amount to wei
+      // Convert ETH amount to wei safely using a string that parseEther can handle
       const amountInWei = ethers.parseEther(cleanAmount);
       console.log(`[Contract Interaction] Amount in Wei: ${amountInWei.toString()}`);
       
@@ -147,9 +165,18 @@ export const investInStartup = async (startupId: number, amount: string) => {
         blockNumber: receipt.blockNumber,
         status: receipt.status === 1 ? "success" : "failed"
       };
-    } catch (parseError) {
-      console.error("[Contract Interaction] Error parsing or sending amount:", parseError);
-      throw new Error(`Invalid amount format: Please enter a valid ETH amount with no more than 18 decimal places.`);
+    } catch (error: any) {
+      console.error("[Contract Interaction] Error parsing or sending amount:", error);
+      
+      // Provide clearer error messages based on the error type
+      const errorStr = String(error);
+      if (errorStr.includes("underflow") || 
+          errorStr.includes("overflow") ||
+          errorStr.includes("INVALID_ARGUMENT")) {
+        throw new Error(`Invalid amount format: Please enter a valid ETH amount between 0 and 1e18`);
+      }
+      
+      throw new Error(`Failed to process transaction: ${error.message || errorStr}`);
     }
   } catch (error: any) {
     console.error("Error investing in startup:", error);

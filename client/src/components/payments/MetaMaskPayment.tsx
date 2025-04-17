@@ -164,8 +164,13 @@ const MetaMaskPayment = ({
         userBalance
       });
       
-      // Convert to a clean string representation to prevent scientific notation issues
-      const cleanAmount = numericAmount.toString();
+      // Convert to a fixed decimal string to prevent scientific notation issues
+      // This ensures we don't get values like 0.0001 turning into 1e-4
+      const decimalPlaces = amountValue.includes('.') ? 
+        amountValue.split('.')[1].length : 0;
+      
+      // Use fixed notation with appropriate decimal places (max 18 for Ethereum)
+      const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
       
       // Invest using the contract
       const result = await investInStartup(startupId, cleanAmount);

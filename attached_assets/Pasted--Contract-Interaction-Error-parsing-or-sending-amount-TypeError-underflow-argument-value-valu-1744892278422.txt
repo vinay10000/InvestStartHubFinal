@@ -1,0 +1,50 @@
+[Contract Interaction] Error parsing or sending amount: TypeError: underflow (argument="value", value=NaN, code=INVALID_ARGUMENT, version=6.13.5)
+    at makeError (ethers.js?v=3568d0c6:318:15)
+    at assert (ethers.js?v=3568d0c6:338:11)
+    at assertArgument (ethers.js?v=3568d0c6:342:3)
+    at getBigInt (ethers.js?v=3568d0c6:550:7)
+    at NumberCoder.encode (ethers.js?v=3568d0c6:7971:17)
+    at ethers.js?v=3568d0c6:7768:13
+    at Array.forEach (<anonymous>)
+    at pack (ethers.js?v=3568d0c6:7758:10)
+    at TupleCoder.encode (ethers.js?v=3568d0c6:8057:12)
+    at _AbiCoder.encode (ethers.js?v=3568d0c6:11852:11)
+investInStartup @ contractInteraction.ts:151
+contractInteraction.ts:155 Error investing in startup: Error: Invalid amount format: Please enter a valid ETH amount with no more than 18 decimal places.
+    at Module.investInStartup (contractInteraction.ts:152:13)
+    at async investInStartup (useContractInteraction.ts:51:22)
+    at async onSubmit (MetaMaskPayment.tsx:171:22)
+    at async chunk-BW5TH624.js?v=3568d0c6:1675:9
+investInStartup @ contractInteraction.ts:155
+useContractInteraction.ts:60 Error investing in startup: Error: Investment failed: Invalid amount format: Please enter a valid ETH amount with no more than 18 decimal places.
+    at Module.investInStartup (contractInteraction.ts:171:11)
+    at async investInStartup (useContractInteraction.ts:51:22)
+    at async onSubmit (MetaMaskPayment.tsx:171:22)
+    at async chunk-BW5TH624.js?v=3568d0c6:1675:9
+investInStartup @ useContractInteraction.ts:60
+Header.tsx:27 Header rendering with auth state: Object
+Header.tsx:49 Header - Using role from user object: investor
+StartupDetails.tsx:51 StartupDetails - ID from params: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:52 StartupDetails - Startup ID being used for query: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:53 StartupDetails - Current user: Object
+StartupDetails.tsx:54 StartupDetails - User role: investor
+StartupDetails.tsx:55 StartupDetails - Fetched startup data: Object
+StartupDetails.tsx:56 StartupDetails - Fetched documents data: Object
+StartupDetails.tsx:61 StartupDetails - UPI QR code URL: Object
+StartupDetails.tsx:63 StartupDetails - UPI ID: ferb@ixl
+StartupDetails.tsx:79 Wallet connection status: Object
+StartupDetails.tsx:116 Startup details - founderId: pTvcMD9S4iWaIfrMjuX0HkTjB4v1 user.id: MuVOGBJxgodrhuxgnicg76O4jlZ2 user.uid: MuVOGBJxgodrhuxgnicg76O4jlZ2
+StartupDetails.tsx:132 User role check: user: Object role: investor isInvestor: true isFounder: false
+Header.tsx:27 Header rendering with auth state: {user: {…}, loading: false}
+Header.tsx:49 Header - Using role from user object: investor
+StartupDetails.tsx:51 StartupDetails - ID from params: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:52 StartupDetails - Startup ID being used for query: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:53 StartupDetails - Current user: {id: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', uid: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', username: 'zqsee', email: 'zqsee@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256', …}
+StartupDetails.tsx:54 StartupDetails - User role: investor
+StartupDetails.tsx:55 StartupDetails - Fetched startup data: {createdAt: '2025-04-17T11:07:14.509Z', current_funding: '0', description: 'Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations', founderId: 'pTvcMD9S4iWaIfrMjuX0HkTjB4v1', funding_goal: '80', …}
+StartupDetails.tsx:56 StartupDetails - Fetched documents data: {documents: Array(0)}
+StartupDetails.tsx:61 StartupDetails - UPI QR code URL: {fileId: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileName: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileSize: 5053, mimeType: 'image/png', url: '/uploads/8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png'}
+StartupDetails.tsx:63 StartupDetails - UPI ID: ferb@ixl
+StartupDetails.tsx:79 Wallet connection status: {userWalletAddress: '', metamaskAddress: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', localStorageWalletConnected: 'true', isWalletConnectedMethod: true, hasWalletConnected: true}
+StartupDetails.tsx:116 Startup details - founderId: pTvcMD9S4iWaIfrMjuX0HkTjB4v1 user.id: MuVOGBJxgodrhuxgnicg76O4jlZ2 user.uid: MuVOGBJxgodrhuxgnicg76O4jlZ2
+StartupDetails.tsx:132 User role check: user: {id: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', uid: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', username: 'zqsee', email: 'zqsee@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256', …} role: investor isInvestor: true isFounder: false
