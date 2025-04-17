@@ -1,0 +1,92 @@
+Contract Interaction] Error parsing or sending amount: Error: could not coalesce error (error={ "code": -32602, "message": "External transactions to internal accounts cannot include data" }, payload={ "id": 8, "jsonrpc": "2.0", "method": "eth_sendTransaction", "params": [ { "data": "0xf61c1fa50000000000000000000000000000000000000000000000000000000000000cde", "from": "0x8ff10506a4c1eff2b7b1a0b8db46c1b8f3b3f33a", "gas": "0x52e0", "to": "0xb4dc25e38f4e85eb922222b63205051838c2f57a", "value": "0x3782dace9d900000" } ] }, code=UNKNOWN_ERROR, version=6.13.5)
+    at makeError (ethers.js?v=3568d0c6:325:15)
+    at BrowserProvider.getRpcError (ethers.js?v=3568d0c6:19081:12)
+    at BrowserProvider.getRpcError (ethers.js?v=3568d0c6:21435:18)
+    at ethers.js?v=3568d0c6:19215:27
+investInStartup @ contractInteraction.ts:245
+await in investInStartup
+investInStartup @ useContractInteraction.ts:52
+await in investInStartup
+onSubmit @ MetaMaskPayment.tsx:224
+(anonymous) @ chunk-BW5TH624.js?v=3568d0c6:1675
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=3568d0c6:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=3568d0c6:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=3568d0c6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=3568d0c6:3736
+executeDispatch @ chunk-276SZO74.js?v=3568d0c6:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=3568d0c6:7034
+processDispatchQueue @ chunk-276SZO74.js?v=3568d0c6:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=3568d0c6:7051
+(anonymous) @ chunk-276SZO74.js?v=3568d0c6:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=3568d0c6:18913
+batchedUpdates @ chunk-276SZO74.js?v=3568d0c6:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=3568d0c6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=3568d0c6:5478
+dispatchEvent @ chunk-276SZO74.js?v=3568d0c6:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=3568d0c6:5449
+contractInteraction.ts:258 Error investing in startup: Error: Failed to process transaction: could not coalesce error (error={ "code": -32602, "message": "External transactions to internal accounts cannot include data" }, payload={ "id": 8, "jsonrpc": "2.0", "method": "eth_sendTransaction", "params": [ { "data": "0xf61c1fa50000000000000000000000000000000000000000000000000000000000000cde", "from": "0x8ff10506a4c1eff2b7b1a0b8db46c1b8f3b3f33a", "gas": "0x52e0", "to": "0xb4dc25e38f4e85eb922222b63205051838c2f57a", "value": "0x3782dace9d900000" } ] }, code=UNKNOWN_ERROR, version=6.13.5)
+    at Module.investInStartup (contractInteraction.ts:255:13)
+    at async investInStartup (useContractInteraction.ts:52:22)
+    at async onSubmit (MetaMaskPayment.tsx:224:22)
+    at async chunk-BW5TH624.js?v=3568d0c6:1675:9
+investInStartup @ contractInteraction.ts:258
+await in investInStartup
+investInStartup @ useContractInteraction.ts:52
+await in investInStartup
+onSubmit @ MetaMaskPayment.tsx:224
+(anonymous) @ chunk-BW5TH624.js?v=3568d0c6:1675
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=3568d0c6:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=3568d0c6:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=3568d0c6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=3568d0c6:3736
+executeDispatch @ chunk-276SZO74.js?v=3568d0c6:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=3568d0c6:7034
+processDispatchQueue @ chunk-276SZO74.js?v=3568d0c6:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=3568d0c6:7051
+(anonymous) @ chunk-276SZO74.js?v=3568d0c6:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=3568d0c6:18913
+batchedUpdates @ chunk-276SZO74.js?v=3568d0c6:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=3568d0c6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=3568d0c6:5478
+dispatchEvent @ chunk-276SZO74.js?v=3568d0c6:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=3568d0c6:5449
+useContractInteraction.ts:61 Error investing in startup: Error: Investment failed: Failed to process transaction: could not coalesce error (error={ "code": -32602, "message": "External transactions to internal accounts cannot include data" }, payload={ "id": 8, "jsonrpc": "2.0", "method": "eth_sendTransaction", "params": [ { "data": "0xf61c1fa50000000000000000000000000000000000000000000000000000000000000cde", "from": "0x8ff10506a4c1eff2b7b1a0b8db46c1b8f3b3f33a", "gas": "0x52e0", "to": "0xb4dc25e38f4e85eb922222b63205051838c2f57a", "value": "0x3782dace9d900000" } ] }, code=UNKNOWN_ERROR, version=6.13.5)
+    at Module.investInStartup (contractInteraction.ts:274:11)
+    at async investInStartup (useContractInteraction.ts:52:22)
+    at async onSubmit (MetaMaskPayment.tsx:224:22)
+    at async chunk-BW5TH624.js?v=3568d0c6:1675:9
+investInStartup @ useContractInteraction.ts:61
+await in investInStartup
+onSubmit @ MetaMaskPayment.tsx:224
+(anonymous) @ chunk-BW5TH624.js?v=3568d0c6:1675
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=3568d0c6:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=3568d0c6:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=3568d0c6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=3568d0c6:3736
+executeDispatch @ chunk-276SZO74.js?v=3568d0c6:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=3568d0c6:7034
+processDispatchQueue @ chunk-276SZO74.js?v=3568d0c6:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=3568d0c6:7051
+(anonymous) @ chunk-276SZO74.js?v=3568d0c6:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=3568d0c6:18913
+batchedUpdates @ chunk-276SZO74.js?v=3568d0c6:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=3568d0c6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=3568d0c6:5478
+dispatchEvent @ chunk-276SZO74.js?v=3568d0c6:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=3568d0c6:5449
+Header.tsx:27 Header rendering with auth state: {user: {…}, loading: false}
+Header.tsx:49 Header - Using role from user object: investor
+StartupDetails.tsx:81 StartupDetails - ID from params: -OO2pzh1Xm2U6WF8vrC7
+StartupDetails.tsx:82 StartupDetails - Startup ID being used for query: -OO2pzh1Xm2U6WF8vrC7
+StartupDetails.tsx:83 StartupDetails - Current user: {id: 'QyubptBhMNSW7tiM6Ccuijikszi2', uid: 'QyubptBhMNSW7tiM6Ccuijikszi2', username: 'chunk', email: 'chunk@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256', …}
+StartupDetails.tsx:84 StartupDetails - User role: investor
+StartupDetails.tsx:85 StartupDetails - Fetched startup data: {createdAt: '2025-04-17T13:02:37.514Z', current_funding: '0', description: 'VCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECH', founderId: 'lfSTRhldxkhW76DFEOs0PJnnFat1', funding_goal: '120', …}
+StartupDetails.tsx:86 StartupDetails - Fetched documents data: {documents: Array(0)}
+StartupDetails.tsx:91 StartupDetails - UPI QR code URL: Not available
+StartupDetails.tsx:93 StartupDetails - UPI ID: vcb@ixl
+StartupDetails.tsx:109 Wallet connection status: {userWalletAddress: '', metamaskAddress: '0x8ff10506a4c1eff2b7b1a0b8db46c1b8f3b3f33a', localStorageWalletConnected: 'true', isWalletConnectedMethod: true, hasWalletConnected: true}
+StartupDetails.tsx:146 Startup details - founderId: lfSTRhldxkhW76DFEOs0PJnnFat1 user.id: QyubptBhMNSW7tiM6Ccuijikszi2 user.uid: QyubptBhMNSW7tiM6Ccuijikszi2
+StartupDetails.tsx:162 User role check: user: {id: 'QyubptBhMNSW7tiM6Ccuijikszi2', uid: 'QyubptBhMNSW7tiM6Ccuijikszi2', username: 'chunk', email: 'chunk@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256', …} role: investor isInvestor: true isFounder: false

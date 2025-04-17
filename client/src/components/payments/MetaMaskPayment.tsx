@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ethers } from "ethers";
 import { Wallet, AlertTriangle, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -220,8 +221,45 @@ const MetaMaskPayment = ({
         founderWalletAddress
       });
       
-      // Invest using the contract with numeric startup ID
-      const result = await investInStartup(numericStartupId, cleanAmount, founderWalletAddress);
+      let result;
+      
+      // Use direct ETH transfer to founder wallet if we have a valid address
+      if (founderWalletAddress && ethers.isAddress(founderWalletAddress)) {
+        console.log("[MetaMaskPayment] Using direct ETH transfer to:", founderWalletAddress);
+        
+        try {
+          // Get the signer to send directly (bypassing the contract)
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          
+          // Calculate amount in wei
+          const amountInWei = ethers.parseEther(cleanAmount);
+          
+          // Send transaction directly to the founder's wallet
+          const tx = await signer.sendTransaction({
+            to: founderWalletAddress,
+            value: amountInWei
+          });
+          
+          console.log("[MetaMaskPayment] Direct transfer tx hash:", tx.hash);
+          const receipt = await tx.wait();
+          console.log("[MetaMaskPayment] Transfer confirmed:", receipt);
+          
+          // Format the result to match our expected format
+          result = {
+            transactionHash: tx.hash,
+            blockNumber: receipt.blockNumber,
+            status: receipt.status === 1 ? "success" : "failed"
+          };
+        } catch (error) {
+          console.error("[MetaMaskPayment] Direct transfer error:", error);
+          throw error;
+        }
+      } else {
+        // Fall back to contract (though this will fail for EOA addresses)
+        console.log("[MetaMaskPayment] No valid founder wallet address found, using contract");
+        result = await investInStartup(numericStartupId, cleanAmount, founderWalletAddress);
+      }
       
       if (result) {
         // Store transaction hash
