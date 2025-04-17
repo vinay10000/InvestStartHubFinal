@@ -197,19 +197,47 @@ export const investInStartup = async (startupId: number, amount: string, founder
       const amountInWei = ethers.parseEther(cleanAmount);
       console.log(`[Contract Interaction] Amount in Wei: ${amountInWei.toString()}`);
       
-      // Make the transaction
-      console.log(`[Contract Interaction] Executing contract transaction...`);
-      const tx = await contract.investInStartup(contractStartupId, { value: amountInWei });
+      // Variables to store transaction information
+      let tx;
+      let receipt;
       
-      // Wait for the transaction to be mined
-      console.log(`[Contract Interaction] Waiting for transaction to be mined: ${tx.hash}`);
-      const receipt = await tx.wait();
+      // If we have a founderWalletAddress and it's valid, send directly to that address
+      if (founderWalletAddress && ethers.isAddress(founderWalletAddress)) {
+        console.log(`[Contract Interaction] Sending directly to founder wallet: ${founderWalletAddress}`);
+        
+        // Get the signer to send a direct transaction
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        
+        // Make a direct transfer without contract data
+        tx = await signer.sendTransaction({
+          to: founderWalletAddress,
+          value: amountInWei
+        });
+        
+        // Wait for the transaction to be mined
+        console.log(`[Contract Interaction] Waiting for direct transfer to be mined: ${tx.hash}`);
+        receipt = await tx.wait();
+      } else {
+        // Use the contract if no valid founder wallet address is provided
+        console.log(`[Contract Interaction] Executing contract transaction...`);
+        tx = await contract.investInStartup(contractStartupId, { value: amountInWei });
+        
+        // Wait for the transaction to be mined
+        console.log(`[Contract Interaction] Waiting for transaction to be mined: ${tx.hash}`);
+        receipt = await tx.wait();
+      }
       
-      console.log(`[Contract Interaction] Transaction mined in block ${receipt.blockNumber}`);
+      // Log and return transaction details
+      console.log(`[Contract Interaction] Transaction details:`, {
+        hash: tx.hash,
+        blockNumber: receipt.blockNumber,
+        status: receipt.status
+      });
       
       // Return transaction details
       return {
-        transactionHash: receipt.hash,
+        transactionHash: tx.hash,
         blockNumber: receipt.blockNumber,
         status: receipt.status === 1 ? "success" : "failed"
       };
