@@ -192,27 +192,12 @@ const MetaMaskPayment = ({
       startupId
     });
     
-    // TEMPORARY FIX: Always return 'found' to allow payments for testing
-    // Remove this when the database is properly set up with wallet addresses
-    const DEFAULT_FOUNDER_WALLET = "0xb4dc25e38f4e85eb922222b63205051838c2f57a";
+    // Check proper error types and return appropriate status
+    if (walletError === 'not_found') return 'not_found';
+    if (walletError) return 'error';
     
-    // Set manual founder info with default wallet
-    if (!manualFounderInfo) {
-      setManualFounderInfo({
-        id: 'default',
-        walletAddress: DEFAULT_FOUNDER_WALLET,
-        name: "Test Founder"
-      });
-      
-      console.log('[MetaMaskPayment] Using default wallet address for payments:', DEFAULT_FOUNDER_WALLET);
-      return 'found';  // Return found after setting the default
-    }
-    
-    // Only show error if explicitly requested
-    if (walletError && walletError !== 'not_found') return 'error';
-    
-    // Otherwise default to found with the fallback
-    return 'found';
+    // If no wallet found and error is null, default to not found
+    return 'not_found';
   };
   
   // Get wallet status as a derived state
@@ -665,7 +650,7 @@ const MetaMaskPayment = ({
           <div className="mb-4 text-sm">
             <div className="flex justify-between items-center mb-2">
               <span className="text-muted-foreground">Connected:</span>
-              <span className="font-medium">{truncateAddress(address)}</span>
+              <span className="font-medium">{address ? truncateAddress(address) : ''}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-muted-foreground">Network:</span>

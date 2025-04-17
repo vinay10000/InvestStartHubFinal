@@ -8,15 +8,9 @@ const db: Database = database as Database;
 // Add this line for debugging
 console.log("[Wallet DB] Database initialization status:", !!db);
 
-// Create a version that always works for debugging
-let lastSavedWalletAddress: Record<string, string> = {
-  // Default values for testing - these will work even if database fails
-  // Format: userId -> wallet address
-  '1': '0xb4dc25e38f4e85eb922222b63205051838c2f57a', // Default founder wallet
-  '-OO3Ja4sDg5-dWWVnDgU': '0xb4dc25e38f4e85eb922222b63205051838c2f57a', // Example Firebase ID
-  '-OO3QgOok6sXzmTM5_aR': '0xb4dc25e38f4e85eb922222b63205051838c2f57a', // Example Firebase ID
-  '1711': '0xb4dc25e38f4e85eb922222b63205051838c2f57a', // Numeric ID example
-};
+// Cache for wallet addresses from Firebase to avoid frequent lookups
+// This will be populated only with real data from the database
+let lastSavedWalletAddress: Record<string, string> = {};
 
 // Add a simple function to get the wallet synchronously
 export const getLastSavedWalletAddress = (userId: string): string | null => {
@@ -83,6 +77,14 @@ export const saveWalletAddress = async (
  */
 export const getWalletByUserId = async (userId: string): Promise<WalletData | null> => {
   try {
+    if (!userId) {
+      console.log(`[Wallet DB] No userId provided`);
+      return null;
+    }
+    
+    // Enhanced logging to help debug wallet retrieval
+    console.log(`[Wallet DB] Looking up wallet for userId: ${userId}`);
+    
     // Check in-memory cache first for instant access
     const cachedAddress = lastSavedWalletAddress[userId];
     if (cachedAddress) {
@@ -97,21 +99,47 @@ export const getWalletByUserId = async (userId: string): Promise<WalletData | nu
     }
     
     // If not in cache, check Firebase
-    const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, `${WALLETS_PATH}/${userId}`));
-    
-    if (snapshot.exists()) {
-      const walletData = snapshot.val() as WalletData;
+    try {
+      console.log(`[Wallet DB] Checking Firebase for wallet at path: ${WALLETS_PATH}/${userId}`);
+      const dbRef = ref(db);
+      const snapshot = await get(child(dbRef, `${WALLETS_PATH}/${userId}`));
       
-      // Update in-memory cache for future use
-      if (walletData && walletData.address) {
-        lastSavedWalletAddress[userId] = walletData.address;
+      if (snapshot.exists()) {
+        console.log(`[Wallet DB] Found wallet in Firebase for user ${userId}`);
+        const walletData = snapshot.val() as WalletData;
+        
+        // Update in-memory cache for future use
+        if (walletData && walletData.address) {
+          console.log(`[Wallet DB] Caching wallet address for quick access: ${walletData.address}`);
+          lastSavedWalletAddress[userId] = walletData.address;
+        }
+        
+        return walletData;
       }
       
-      return walletData;
+      // Try looking up with a different path format - some Firebase DBs use different paths
+      console.log(`[Wallet DB] No wallet at primary path, trying alternative: wallets/${userId}`);
+      const altSnapshot = await get(child(dbRef, `wallets/${userId}`));
+      
+      if (altSnapshot.exists()) {
+        console.log(`[Wallet DB] Found wallet in Firebase at alternative path for user ${userId}`);
+        const walletData = altSnapshot.val() as WalletData;
+        
+        // Update in-memory cache for future use
+        if (walletData && walletData.address) {
+          console.log(`[Wallet DB] Caching wallet address: ${walletData.address}`);
+          lastSavedWalletAddress[userId] = walletData.address;
+        }
+        
+        return walletData;
+      }
+    } catch (innerError) {
+      console.error('[Wallet DB] Error accessing Firebase for wallet data:', innerError);
+      // Continue to try other methods even if Firebase lookup fails
     }
     
-    console.log(`[Wallet DB] No wallet found for user ${userId}`);
+    // At this point, no wallet was found in any source
+    console.log(`[Wallet DB] No wallet found for user ${userId} after all lookups`);
     return null;
   } catch (error) {
     console.error('[Wallet DB] Error getting wallet:', error);
