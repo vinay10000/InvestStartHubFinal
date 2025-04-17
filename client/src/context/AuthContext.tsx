@@ -10,7 +10,8 @@ import {
 } from "@/firebase/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { updateFirestoreUser, getFirestoreUser } from "@/firebase/firestore";
+// Use Firebase Realtime Database instead of Firestore for consistency
+import { getUserByUid, updateUser } from "@/firebase/database";
 
 interface AuthContextType {
   user: User | null;
@@ -51,35 +52,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const synchronizeUserData = async (firebaseUser: FirebaseUser) => {
     try {
       console.log("Synchronizing user data for:", firebaseUser.uid);
-      // Get user data from Firestore
-      const userData = await getFirestoreUser(firebaseUser.uid);
+      // Get user data from Firebase Realtime Database
+      const userData = await getUserByUid(firebaseUser.uid);
       
       if (userData) {
+        console.log("Found user data in Firebase Realtime DB:", userData);
         // Convert Firebase data format to our User type
-        // Temporarily modify the type to handle Firebase string IDs alongside schema's number IDs
+        // We need to maintain both the schema's numeric id and the Firebase string id
         const formattedUser = {
-          // Use a numeric id for now to satisfy the schema
-          id: 1,  // Temporary ID, will be properly assigned by backend
+          // Use the actual ID if present, or a temporary one
+          id: userData.id || firebaseUser.uid,
+          // Store the Firebase UID directly in the user object to make it available everywhere
+          uid: firebaseUser.uid,
           username: userData.username || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
           email: userData.email || firebaseUser.email || '',
           profilePicture: userData.profilePicture || firebaseUser.photoURL || '',
           role: userData.role || 'investor',
           walletAddress: userData.walletAddress || '',
-          createdAt: userData.createdAt || new Date(),
-          // Store Firebase UID separately for reference
-          firebaseUid: firebaseUser.uid
+          createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
         } as unknown as User;
         
         console.log("Setting user state with:", formattedUser);
         setUser(formattedUser);
         return formattedUser;
       } else {
-        console.error("No user data found in Firestore for:", firebaseUser.uid);
-        return null;
+        console.log("No existing user data found in Firebase database. Creating new user data...");
+        
+        // Create a new user in Firebase Realtime Database
+        const newUser = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          profilePicture: firebaseUser.photoURL || '',
+          role: 'investor', // Default role
+          walletAddress: '',
+          createdAt: new Date().toISOString()
+        };
+        
+        // Save the new user to Firebase
+        const savedUser = await updateUser(firebaseUser.uid, newUser);
+        console.log("Created new user in Firebase Realtime DB:", savedUser);
+        
+        // Format the user for the context
+        const formattedUser = {
+          id: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          username: newUser.username,
+          email: newUser.email,
+          profilePicture: newUser.profilePicture,
+          role: newUser.role,
+          walletAddress: newUser.walletAddress,
+          createdAt: new Date(),
+        } as unknown as User;
+        
+        console.log("Setting new user state with:", formattedUser);
+        setUser(formattedUser);
+        return formattedUser;
       }
     } catch (error) {
       console.error("Error synchronizing user data:", error);
-      return null;
+      // Even if there's an error with the database, we can still create a minimal user object
+      // from the Firebase authentication data to allow basic functionality
+      const minimalUser = {
+        id: firebaseUser.uid,
+        uid: firebaseUser.uid,
+        username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+        email: firebaseUser.email || '',
+        profilePicture: firebaseUser.photoURL || '',
+        role: 'investor', // Default role
+        walletAddress: '',
+        createdAt: new Date(),
+      } as unknown as User;
+      
+      console.log("Setting minimal user state due to error:", minimalUser);
+      setUser(minimalUser);
+      return minimalUser;
     }
   };
 

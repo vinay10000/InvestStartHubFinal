@@ -3,6 +3,84 @@ import { database } from "./config";
 
 // Using the database instance from config.ts for consistency
 
+// User related functions
+export interface FirebaseUser {
+  uid: string;
+  id?: string;
+  username: string;
+  email: string;
+  profilePicture?: string;
+  role?: string;
+  walletAddress?: string;
+  createdAt?: string;
+}
+
+// Get user by uid
+export const getUserByUid = async (uid: string): Promise<FirebaseUser | null> => {
+  try {
+    console.log("Getting user by uid:", uid);
+    
+    // First try to get the user from the users collection
+    const userRef = ref(database, `users/${uid}`);
+    const snapshot = await get(userRef);
+
+    if (snapshot.exists()) {
+      console.log("User found in database:", snapshot.val());
+      return snapshot.val() as FirebaseUser;
+    } else {
+      console.log("User not found in database");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error getting user by uid:", error);
+    return null;
+  }
+};
+
+// Update user
+export const updateUser = async (uid: string, userData: Partial<FirebaseUser>): Promise<FirebaseUser> => {
+  try {
+    console.log("Updating user with uid:", uid, userData);
+    const userRef = ref(database, `users/${uid}`);
+    
+    // Check if user exists
+    const snapshot = await get(userRef);
+    
+    let updatedData: FirebaseUser;
+    
+    if (snapshot.exists()) {
+      // Update existing user
+      const existingData = snapshot.val() as FirebaseUser;
+      updatedData = {
+        ...existingData,
+        ...userData,
+        uid // Always ensure uid is set
+      };
+    } else {
+      // Create new user
+      updatedData = {
+        uid,
+        id: uid, // Use uid as id for consistency
+        username: userData.username || 'User',
+        email: userData.email || '',
+        profilePicture: userData.profilePicture || '',
+        role: userData.role || 'investor',
+        walletAddress: userData.walletAddress || '',
+        createdAt: userData.createdAt || new Date().toISOString()
+      };
+    }
+    
+    // Save to database
+    await set(userRef, updatedData);
+    console.log("User updated successfully:", updatedData);
+    
+    return updatedData;
+  } catch (error) {
+    console.error("Error updating user:", error);
+    throw error;
+  }
+};
+
 // Startup related functions
 export interface FirebaseStartup {
   id?: string;
