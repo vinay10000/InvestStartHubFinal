@@ -408,6 +408,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update user wallet in Firebase Realtime Database
       await updateUser(currentUser.uid, { walletAddress });
       
+      // Also save to our dedicated wallet database for cross-referencing
+      const { saveWalletAddress } = await import("@/firebase/walletDatabase");
+      
+      try {
+        // Store wallet address associated with both numeric ID and UID
+        await saveWalletAddress(
+          currentUser.uid, 
+          walletAddress, 
+          user.username || '', 
+          user.role || ''
+        );
+        
+        // If we have a numeric user ID, also store with that to ensure lookup works
+        if (user.id && user.id.toString() !== currentUser.uid) {
+          await saveWalletAddress(
+            user.id.toString(), 
+            walletAddress, 
+            user.username || '', 
+            user.role || ''
+          );
+        }
+        
+        console.log("[AuthContext] Wallet saved to both user profile and wallet database");
+      } catch (walletError) {
+        console.error("[AuthContext] Error saving to wallet database:", walletError);
+        // Continue even if wallet DB save fails - we still have the user profile update
+      }
+      
       // Set the wallet connected flag in localStorage
       localStorage.setItem('wallet_connected', 'true');
       
@@ -445,8 +473,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase user not found");
       }
       
+      // Save current wallet address for cleanup
+      const oldWalletAddress = user.walletAddress;
+      
       // Update user wallet in Firebase Realtime Database with empty string
       await updateUser(currentUser.uid, { walletAddress: '' });
+      
+      // Also remove from our dedicated wallet database for cross-referencing
+      if (oldWalletAddress) {
+        try {
+          const { deleteWallet } = await import("@/firebase/walletDatabase");
+          
+          // Remove wallet associated with both UID and ID
+          await deleteWallet(currentUser.uid);
+          
+          // If we have a numeric user ID, also remove that entry
+          if (user.id && user.id.toString() !== currentUser.uid) {
+            await deleteWallet(user.id.toString());
+          }
+          
+          console.log("[AuthContext] Wallet removed from wallet database");
+        } catch (walletError) {
+          console.error("[AuthContext] Error removing from wallet database:", walletError);
+          // Continue even if wallet DB deletion fails
+        }
+      }
       
       // Remove the wallet connected flag from localStorage
       localStorage.removeItem('wallet_connected');

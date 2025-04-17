@@ -32,15 +32,34 @@ export function useStartups() {
 
   // Get startups by founder ID
   const useFounderStartups = (founderId?: string) => {
-    const id = founderId || user?.id;
+    // Use either provided founderId, user.id, or user.uid (Firebase UID)
+    const id = founderId || user?.id || user?.uid;
     
     return useQuery({
       queryKey: ['startups', 'founder', id],
       queryFn: async () => {
-        const startups = id ? await getStartupsByFounderId(id.toString()) : [];
+        console.log("[useFounderStartups] Fetching startups with ID:", id);
+        
+        if (!id) {
+          console.warn("[useFounderStartups] No ID available to fetch startups");
+          return { startups: [] };
+        }
+        
+        // Try fetching by ID first
+        let startups = await getStartupsByFounderId(id.toString());
+        
+        // If no results and we have both id and uid, try the other one
+        if (startups.length === 0 && user?.id && user?.uid && id !== user.uid) {
+          console.log("[useFounderStartups] No startups found for ID, trying UID:", user.uid);
+          startups = await getStartupsByFounderId(user.uid.toString());
+        }
+        
+        console.log("[useFounderStartups] Found startups:", startups.length);
         return { startups }; // Match expected API response structure
       },
       enabled: !!id,
+      // Refetch on window focus to ensure we have latest data after login
+      refetchOnWindowFocus: true,
     });
   };
 
