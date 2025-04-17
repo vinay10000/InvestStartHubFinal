@@ -28,22 +28,31 @@ export const useFounderWallet = (startupId: string | number | null) => {
       setIsLoading(true);
       setError(null);
       
-      // Set a timeout to prevent infinite loading
+      // Set a shorter timeout to prevent excessive waiting
+      // Reduced from 8 seconds to 5 seconds to avoid MetaMask waiting too long
       const timeoutId = setTimeout(() => {
         console.log("[useFounderWallet] Timeout reached while fetching wallet data");
         setIsLoading(false);
-        setError("Timeout while loading wallet data");
-      }, 8000); // 8 second timeout
+        // Instead of error, force continue with manual entry
+        setFounderWallet(null);
+        setError("not_found");
+      }, 5000); // 5 second timeout
       
       try {
-        const founderId = startupData.founderId;
+        // Extract founderId, supporting various possible formats
+        const founderId = startupData.founderId || 
+                         (startupData as any).founder_id || 
+                         (startupData as any).founderid ||
+                         (startupData as any).founderId;
         
         if (!founderId) {
           console.error("[useFounderWallet] Startup data missing founderId:", startupData);
-          setError("Could not find the founder for this startup");
+          setError("not_found");
           setIsLoading(false);
           return;
         }
+        
+        console.log("[useFounderWallet] Starting wallet lookup for founder ID:", founderId);
         
         // First check if we have a direct wallet address in startup data
         const startupWithCustomFields = startupData as any;
@@ -58,15 +67,30 @@ export const useFounderWallet = (startupId: string | number | null) => {
             walletAddress: startupWithCustomFields.founderWalletAddress
           });
           setIsLoading(false);
+          clearTimeout(timeoutId);
           return;
         }
         
-        // Try multiple methods to find the wallet address
-        console.log("[useFounderWallet] Fetching wallet for founder ID:", founderId);
+        // Try multiple methods to find the wallet address IN PARALLEL
+        console.log("[useFounderWallet] Fetching wallet using multiple sources for ID:", founderId);
         
-        // First try the wallet database using the ID directly
-        const walletData = await getWalletByUserId(founderId.toString());
+        // Create promises for both lookup methods
+        const walletDbPromise = getWalletByUserId(founderId.toString())
+          .catch(err => {
+            console.error("[useFounderWallet] Error fetching from wallet DB:", err);
+            return null;
+          });
+          
+        const userProfilePromise = getUserByUid(founderId.toString())
+          .catch(err => {
+            console.error("[useFounderWallet] Error fetching from user profile:", err);
+            return null;
+          });
+          
+        // Wait for both to complete
+        const [walletData, userData] = await Promise.all([walletDbPromise, userProfilePromise]);
         
+        // Check wallet database result
         if (walletData && walletData.address) {
           console.log("[useFounderWallet] Found wallet address in wallet database:", walletData.address);
           setFounderWallet(walletData.address);
@@ -76,13 +100,11 @@ export const useFounderWallet = (startupId: string | number | null) => {
             walletAddress: walletData.address
           });
           setIsLoading(false);
+          clearTimeout(timeoutId);
           return;
         }
         
-        // If not found in wallet database, try user profile in Firebase
-        console.log("[useFounderWallet] Checking user profile in Firebase database");
-        const userData = await getUserByUid(founderId.toString());
-        
+        // Check user profile result
         if (userData && userData.walletAddress) {
           console.log("[useFounderWallet] Found wallet address in user profile:", userData.walletAddress);
           setFounderWallet(userData.walletAddress);
@@ -92,6 +114,7 @@ export const useFounderWallet = (startupId: string | number | null) => {
             walletAddress: userData.walletAddress
           });
           setIsLoading(false);
+          clearTimeout(timeoutId);
           return;
         }
         
@@ -99,7 +122,7 @@ export const useFounderWallet = (startupId: string | number | null) => {
         console.warn("[useFounderWallet] No wallet found for founder after multiple attempts:", founderId);
         setFounderWallet(null);
         
-        // If we have basic founder info in the startup data, still return it
+        // If we have basic founder info in the startup data or user data, still return it
         if (startupWithCustomFields.founderName || userData?.username) {
           setFounderInfo({
             id: founderId,
@@ -110,11 +133,12 @@ export const useFounderWallet = (startupId: string | number | null) => {
           setFounderInfo(null);
         }
         
-        setError("Founder has not connected a wallet address");
+        // Set error as "not_found" for consistent handling by UI
+        setError("not_found");
         
       } catch (err) {
-        console.error("[useFounderWallet] Error:", err);
-        setError("Failed to load founder information");
+        console.error("[useFounderWallet] Error looking up wallet:", err);
+        setError("error");
         setFounderInfo(null);
         setFounderWallet(null);
       } finally {
@@ -124,11 +148,11 @@ export const useFounderWallet = (startupId: string | number | null) => {
       }
     };
     
+    // Start the wallet lookup process
     loadFounderWallet();
     
     // Return cleanup function to clear timeout if component unmounts
     return () => {
-      // Any active timeouts should be cleared when unmounting
       console.log("[useFounderWallet] Cleaning up effect");
     };
   }, [startupData, isStartupLoading]);

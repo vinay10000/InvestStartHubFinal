@@ -166,25 +166,58 @@ export const getStartupsByFounderId = async (founderId: string): Promise<Firebas
       return [];
     }
 
-    console.log("Fetching startups for founder ID:", founderId);
+    console.log("[database] Fetching startups for founder ID:", founderId);
     
+    // First try the exact match with the founderId
     const startupsRef = ref(database, 'startups');
     const founderStartupsQuery = query(startupsRef, orderByChild('founderId'), equalTo(founderId));
     const snapshot = await get(founderStartupsQuery);
 
+    let startups: FirebaseStartup[] = [];
+    
     if (snapshot.exists()) {
-      const startups: FirebaseStartup[] = [];
       snapshot.forEach((childSnapshot) => {
         const startup = childSnapshot.val();
         startups.push(startup);
       });
+      console.log(`[database] Found ${startups.length} startups with founderId=${founderId}`);
+    } else {
+      console.log("[database] No startups found with exact founderId match:", founderId);
+      
+      // If no results, get all startups and do a more flexible match
+      console.log("[database] Trying flexible matching for founder ID");
+      const allStartupsRef = ref(database, 'startups');
+      const allStartupsSnapshot = await get(allStartupsRef);
+      
+      if (allStartupsSnapshot.exists()) {
+        allStartupsSnapshot.forEach((childSnapshot) => {
+          const startup = childSnapshot.val();
+          
+          // Check multiple possible founder ID formats
+          const matches = 
+            startup.founderId === founderId || 
+            startup.founderId === Number(founderId) || 
+            startup.founder_id === founderId ||
+            startup.founder_id === Number(founderId) ||
+            String(startup.founderId) === founderId;
+            
+          if (matches) {
+            console.log("[database] Found startup with flexible match:", startup.id, startup.name);
+            startups.push(startup);
+          }
+        });
+      }
+    }
+    
+    if (startups.length > 0) {
+      console.log(`[database] Successfully found ${startups.length} startups for founder:`, founderId);
       return startups;
     } else {
-      console.log("No startups found for founder ID:", founderId);
+      console.log("[database] No startups found for founder ID after all attempts:", founderId);
       return [];
     }
   } catch (error) {
-    console.error("Error getting startups by founder ID:", error);
+    console.error("[database] Error getting startups by founder ID:", error);
     return [];
   }
 };
