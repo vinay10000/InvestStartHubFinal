@@ -82,8 +82,17 @@ const MetaMaskPayment = ({
     setIsProcessing(true);
     
     try {
+      // Ensure we have a valid amount that can be parsed
+      const amountValue = values.amount.trim();
+      if (!amountValue || isNaN(Number(amountValue))) {
+        throw new Error("Please enter a valid investment amount");
+      }
+      
+      // Make sure amount is a proper string that can be parsed
+      console.log("Investment amount:", amountValue, "Type:", typeof amountValue);
+      
       // Invest using the contract
-      const result = await investInStartup(startupId, values.amount);
+      const result = await investInStartup(startupId, amountValue);
       
       if (result) {
         // Store transaction hash
@@ -94,7 +103,7 @@ const MetaMaskPayment = ({
           await createTransaction.mutateAsync({
             startupId,
             investorId: user.id,
-            amount: values.amount, // Use string directly as our schema expects
+            amount: amountValue, // Use string directly as our schema expects
             paymentMethod: "metamask",
             transactionId: result.transactionHash,
             status: "pending" // Will be verified by admin
@@ -104,12 +113,12 @@ const MetaMaskPayment = ({
         // Notify user
         toast({
           title: "Investment Successful",
-          description: `You have successfully invested ${values.amount} ETH in ${startupName}`,
+          description: `You have successfully invested ${amountValue} ETH in ${startupName}`,
         });
         
         // Call the callback if provided
         if (onPaymentComplete) {
-          onPaymentComplete(result.transactionHash, values.amount);
+          onPaymentComplete(result.transactionHash, amountValue);
         }
       }
     } catch (error: any) {

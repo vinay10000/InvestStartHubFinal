@@ -29,7 +29,7 @@ interface UPIPaymentProps {
   startupId: number;
   startupName: string;
   upiId?: string;
-  upiQrCode?: string;
+  upiQrCode?: string | { url: string; fileId?: string; fileName?: string; fileSize?: number; mimeType?: string };
   onPaymentComplete?: (referenceId: string, amount: string) => void;
 }
 
@@ -201,11 +201,11 @@ const UPIPayment = ({
           <div className="flex flex-col items-center justify-center">
             <div className="border p-2 rounded-lg mb-2">
               <img 
-                src={upiQrCode} 
+                src={typeof upiQrCode === 'string' ? upiQrCode : (upiQrCode.url || '')} 
                 alt="UPI QR Code" 
                 className="w-full max-w-[200px] h-auto"
                 onError={(e) => {
-                  console.error("Failed to load UPI QR code image:", upiQrCode);
+                  console.error("Failed to load UPI QR code image");
                   const target = e.target as HTMLImageElement;
                   target.onerror = null; // Prevent infinite error loop
                   target.src = "https://via.placeholder.com/200x200?text=QR+Code+Not+Available";
@@ -216,7 +216,7 @@ const UPIPayment = ({
               Scan this QR code with any UPI app to pay
             </p>
             <p className="text-xs text-muted-foreground text-center mt-1">
-              QR Code URL: {upiQrCode.length > 30 ? upiQrCode.substring(0, 30) + '...' : upiQrCode}
+              QR Code Ready
             </p>
           </div>
         )}
