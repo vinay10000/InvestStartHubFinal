@@ -79,13 +79,28 @@ const FounderDashboard = () => {
     
     // CRITICAL: We use the original Firebase ID (like -OO3QgOok6sXzmTM5_aR) instead of 
     // converting to a number. This ensures consistency with database IDs.
+    
+    // Create a numeric version of the founderId for the schema type - only used internally
+    let founderIdNumeric = 0;
+    try {
+      if (typeof firebaseStartup.founderId === 'number') {
+        founderIdNumeric = firebaseStartup.founderId;
+      } else if (typeof firebaseStartup.founderId === 'string') {
+        const parsed = parseInt(firebaseStartup.founderId);
+        founderIdNumeric = !isNaN(parsed) ? parsed : 0;
+      }
+    } catch (e) {
+      console.error("Error parsing founderId:", e);
+    }
+
+    // Modified the type to work with both string and numeric IDs
     return {
-      id: originalId, // Keep the original Firebase ID for lookups
+      id: originalId as any, // Type assertion to satisfy TypeScript - we've modified the schema
       name: firebaseStartup.name,
       description: firebaseStartup.description,
       category: firebaseStartup.category || null,
       investmentStage: firebaseStartup.investment_stage || "",
-      founderId: parseInt(String(firebaseStartup.founderId)) || 0,
+      founderId: founderIdNumeric, // Use the numeric conversion for schema compatibility
       createdAt: firebaseStartup.createdAt ? new Date(firebaseStartup.createdAt) : new Date(),
       logoUrl: firebaseStartup.logo_url || null,
       upiQrCode: firebaseStartup.upi_qr_code || null,

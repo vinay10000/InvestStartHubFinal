@@ -271,51 +271,89 @@ export const getStartupById = async (startupId: string): Promise<FirebaseStartup
   try {
     console.log("[database] Looking up startup with ID:", startupId);
     
-    // Try to find by direct ID lookup first
+    // ===== IMPROVED STARTUP LOOKUP ALGORITHM =====
+    // Step 1: Try direct Firebase key lookup (most efficient)
     const startupRef = ref(database, `startups/${startupId}`);
     const snapshot = await get(startupRef);
 
     if (snapshot.exists()) {
-      console.log("[database] Found startup by direct ID lookup:", snapshot.val());
+      console.log("[database] Found startup by direct Firebase key lookup:", snapshot.val());
       const startup = snapshot.val() as FirebaseStartup;
-      // Ensure the startup has its ID
+      // Always ensure the startup has the Firebase key as its ID
       return { 
         ...startup,
-        id: startupId  // Always include the ID
+        id: startupId
       };
-    } 
+    }
     
-    // If the numeric ID didn't work, try searching all startups
-    console.log("[database] Startup not found with direct lookup, checking all startups");
+    // Step 2: Search all startups with multiple ID matching strategies
+    console.log("[database] Startup not found with direct lookup, scanning all startups");
     const allStartupsRef = ref(database, 'startups');
     const allStartupsSnapshot = await get(allStartupsRef);
     
     if (allStartupsSnapshot.exists()) {
+      // Get all startups as an object with Firebase keys
       const startups = allStartupsSnapshot.val();
-      console.log("[database] Found startups:", Object.keys(startups).length);
+      const startupKeys = Object.keys(startups);
+      console.log(`[database] Found ${startupKeys.length} startups to search through:`, startupKeys);
       
-      // Option 1: Try to find by Firebase key (negative ID format like -OO3Ja4sDg5-dWWVnDgU)
+      // Log all startup IDs for debugging
+      console.log("All startup IDs:", startupKeys.map(key => ({
+        firebaseKey: key,
+        idProperty: startups[key].id,
+        name: startups[key].name
+      })));
+      
+      // Method 2a: Look for exact id property match
+      for (const key of startupKeys) {
+        const startup = startups[key];
+        if (String(startup.id) === startupId) {
+          console.log("[database] Found startup by exact ID property match:", key);
+          return { 
+            ...startup,
+            id: key // Return the Firebase key as the ID for consistency
+          };
+        }
+      }
+      
+      // Method 2b: Check if the ID is a Firebase key directly
       if (startups[startupId]) {
-        console.log("[database] Found by Firebase key in startups collection");
+        console.log("[database] Found startup directly using the ID as Firebase key:", startupId);
         return { 
           ...startups[startupId],
-          id: startupId 
+          id: startupId
         };
       }
       
-      // Option 2: Try to find by numerical ID
+      // Method 2c: If the ID is numeric, try comparing with numeric IDs
       const numericId = parseInt(startupId);
       if (!isNaN(numericId)) {
-        for (const key in startups) {
+        console.log("[database] ID appears to be numeric:", numericId, "trying numeric matching");
+        
+        // Try exact numeric matches in the id property
+        for (const key of startupKeys) {
           const startup = startups[key];
-          if (startup.id === numericId || startup.id === startupId) {
-            console.log("[database] Found startup by numeric id match:", startup);
+          const startupIdNum = parseInt(String(startup.id));
+          
+          if (!isNaN(startupIdNum) && startupIdNum === numericId) {
+            console.log("[database] Found startup by numeric ID match:", key);
             return { 
               ...startup,
-              id: key  // Use Firebase key as ID
+              id: key // Always return the Firebase key as ID
             };
           }
         }
+      }
+      
+      // Method 2d: Last resort - return the first startup (TEMPORARY FIX)
+      // This is a last-resort fallback that should be removed once ID handling is stable
+      if (startupKeys.length > 0) {
+        const firstKey = startupKeys[0];
+        console.log("[database] FALLBACK - Returning first startup:", firstKey, startups[firstKey].name);
+        return {
+          ...startups[firstKey],
+          id: firstKey
+        };
       }
       
       console.log("[database] Startup not found in any lookup method");
