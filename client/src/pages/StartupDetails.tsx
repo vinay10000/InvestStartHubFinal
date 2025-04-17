@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useStartups } from "@/hooks/useStartups";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useChat } from "@/hooks/useChat";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +26,7 @@ const StartupDetails = () => {
   const { id } = useParams();
   // Handle both numeric IDs (for local storage) and string IDs (for Firestore)
   const startupId = id && !isNaN(parseInt(id)) ? parseInt(id) : id;
-  const { user } = useSimpleAuth();
+  const { user } = useAuth();
   const { useStartup, useUpdateStartup } = useStartups();
   const { getDocumentsByStartupId } = useDocuments();
   const { createChat } = useChat();
@@ -67,8 +67,18 @@ const StartupDetails = () => {
     console.log("StartupDetails - Document URLs:", documentsData.documents.map((doc: any) => doc.fileUrl));
   }
   
-  // Check if user has a connected wallet
-  const hasWalletConnected = user?.walletAddress && user.walletAddress !== '';
+  // Check if user has a connected wallet - use multiple sources of truth
+  const hasWalletConnected = Boolean(
+    (user?.walletAddress && user.walletAddress !== '') || 
+    localStorage.getItem('wallet_connected') === 'true'
+  );
+  
+  // Log wallet connection status for debugging
+  console.log("Wallet connection status:", { 
+    userWalletAddress: user?.walletAddress,
+    localStorageWalletConnected: localStorage.getItem('wallet_connected'),
+    hasWalletConnected 
+  });
 
   // Safely extract data with null checks and type handling
   const startup = startupData;
@@ -105,8 +115,9 @@ const StartupDetails = () => {
   const isFounder = user?.role === "founder" && (
     (user?.id === founderId) || 
     (user?.uid === founderId) || 
-    (founderId && user?.id && founderId.toString() === user.id.toString()) ||
-    (user?.firebaseId === founderId) ||
+    (founderId && user?.id && String(founderId) === String(user.id)) ||
+    // Try accessing Firebase ID via user.uid instead
+    (user?.uid === founderId) ||
     // If we don't have a founderId but the user is a founder, assume they can edit
     (user?.role === "founder" && !founderId)
   );
@@ -141,14 +152,22 @@ const StartupDetails = () => {
 
   // Handle investment button click based on wallet connection status
   const handleInvestClick = () => {
-    // For UPI payments, we don't need a wallet
+    // For UPI payments, we don't need a wallet - open dialog immediately
     if (paymentMethod === "upi") {
       setIsInvestDialogOpen(true);
       return;
     }
     
-    // Only check wallet for MetaMask payments
+    // For MetaMask payments, check if wallet is connected
     if (paymentMethod === "metamask" && !hasWalletConnected) {
+      // Log the current state for debugging
+      console.log("Wallet not connected for MetaMask payment. Current state:", {
+        paymentMethod,
+        hasWalletConnected,
+        walletAddress: user?.walletAddress,
+        localStorageWallet: localStorage.getItem('wallet_connected')
+      });
+      
       // Redirect to wallet connection page with return URL
       const returnUrl = `/startup/${id}`;
       setLocation(`/wallet-connect?returnUrl=${encodeURIComponent(returnUrl)}`);
@@ -160,7 +179,8 @@ const StartupDetails = () => {
         duration: 5000,
       });
     } else {
-      // User has wallet connected for MetaMask payment or is using UPI
+      // Either using UPI or has wallet connected for MetaMask - open dialog
+      console.log("Opening investment dialog - wallet is connected or using UPI");
       setIsInvestDialogOpen(true);
     }
   };
