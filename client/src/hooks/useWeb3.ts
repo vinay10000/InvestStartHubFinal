@@ -47,6 +47,9 @@ export const useWeb3 = () => {
             if (connectedAddress) {
               setAddress(connectedAddress);
               
+              // Mark wallet as connected in localStorage
+              localStorage.setItem('wallet_connected', 'true');
+              
               // Get chain ID
               const currentChainId = await getChainId();
               if (currentChainId) {

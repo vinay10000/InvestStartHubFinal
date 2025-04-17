@@ -19,6 +19,16 @@ export const isMetaMaskInstalled = (): boolean => {
  * Check if a wallet is connected
  */
 export const isWalletConnected = async (): Promise<boolean> => {
+  // First check if we've stored a wallet connection in localStorage
+  const hasStoredWalletConnection = localStorage.getItem('wallet_connected') === 'true';
+  
+  // If we have a stored connection, return true immediately
+  if (hasStoredWalletConnection) {
+    console.log('Wallet previously connected according to localStorage');
+    return true;
+  }
+  
+  // Otherwise check with MetaMask
   if (!isMetaMaskInstalled()) return false;
   
   try {
@@ -42,6 +52,8 @@ export const connectWallet = async (): Promise<string | null> => {
     const accounts = await provider.send("eth_requestAccounts", []);
     
     if (accounts.length > 0) {
+      // Mark the wallet as connected in localStorage
+      localStorage.setItem('wallet_connected', 'true');
       return accounts[0];
     }
     
@@ -270,6 +282,9 @@ export const useWeb3 = () => {
       
       if (connectedAddress) {
         setAddress(connectedAddress);
+        
+        // Mark wallet as connected in localStorage
+        localStorage.setItem('wallet_connected', 'true');
         
         // Get balance
         const userBalance = await getWalletBalance(connectedAddress);
