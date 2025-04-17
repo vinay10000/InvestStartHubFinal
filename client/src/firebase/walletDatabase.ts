@@ -32,6 +32,11 @@ const WALLETS_PATH = 'wallets';
 
 /**
  * Save wallet address for a user
+ * 
+ * @param userId The Firebase UID of the user (prioritize using this, not numeric IDs)
+ * @param walletAddress The Ethereum wallet address
+ * @param userName Optional username
+ * @param role Optional user role
  */
 export const saveWalletAddress = async (
   userId: string,
@@ -40,6 +45,11 @@ export const saveWalletAddress = async (
   role?: string
 ): Promise<void> => {
   try {
+    if (!userId) {
+      console.error('[Wallet DB] Cannot save wallet: userId is empty');
+      throw new Error('User ID is required to save wallet address');
+    }
+    
     const now = Date.now();
     const walletData: WalletData = {
       address: walletAddress,
@@ -62,6 +72,7 @@ export const saveWalletAddress = async (
     console.log(`[Wallet DB] Saved wallet address for user ${userId}: ${walletAddress}`);
     
     // Also store in an index by wallet address for reverse lookup
+    // This is critical for finding the wallet owner by address
     const addressRef = ref(db, `wallet_addresses/${walletAddress.toLowerCase()}`);
     await set(addressRef, { userId, updatedAt: now });
     
@@ -149,18 +160,37 @@ export const getWalletByUserId = async (userId: string): Promise<WalletData | nu
 
 /**
  * Get user ID by wallet address
+ * Returns the Firebase UID associated with a given wallet address
  */
 export const getUserIdByWalletAddress = async (walletAddress: string): Promise<string | null> => {
   try {
+    if (!walletAddress) {
+      console.log('[Wallet DB] No wallet address provided for lookup');
+      return null;
+    }
+    
+    // Normalize the wallet address to lowercase for consistent lookups
+    const normalizedAddress = walletAddress.toLowerCase();
+    console.log(`[Wallet DB] Looking up user for wallet address: ${normalizedAddress}`);
+    
     // Create a reference to the address index
     const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, `wallet_addresses/${walletAddress.toLowerCase()}`));
+    const snapshot = await get(child(dbRef, `wallet_addresses/${normalizedAddress}`));
     
     if (snapshot.exists()) {
       const data = snapshot.val();
+      console.log(`[Wallet DB] Found user ${data.userId} for wallet address ${normalizedAddress}`);
+      
+      // Check if the userId is a numeric value (old format) or Firebase UID (preferred)
+      // Numeric user IDs typically don't look like Firebase UIDs (which are longer and contain letters)
+      if (data.userId && !isNaN(Number(data.userId)) && data.userId.length < 10) {
+        console.log(`[Wallet DB] Warning: Found numeric user ID (${data.userId}) for wallet. This should be updated to Firebase UID.`);
+      }
+      
       return data.userId;
     }
     
+    console.log(`[Wallet DB] No user found for wallet address ${normalizedAddress}`);
     return null;
   } catch (error) {
     console.error('[Wallet DB] Error getting user by wallet address:', error);
