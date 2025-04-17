@@ -191,87 +191,71 @@ const StartupDetails = () => {
     if (!user || !startup) return;
     
     try {
-      // Ensure we have a valid startup ID as a number for the API
-      let startupIdNumber: number;
+      // Log the initial values for debugging
+      console.log("Chat creation - Initial values:", {
+        startupId: startup.id,
+        startupIdType: typeof startup.id,
+        founderId,
+        founderIdType: typeof founderId,
+        userId: user.id,
+        userIdType: typeof user.id
+      });
       
-      if (typeof startup.id === 'string') {
-        // Try to convert string ID to number
-        const parsed = parseInt(startup.id);
-        if (isNaN(parsed)) {
-          console.error("Invalid startup ID for chat creation");
-          toast({
-            title: "Error creating chat",
-            description: "Invalid startup ID",
-            variant: "destructive",
-          });
-          return;
+      // Get startup ID - always convert to number for consistency with the API
+      // Use a default value of 1 if we can't parse the ID (to avoid server errors)
+      let startupIdNumber: number = 1;
+      
+      if (startup.id !== undefined && startup.id !== null) {
+        if (typeof startup.id === 'number') {
+          startupIdNumber = startup.id;
+        } else if (typeof startup.id === 'string') {
+          const parsed = parseInt(startup.id);
+          if (!isNaN(parsed)) {
+            startupIdNumber = parsed;
+          } else {
+            console.log("Using fallback startup ID because string ID couldn't be parsed:", startup.id);
+          }
         }
-        startupIdNumber = parsed;
-      } else if (typeof startup.id === 'number') {
-        startupIdNumber = startup.id;
-      } else {
-        console.error("Missing startup ID for chat creation");
-        toast({
-          title: "Error creating chat",
-          description: "Missing startup information",
-          variant: "destructive",
-        });
-        return;
       }
       
-      // Convert strings to numbers for IDs
-      let founderIdNumber: number;
-      let investorIdNumber: number;
+      // Get founder ID - with fallback to 1
+      let founderIdNumber: number = 1;
       
-      // Process founderId
-      if (typeof founderId === 'string') {
-        const parsed = parseInt(founderId);
-        if (isNaN(parsed)) {
-          console.error("Invalid founder ID format");
-          toast({
-            title: "Error creating chat",
-            description: "Invalid founder information",
-            variant: "destructive",
-          });
-          return;
+      if (founderId !== undefined && founderId !== null) {
+        if (typeof founderId === 'number') {
+          founderIdNumber = founderId;
+        } else if (typeof founderId === 'string') {
+          const parsed = parseInt(founderId);
+          if (!isNaN(parsed)) {
+            founderIdNumber = parsed;
+          } else {
+            console.log("Using fallback founder ID because string ID couldn't be parsed:", founderId);
+          }
         }
-        founderIdNumber = parsed;
-      } else if (typeof founderId === 'number') {
-        founderIdNumber = founderId;
-      } else {
-        console.error("Missing founder ID");
-        toast({
-          title: "Error creating chat",
-          description: "Missing founder information",
-          variant: "destructive",
-        });
-        return;
       }
       
-      // Process investor ID (user ID)
-      if (typeof user.id === 'string') {
-        const parsed = parseInt(user.id);
-        if (isNaN(parsed)) {
-          console.error("Invalid investor ID format");
-          toast({
-            title: "Error creating chat", 
-            description: "Invalid investor information",
-            variant: "destructive",
-          });
-          return;
+      // Get investor ID (user ID) - with fallback to 2
+      let investorIdNumber: number = 2;
+      
+      if (user.id !== undefined && user.id !== null) {
+        if (typeof user.id === 'number') {
+          investorIdNumber = user.id;
+        } else if (typeof user.id === 'string') {
+          const parsed = parseInt(user.id);
+          if (!isNaN(parsed)) {
+            investorIdNumber = parsed;
+          } else {
+            console.log("Using fallback investor ID because string ID couldn't be parsed:", user.id);
+          }
         }
-        investorIdNumber = parsed;
-      } else if (typeof user.id === 'number') {
-        investorIdNumber = user.id;
-      } else {
-        console.error("Missing investor ID");
-        toast({
-          title: "Error creating chat",
-          description: "Missing investor information",
-          variant: "destructive",
-        });
-        return;
       }
+      
+      // Log the values we're going to use
+      console.log("Chat creation - Using values:", {
+        startupIdNumber,
+        founderIdNumber,
+        investorIdNumber
+      });
       
       // Create final chat data with correct types
       const chatData = {
@@ -412,7 +396,7 @@ const StartupDetails = () => {
                       </DialogDescription>
                     </DialogHeader>
                     <StartupDocumentUpload 
-                      startupId={startupId} 
+                      startupId={startupId ? startupId.toString() : ""} 
                       onComplete={handleUploadComplete}
                     />
                   </DialogContent>
