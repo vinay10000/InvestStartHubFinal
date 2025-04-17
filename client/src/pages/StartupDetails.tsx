@@ -17,6 +17,8 @@ import DocumentUpload from "@/components/startups/DocumentUpload";
 import StartupDocumentUpload from "@/components/startups/StartupDocumentUpload";
 import DocumentViewer from "@/components/startups/DocumentViewer";
 import StartupForm from "@/components/startups/StartupForm";
+import { FirebaseStartup, FirebaseDocument } from "@/firebase/database";
+import { Document } from "@/services/documentService";
 import MetaMaskPayment from "@/components/payments/MetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
 
@@ -52,7 +54,7 @@ const StartupDetails = () => {
   // Handle documents data with proper type safety
   const documents = documentsData && documentsData !== null && 
     typeof documentsData === 'object' && 'documents' in documentsData 
-    ? documentsData.documents as any[] 
+    ? (documentsData.documents as Document[]) || [] 
     : [];
 
   // Extract founderId with proper fallbacks
@@ -86,33 +88,89 @@ const StartupDetails = () => {
     if (!user || !startup) return;
     
     try {
-      // Convert string IDs to numbers if needed
-      const startupIdNumber = typeof startup.id === 'string' ? parseInt(startup.id) : startup.id;
+      // Ensure we have a valid startup ID as a number for the API
+      let startupIdNumber: number;
       
-      // If we don't have a valid startup ID, show an error and return
-      if (isNaN(startupIdNumber)) {
-        console.error("Invalid startup ID for chat creation");
+      if (typeof startup.id === 'string') {
+        // Try to convert string ID to number
+        const parsed = parseInt(startup.id);
+        if (isNaN(parsed)) {
+          console.error("Invalid startup ID for chat creation");
+          toast({
+            title: "Error creating chat",
+            description: "Invalid startup ID",
+            variant: "destructive",
+          });
+          return;
+        }
+        startupIdNumber = parsed;
+      } else if (typeof startup.id === 'number') {
+        startupIdNumber = startup.id;
+      } else {
+        console.error("Missing startup ID for chat creation");
         toast({
           title: "Error creating chat",
-          description: "Invalid startup ID",
+          description: "Missing startup information",
           variant: "destructive",
         });
         return;
       }
       
-      const founderIdNumber = founderId ? (typeof founderId === 'string' ? parseInt(founderId) : founderId) : null;
-      const investorIdNumber = user.id ? (typeof user.id === 'string' ? parseInt(user.id) : user.id) : null;
+      // Convert strings to numbers for IDs
+      let founderIdNumber: number;
+      let investorIdNumber: number;
       
-      if (!founderIdNumber || !investorIdNumber) {
-        console.error("Missing required IDs for chat creation");
+      // Process founderId
+      if (typeof founderId === 'string') {
+        const parsed = parseInt(founderId);
+        if (isNaN(parsed)) {
+          console.error("Invalid founder ID format");
+          toast({
+            title: "Error creating chat",
+            description: "Invalid founder information",
+            variant: "destructive",
+          });
+          return;
+        }
+        founderIdNumber = parsed;
+      } else if (typeof founderId === 'number') {
+        founderIdNumber = founderId;
+      } else {
+        console.error("Missing founder ID");
         toast({
           title: "Error creating chat",
-          description: "Missing user information",
+          description: "Missing founder information",
           variant: "destructive",
         });
         return;
       }
       
+      // Process investor ID (user ID)
+      if (typeof user.id === 'string') {
+        const parsed = parseInt(user.id);
+        if (isNaN(parsed)) {
+          console.error("Invalid investor ID format");
+          toast({
+            title: "Error creating chat", 
+            description: "Invalid investor information",
+            variant: "destructive",
+          });
+          return;
+        }
+        investorIdNumber = parsed;
+      } else if (typeof user.id === 'number') {
+        investorIdNumber = user.id;
+      } else {
+        console.error("Missing investor ID");
+        toast({
+          title: "Error creating chat",
+          description: "Missing investor information",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Create final chat data with correct types
       const chatData = {
         founderId: founderIdNumber,
         investorId: investorIdNumber,
@@ -175,10 +233,10 @@ const StartupDetails = () => {
   const name = startup.name || '';
   const description = startup.description || '';
   const pitch = startup.pitch || '';
-  const investmentStage = startup.investment_stage || startup.investmentStage || 'seed'; // Fallback value
-  const upiId = startup.upi_id || startup.upiId || '';
-  const upiQrCode = startup.upi_qr_code || startup.upiQrCode || '';
-  const fundingGoal = startup.funding_goal || startup.fundingGoal || '0';
+  const investmentStage = startup.investment_stage || 'seed'; // Fallback value
+  const upiId = startup.upi_id || '';
+  const upiQrCode = startup.upi_qr_code || '';
+  const fundingGoal = startup.funding_goal || '0';
   
   const { bg: stageBg, text: stageText } = getInvestmentStageColor(investmentStage);
 
