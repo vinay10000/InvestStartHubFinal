@@ -220,11 +220,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("Signin successful, Firebase user authenticated:", result.user.uid);
         
         // Force synchronization after signin
-        await synchronizeUserData(result.user);
+        const userData = await synchronizeUserData(result.user);
         
-        toast({
-          title: "Signed in successfully",
-        });
+        // Check if user has a wallet connected
+        const hasWallet = userData.walletAddress && userData.walletAddress !== '';
+        
+        if (hasWallet) {
+          toast({
+            title: "Signed in successfully",
+          });
+        } else {
+          toast({
+            title: "Signed in successfully",
+            description: "Please connect your wallet to continue using the platform.",
+          });
+        }
       } else {
         throw new Error("Please use your email address to sign in");
       }
@@ -252,11 +262,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Google signin successful, Firebase user authenticated:", result.user.uid);
       
       // Force synchronization after Google signin
-      await synchronizeUserData(result.user);
+      const userData = await synchronizeUserData(result.user);
       
-      toast({
-        title: "Signed in with Google successfully",
-      });
+      // Check if user has a wallet connected
+      const hasWallet = userData.walletAddress && userData.walletAddress !== '';
+      
+      if (hasWallet) {
+        toast({
+          title: "Signed in with Google successfully",
+        });
+      } else {
+        toast({
+          title: "Signed in with Google successfully",
+          description: "Please connect your wallet to continue using the platform.",
+        });
+      }
     } catch (error: any) {
       console.error("Error in googleSignIn:", error);
       toast({
