@@ -97,13 +97,52 @@ const FounderDashboard = () => {
     }
   }, [userId]);
   
-  // Firebase transactions - replace with direct Firebase call later
-  const [transactionsData, setTransactionsData] = useState<any>({transactions: []});
+  // Firebase transactions
+  const [firebaseTransactions, setFirebaseTransactions] = useState<any[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
+  
+  // Load transactions from Firebase Realtime Database
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (userId) {
+        try {
+          setTransactionsLoading(true);
+          // Get transactions from Firebase
+          const transactions = await firebaseGetTransactionsByFounderId(userId.toString());
+          console.log("Fetched founder transactions from Firebase:", transactions);
+          
+          if (transactions && transactions.length > 0) {
+            // Convert Firebase timestamps to Date objects if needed
+            const formattedTransactions = transactions.map(tx => ({
+              id: Number(tx.id) || 0,
+              startupId: Number(tx.startupId) || 0,
+              investorId: Number(tx.investorId) || 0,
+              amount: tx.amount,
+              status: tx.status,
+              paymentMethod: tx.paymentMethod,
+              transactionId: tx.transactionId,
+              createdAt: tx.createdAt ? new Date(tx.createdAt) : null
+            }));
+            
+            setFirebaseTransactions(formattedTransactions);
+          }
+        } catch (error) {
+          console.error("Error fetching transactions from Firebase:", error);
+        } finally {
+          setTransactionsLoading(false);
+        }
+      }
+    };
+    
+    if (userId) {
+      fetchTransactions();
+    }
+  }, [userId]);
   
   // Removed Supabase mutation
 
   const handleCreateStartup = async (startupData: any) => {
+    setIsCreatingStartup(true);
     try {
       // Check if we have a valid userId
       if (!userId) {
@@ -181,6 +220,9 @@ const FounderDashboard = () => {
           // Close the dialog
           setIsCreateDialogOpen(false);
           
+          // Reset loading state
+          setIsCreatingStartup(false);
+          
           // Show success message
           alert(`Startup ${result.name} created successfully!`);
           
@@ -195,6 +237,7 @@ const FounderDashboard = () => {
         } else {
           alert("Failed to create startup due to an unexpected error. Please try again or contact support.");
         }
+        setIsCreatingStartup(false);
       }
     } catch (error) {
       console.error("Error creating startup:", error);
@@ -204,6 +247,7 @@ const FounderDashboard = () => {
       } else {
         alert("Failed to create startup due to an unexpected error. Please try again or contact support.");
       }
+      setIsCreatingStartup(false);
     }
   };
   
@@ -343,7 +387,7 @@ const FounderDashboard = () => {
     
   // Now we're only using Firebase data
   const combinedStartups = myStartups;
-  const transactions = (transactionsData as ApiTransactionResponse)?.transactions || [];
+  const transactions = firebaseTransactions;
 
   // Calculate metrics safely
   const totalInvestors = useMemo(() => {
@@ -451,7 +495,7 @@ const FounderDashboard = () => {
                     Fill in the details to create your startup profile
                   </DialogDescription>
                 </DialogHeader>
-                <StartupForm onSubmit={handleCreateStartup} isLoading={createStartupMutation.isPending} />
+                <StartupForm onSubmit={handleCreateStartup} isLoading={isCreatingStartup} />
               </DialogContent>
             </Dialog>
           </div>
