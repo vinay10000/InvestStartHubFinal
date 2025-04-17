@@ -42,6 +42,10 @@ const StartupDetails = () => {
   const updateStartupMutation = useUpdateStartup();
   const createChatMutation = createChat();
 
+  // Log debug information about fetched data
+  console.log("StartupDetails - Fetched startup data:", startupData);
+  console.log("StartupDetails - Fetched documents data:", documentsData);
+
   // Safely extract data with null checks and type handling
   const startup = startupData;
   
@@ -51,9 +55,14 @@ const StartupDetails = () => {
     ? documentsData.documents as any[] 
     : [];
 
-  // Use snake_case property names to match database fields
-  const founderId = startup?.founder_id;
-  const isFounder = user?.id === founderId;
+  // Extract founderId with proper fallbacks
+  const founderId = startup?.founderId;
+  
+  // Debug founderId and user ID
+  console.log("Startup details - founderId:", founderId, "user.id:", user?.id, "user.uid:", user?.uid);
+  
+  // Check both user.id and user.uid against founderId for compatibility
+  const isFounder = (user?.id === founderId) || (user?.uid === founderId);
   const isInvestor = user?.role === "investor";
 
   const handleEditStartup = async (startupData: any) => {
@@ -79,11 +88,28 @@ const StartupDetails = () => {
     try {
       // Convert string IDs to numbers if needed
       const startupIdNumber = typeof startup.id === 'string' ? parseInt(startup.id) : startup.id;
+      
+      // If we don't have a valid startup ID, show an error and return
+      if (isNaN(startupIdNumber)) {
+        console.error("Invalid startup ID for chat creation");
+        toast({
+          title: "Error creating chat",
+          description: "Invalid startup ID",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const founderIdNumber = founderId ? (typeof founderId === 'string' ? parseInt(founderId) : founderId) : null;
       const investorIdNumber = user.id ? (typeof user.id === 'string' ? parseInt(user.id) : user.id) : null;
       
       if (!founderIdNumber || !investorIdNumber) {
         console.error("Missing required IDs for chat creation");
+        toast({
+          title: "Error creating chat",
+          description: "Missing user information",
+          variant: "destructive",
+        });
         return;
       }
       
@@ -145,14 +171,14 @@ const StartupDetails = () => {
     );
   }
 
-  // Use snake_case property access to match database fields
-  const name = startup.name;
-  const description = startup.description;
-  const pitch = startup.pitch;
-  const investmentStage = startup.investment_stage;
-  const upiId = startup.upi_id;
-  const upiQrCode = startup.upi_qr_code;
-  const fundingGoal = startup.funding_goal;
+  // Extract properties with fallbacks for type safety
+  const name = startup.name || '';
+  const description = startup.description || '';
+  const pitch = startup.pitch || '';
+  const investmentStage = startup.investment_stage || startup.investmentStage || 'seed'; // Fallback value
+  const upiId = startup.upi_id || startup.upiId || '';
+  const upiQrCode = startup.upi_qr_code || startup.upiQrCode || '';
+  const fundingGoal = startup.funding_goal || startup.fundingGoal || '0';
   
   const { bg: stageBg, text: stageText } = getInvestmentStageColor(investmentStage);
 
