@@ -17,6 +17,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
+import { migrateWalletToFirebaseUid } from "@/firebase/walletDatabase";
 
 // Enhanced validation schema with better number handling
 const formSchema = z.object({
@@ -124,18 +125,56 @@ const MetaMaskPayment = ({
           
           // Also save this wallet to the database for future use
           import('@/firebase/walletDatabase').then(walletDb => {
-            // Use the startup ID directly 
-            if (startupId && walletDb.saveWalletAddress) {
+            // Get the actual startup data to get the founder ID
+            const { useStartup } = useStartups();
+            const { data: startupData } = useStartup(startupId.toString());
+            
+            if (startupData && startupData.founderId && walletDb.saveWalletAddress) {
+              console.log("[MetaMaskPayment] Retrieved startup data for wallet saving:", {
+                startupId,
+                startupName,
+                founderId: startupData.founderId
+              });
+              
+              // Use the actual Firebase UID (founderId) instead of the startup ID
               walletDb.saveWalletAddress(
-                startupId.toString(), 
+                startupData.founderId.toString(), 
                 walletAddress, 
                 "Founder", 
                 "founder"
               ).then(() => {
-                console.log("[MetaMaskPayment] Saved manually entered wallet address to database for founder:", startupId);
+                console.log("[MetaMaskPayment] Saved manually entered wallet address to Firebase UID:", startupData.founderId);
+                
+                // Also create a migration from the old ID format (numeric) to the Firebase UID
+                // This ensures backward compatibility with older wallet entries
+                const commonNumericIds = ["1", "2", "92", "3", "4", "5", "10"];
+                for (const numericId of commonNumericIds) {
+                  // Try to migrate any existing wallets with these IDs to the Firebase UID
+                  walletDb.migrateWalletToFirebaseUid(
+                    numericId,
+                    startupData.founderId.toString(),
+                    walletAddress
+                  ).catch(err => {
+                    // Silently ignore migration errors - it's just a helpful extra step
+                    console.log(`[MetaMaskPayment] Migration attempt from ID ${numericId} didn't apply:`, err.message);
+                  });
+                }
               }).catch(err => {
                 console.error("[MetaMaskPayment] Error saving wallet address:", err);
               });
+            } else {
+              // Fallback to using startup ID if we couldn't find the founder ID
+              console.log("[MetaMaskPayment] Could not find founder ID, falling back to startup ID");
+              if (startupId && walletDb.saveWalletAddress) {
+                walletDb.saveWalletAddress(
+                  startupId.toString(), 
+                  walletAddress, 
+                  "Founder", 
+                  "founder"
+                ).catch(err => {
+                  console.error("[MetaMaskPayment] Fallback wallet save error:", err);
+                });
+              }
             }
           }).catch(error => {
             console.error("[MetaMaskPayment] Error importing wallet database:", error);
@@ -315,6 +354,22 @@ const MetaMaskPayment = ({
               manualFounderInfo.walletAddress.startsWith("0x")) {
             founderWalletAddress = manualFounderInfo.walletAddress;
             console.log("[MetaMaskPayment] Using manually entered wallet address:", founderWalletAddress);
+            
+            // Try to get the startup data to get the founder ID for saving this wallet
+            const { useStartup } = useStartups();
+            const { data: startupData } = useStartup(startupId.toString());
+            
+            // If we have the startup data and founder ID, migrate the wallet
+            if (startupData?.founderId && ethers.isAddress(founderWalletAddress)) {
+              // Migrate any numeric wallet ID to this Firebase UID
+              migrateWalletToFirebaseUid("92", startupData.founderId.toString(), founderWalletAddress)
+                .then(success => {
+                  console.log(`[MetaMaskPayment] Migration result for ID 92 to ${startupData.founderId}:`, success);
+                })
+                .catch(err => {
+                  console.log("[MetaMaskPayment] Migration attempt error:", err.message);
+                });
+            }
           }
         }
       }
@@ -575,18 +630,59 @@ const MetaMaskPayment = ({
                 // using promise-based approach to avoid async/await syntax errors
                 const walletPromise = import('@/firebase/walletDatabase');
                 walletPromise.then(walletDb => {
-                  // Use our startup ID directly 
-                  if (startupId && walletDb.saveWalletAddress) {
+                  // Get the actual startup data to get the founder ID
+                  const { useStartup } = useStartups();
+                  const { data: startupData } = useStartup(startupId.toString());
+                  
+                  // If we have startup data with a founder ID, use that instead of the startup ID
+                  if (startupData && startupData.founderId && walletDb.saveWalletAddress) {
+                    console.log("[MetaMaskPayment] Found proper Firebase UID to save wallet:", {
+                      startupId,
+                      founderId: startupData.founderId
+                    });
+                    
+                    // Save using the Firebase UID
                     walletDb.saveWalletAddress(
-                      startupId.toString(), 
+                      startupData.founderId.toString(), 
                       walletAddress, 
                       "Founder", 
                       "founder"
                     ).then(() => {
-                      console.log("[MetaMaskPayment] Saved manually entered wallet address to database for founder:", startupId);
+                      console.log("[MetaMaskPayment] Saved manually entered wallet address using Firebase UID:", startupData.founderId);
+                      
+                      // Also attempt to migrate any old numeric ID wallets
+                      if (walletDb.migrateWalletToFirebaseUid) {
+                        // Common IDs to check would be "1", "2", "92" etc. based on your JSON data
+                        const commonNumericIds = ["1", "2", "92", "3", "4", "5", "10"];
+                        
+                        for (const numericId of commonNumericIds) {
+                          // Try to migrate any existing wallets with these IDs to the Firebase UID
+                          walletDb.migrateWalletToFirebaseUid(
+                            numericId,
+                            startupData.founderId.toString(),
+                            walletAddress
+                          ).catch(err => {
+                            // Silently ignore migration errors - it's just a helpful extra step
+                            console.log(`[MetaMaskPayment] Migration attempt from ID ${numericId} didn't apply:`, err.message);
+                          });
+                        }
+                      }
                     }).catch(err => {
                       console.error("[MetaMaskPayment] Error saving wallet address:", err);
                     });
+                  } else {
+                    // Fallback to using startup ID if we couldn't find the founder ID
+                    console.log("[MetaMaskPayment] Could not find founder ID, falling back to startup ID");
+                    if (startupId && walletDb.saveWalletAddress) {
+                      walletDb.saveWalletAddress(
+                        startupId.toString(), 
+                        walletAddress, 
+                        "Founder", 
+                        "founder"
+                      ).catch(err => {
+                        console.error("[MetaMaskPayment] Fallback wallet save error:", err);
+                      });
+                    }
                   }
                 }).catch(error => {
                   console.error("[MetaMaskPayment] Error importing wallet database:", error);
