@@ -17,6 +17,69 @@ export const getLastSavedWalletAddress = (userId: string): string | null => {
   return lastSavedWalletAddress[userId] || null;
 };
 
+/**
+ * Helper function to migrate wallet data from numeric IDs to Firebase UIDs
+ * This can be used when a wallet is found with a numeric ID but needs to be 
+ * associated with a real Firebase UID
+ */
+export const migrateWalletToFirebaseUid = async (
+  numericId: string, 
+  firebaseUid: string,
+  walletAddress: string
+): Promise<boolean> => {
+  try {
+    console.log(`[Wallet DB] Migrating wallet from numeric ID ${numericId} to Firebase UID ${firebaseUid}`);
+    
+    // First check if we already have a wallet for this Firebase UID
+    const existingWallet = await getWalletByUserId(firebaseUid);
+    if (existingWallet) {
+      console.log(`[Wallet DB] Firebase UID ${firebaseUid} already has a wallet, no migration needed`);
+      return true; // No need to migrate
+    }
+    
+    // Get the wallet data from the numeric ID
+    const oldWallet = await getWalletByUserId(numericId);
+    if (!oldWallet) {
+      console.log(`[Wallet DB] No wallet found for numeric ID ${numericId}, nothing to migrate`);
+      return false;
+    }
+    
+    // Create new wallet entry with Firebase UID
+    const now = Date.now();
+    const walletData: WalletData = {
+      address: walletAddress || oldWallet.address,
+      userId: firebaseUid,
+      userName: oldWallet.userName,
+      role: oldWallet.role,
+      createdAt: oldWallet.createdAt || now,
+      updatedAt: now
+    };
+    
+    // Save the new wallet entry
+    const walletRef = ref(db, `${WALLETS_PATH}/${firebaseUid}`);
+    await set(walletRef, walletData);
+    
+    // Update the wallet address index to point to the Firebase UID
+    const addressRef = ref(db, `wallet_addresses/${walletData.address.toLowerCase()}`);
+    await set(addressRef, { userId: firebaseUid, updatedAt: now });
+    
+    // Store in cache
+    lastSavedWalletAddress[firebaseUid] = walletData.address;
+    
+    console.log(`[Wallet DB] Successfully migrated wallet from numeric ID ${numericId} to Firebase UID ${firebaseUid}`);
+    
+    // Optionally, remove the old wallet entry
+    // Only uncomment this when you're sure the migration is working correctly
+    // const oldWalletRef = ref(db, `${WALLETS_PATH}/${numericId}`);
+    // await set(oldWalletRef, null);
+    
+    return true;
+  } catch (error) {
+    console.error(`[Wallet DB] Error migrating wallet from ${numericId} to ${firebaseUid}:`, error);
+    return false;
+  }
+};
+
 // Interface for wallet data structure
 export interface WalletData {
   address: string;

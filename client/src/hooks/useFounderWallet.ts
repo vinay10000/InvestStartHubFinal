@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import { getWalletByUserId, getLastSavedWalletAddress } from '@/firebase/walletDatabase';
+import { 
+  getWalletByUserId, 
+  getLastSavedWalletAddress,
+  migrateWalletToFirebaseUid,
+  getUserIdByWalletAddress
+} from '@/firebase/walletDatabase';
 import { getUserByUid } from '@/firebase/database';
 import { useStartups } from '@/hooks/useStartups';
 
@@ -151,8 +156,52 @@ export const useFounderWallet = (startupId: string | number | null) => {
           return;
         }
         
-        // If all methods fail, return error
-        console.warn("[useFounderWallet] No wallet found for founder after multiple attempts:", founderId);
+        // If all methods fail, try one more approach - check for numeric wallet entry
+        console.warn("[useFounderWallet] No wallet found for founder after primary methods, trying numeric ID check:", founderId);
+        
+        // Check if there's a wallet with a numeric ID that we can migrate
+        // Common IDs to check would be "1", "2", "92" etc. based on your JSON data
+        const commonNumericIds = ["1", "2", "92", "3", "4", "5", "10"];
+        
+        let migratedWallet = null;
+        // Try to migrate a wallet from any of these numeric IDs to the Firebase UID
+        for (const numericId of commonNumericIds) {
+          const numericWallet = await getWalletByUserId(numericId);
+          if (numericWallet && numericWallet.address) {
+            console.log(`[useFounderWallet] Found wallet with numeric ID ${numericId}, attempting migration to Firebase UID ${founderId}`);
+            
+            // Migrate the wallet to use the Firebase UID
+            const migrationResult = await migrateWalletToFirebaseUid(
+              numericId,
+              founderId.toString(),
+              numericWallet.address
+            );
+            
+            if (migrationResult) {
+              console.log(`[useFounderWallet] Successfully migrated wallet from numeric ID ${numericId} to Firebase UID ${founderId}`);
+              // Set the wallet info
+              migratedWallet = numericWallet.address;
+              break;
+            }
+          }
+        }
+        
+        // If we were able to migrate a wallet, use it
+        if (migratedWallet) {
+          console.log("[useFounderWallet] Using migrated wallet:", migratedWallet);
+          setFounderWallet(migratedWallet);
+          setFounderInfo({
+            id: founderId,
+            name: userData?.username || startupWithCustomFields.founderName || "Founder",
+            walletAddress: migratedWallet
+          });
+          setIsLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        // If all methods fail including migration, return error
+        console.warn("[useFounderWallet] No wallet found for founder after all attempts:", founderId);
         setFounderWallet(null);
         
         // If we have basic founder info in the startup data or user data, still return it
