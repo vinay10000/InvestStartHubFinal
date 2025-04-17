@@ -204,16 +204,24 @@ const MetaMaskPayment = ({
       // Use the founder wallet address from our founderInfo state
       // This was loaded in the useEffect when startup data changed
       let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
+      
+      // Ensure startupId is a valid number for blockchain
+      const numericStartupId = typeof startupId === 'number' ? 
+        startupId : 
+        (typeof startupId === 'string' ? 
+          (parseInt(startupId) || 1) : 
+          1);
                                    
       // Log the startup data and wallet address being used
       console.log("[MetaMaskPayment] Startup data for investment:", {
-        startupId,
+        originalStartupId: startupId,
+        numericStartupId,
         startupData,
         founderWalletAddress
       });
       
-      // Invest using the contract with real startup ID
-      const result = await investInStartup(startupId, cleanAmount, founderWalletAddress);
+      // Invest using the contract with numeric startup ID
+      const result = await investInStartup(numericStartupId, cleanAmount, founderWalletAddress);
       
       if (result) {
         // Store transaction hash
