@@ -2,7 +2,7 @@ import { ref, set, get, child, Database } from 'firebase/database';
 import { database } from './config';
 
 // Type assertion to ensure TypeScript recognizes database as Database type
-const db = database as Database;
+const db: Database = database as Database;
 
 // Interface for wallet data structure
 export interface WalletData {
@@ -62,7 +62,7 @@ export const saveWalletAddress = async (
 export const getWalletByUserId = async (userId: string): Promise<WalletData | null> => {
   try {
     // Create a reference to the user's wallet
-    const dbRef = ref(database);
+    const dbRef = ref(db);
     const snapshot = await get(child(dbRef, `${WALLETS_PATH}/${userId}`));
     
     if (snapshot.exists()) {
@@ -83,7 +83,7 @@ export const getWalletByUserId = async (userId: string): Promise<WalletData | nu
 export const getUserIdByWalletAddress = async (walletAddress: string): Promise<string | null> => {
   try {
     // Create a reference to the address index
-    const dbRef = ref(database);
+    const dbRef = ref(db);
     const snapshot = await get(child(dbRef, `wallet_addresses/${walletAddress.toLowerCase()}`));
     
     if (snapshot.exists()) {
@@ -103,7 +103,7 @@ export const getUserIdByWalletAddress = async (walletAddress: string): Promise<s
  */
 export const getAllWallets = async (): Promise<Record<string, WalletData>> => {
   try {
-    const dbRef = ref(database);
+    const dbRef = ref(db);
     const snapshot = await get(child(dbRef, WALLETS_PATH));
     
     if (snapshot.exists()) {
@@ -130,7 +130,7 @@ export const updateWalletAddress = async (
     
     // If there's an existing wallet address, remove it from the address index
     if (existingWallet && existingWallet.address) {
-      const oldAddressRef = ref(database, `wallet_addresses/${existingWallet.address.toLowerCase()}`);
+      const oldAddressRef = ref(db, `wallet_addresses/${existingWallet.address.toLowerCase()}`);
       await set(oldAddressRef, null);
     }
     
