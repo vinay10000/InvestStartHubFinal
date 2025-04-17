@@ -23,6 +23,36 @@ import { Document } from "@/services/documentService";
 import MetaMaskPayment from "@/components/payments/MetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
 
+// Helper function to convert any startup ID to a valid numeric ID for blockchain
+function getNumericStartupId(id: any): number {
+  if (id === undefined || id === null) {
+    return 1; // Default fallback
+  }
+  
+  if (typeof id === 'number') {
+    return id;
+  }
+  
+  if (typeof id === 'string') {
+    // First try to parse it as a number
+    const parsed = parseInt(id);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+    
+    // If it's a string that can't be parsed as a number (like a Firebase ID),
+    // generate a consistent numeric hash from the string
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = ((hash << 5) - hash) + id.charCodeAt(i);
+      hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash % 10000) + 1; // Keep it between 1-10000
+  }
+  
+  return 1; // Default fallback
+}
+
 const StartupDetails = () => {
   const { id } = useParams();
   // Handle string IDs for Firebase (primary storage method)
@@ -518,7 +548,7 @@ const StartupDetails = () => {
                       
                       <TabsContent value="metamask">
                         <MetaMaskPayment 
-                          startupId={Number(startup.id)}
+                          startupId={getNumericStartupId(startup.id)}
                           startupName={startup.name}
                           onPaymentComplete={() => setIsInvestDialogOpen(false)}
                         />
