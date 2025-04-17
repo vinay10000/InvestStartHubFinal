@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertStartupSchema } from "@shared/schema";
-import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck } from "lucide-react";
+import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import WalletConnect from "@/components/auth/WalletConnect";
+import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -312,6 +314,21 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
     }
   };
 
+  // Get user from auth context
+  const { user, connectWallet } = useAuth();
+  
+  // Handle wallet connection
+  const handleWalletConnect = async (address: string) => {
+    try {
+      if (connectWallet) {
+        await connectWallet(address);
+        console.log("Wallet connected successfully:", address);
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+    }
+  };
+  
   const handleSubmit = async (data: StartupFormValues) => {
     // Include all files in the submission
     await onSubmit({

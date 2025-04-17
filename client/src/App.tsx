@@ -122,10 +122,9 @@ function Router() {
   );
 }
 
-// Global wallet prompt checker that runs on any authenticated route
+// Global wallet checker without popup - removed as requested
 function GlobalWalletChecker() {
   const { user } = useAuth();
-  const [showWalletPrompt, setShowWalletPrompt] = useState(false);
   
   useEffect(() => {
     if (!user) return;
@@ -135,26 +134,14 @@ function GlobalWalletChecker() {
     // Check if wallet was connected previously
     const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
     
-    // Show prompt for users without a wallet and haven't connected previously
-    // This is a fallback in case they somehow bypass ProtectedRoute checks
+    // Only log status but don't show popup anymore
     if (!hasWallet && !hasConnectedWallet) {
-      console.log('GlobalWalletChecker: User has no wallet connected, showing wallet prompt');
-      setShowWalletPrompt(true);
-    } else {
-      // If they have a wallet or connected previously, make sure prompt is hidden
-      setShowWalletPrompt(false);
+      console.log('GlobalWalletChecker: User has no wallet connected, but will not force prompt');
     }
   }, [user]);
   
-  // No need to render anything if not showing prompt
-  if (!showWalletPrompt) return null;
-  
-  return (
-    <WalletPrompt 
-      open={showWalletPrompt} 
-      onOpenChange={setShowWalletPrompt}
-    />
-  );
+  // No popup, just return null
+  return null;
 }
 
 function App() {
