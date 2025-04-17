@@ -11,6 +11,7 @@ import StartupCard from "@/components/startups/StartupCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";
+import { FirebaseStartup as DBFirebaseStartup, FirebaseTransaction as DBFirebaseTransaction } from "@/firebase/database";
 
 const InvestorDashboard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -24,31 +25,36 @@ const InvestorDashboard = () => {
   const [filter, setFilter] = useState("");
   const [stage, setStage] = useState("all");
   const [activeTab, setActiveTab] = useState("discover");
-  // Use explicit types for Firebase data
-  interface FirebaseStartup {
+  
+  // Define local interfaces for type safety
+  type FirebaseStartup = {
     id: string;
     name: string;
     description: string;
     category?: string | null;
     investment_stage?: string;
-    investmentStage?: string;
-    founderId: string | number;
-    founder_id?: string | number;
-    logoUrl?: string | null;
-    upiQrCode?: string | null;
-    [key: string]: any; // Allow for other properties
-  }
+    founderId: string;
+    funding_goal?: string;
+    funding_goal_eth?: string;
+    current_funding?: string;
+    logo_url?: string | null;
+    website_url?: string | null;
+    upi_id?: string | null;
+    upi_qr_code?: string | null;
+    pitch?: string;
+    createdAt?: string;
+  };
   
-  interface FirebaseTransaction {
+  type FirebaseTransaction = {
     id: string;
+    startupId: string;
+    investorId: string;
     amount: string;
     status: string;
-    startupId?: string | number;
-    startup_id?: string | number;
-    investorId?: string | number;
-    investor_id?: string | number;
-    [key: string]: any; // Allow for other properties
-  }
+    paymentMethod: string;
+    transactionId?: string | null;
+    createdAt?: string;
+  };
   
   const [firebaseStartups, setFirebaseStartups] = useState<FirebaseStartup[]>([]);
   const [firebaseTransactions, setFirebaseTransactions] = useState<FirebaseTransaction[]>([]);
@@ -60,7 +66,16 @@ const InvestorDashboard = () => {
         const { getStartups } = await import('@/firebase/database');
         const startups = await getStartups();
         console.log("Fetched startups from Firebase Realtime Database:", startups);
-        setFirebaseStartups(startups);
+        
+        // Ensure all startups have an id
+        const validStartups = startups
+          .filter(startup => startup !== null)
+          .map(startup => ({
+            ...startup,
+            id: startup.id || crypto.randomUUID() // Ensure id is never undefined
+          })) as FirebaseStartup[];
+          
+        setFirebaseStartups(validStartups);
       } catch (error) {
         console.error("Error fetching startups from Firebase Realtime Database:", error);
       }
@@ -72,7 +87,18 @@ const InvestorDashboard = () => {
           const { getTransactionsByInvestorId } = await import('@/firebase/database');
           const transactions = await getTransactionsByInvestorId(userId);
           console.log("Fetched transactions from Firebase Realtime Database:", transactions);
-          setFirebaseTransactions(transactions);
+          
+          // Ensure all transactions have an id
+          const validTransactions = transactions
+            .filter(transaction => transaction !== null)
+            .map(transaction => ({
+              ...transaction,
+              id: transaction.id || crypto.randomUUID(), // Ensure id is never undefined
+              startupId: String(transaction.startupId || ""),
+              investorId: String(transaction.investorId || "")
+            })) as FirebaseTransaction[];
+            
+          setFirebaseTransactions(validTransactions);
         } catch (error) {
           console.error("Error fetching transactions from Firebase Realtime Database:", error);
         }
@@ -104,16 +130,23 @@ const InvestorDashboard = () => {
     ? startupsData.startups.map(startup => {
         // Create a fully typed startup with appropriate field names
         const typedStartup: FirebaseStartup = {
-          id: startup.id?.toString() || "",
+          id: String(startup.id || crypto.randomUUID()),
           name: startup.name,
           description: startup.description,
           category: startup.category,
-          investment_stage: startup.investment_stage || startup.investmentStage,
-          founderId: startup.founderId || startup.founder_id || "",
-          funding_goal: startup.funding_goal || startup.fundingGoal,
-          logo_url: startup.logo_url || startup.logoUrl,
-          upi_qr_code: startup.upi_qr_code || startup.upiQrCode,
-          website_url: startup.website_url || startup.websiteUrl,
+          // Map fields consistently using Firebase naming convention
+          investment_stage: startup.investment_stage || 
+            (startup as any).investmentStage || "seed",
+          founderId: String(startup.founderId || 
+            (startup as any).founder_id || ""),
+          funding_goal: startup.funding_goal || 
+            (startup as any).fundingGoal || "",
+          logo_url: startup.logo_url || 
+            (startup as any).logoUrl || null,
+          upi_qr_code: startup.upi_qr_code || 
+            (startup as any).upiQrCode || null,
+          website_url: startup.website_url || 
+            (startup as any).websiteUrl || null,
           pitch: startup.pitch || "",
           createdAt: startup.createdAt ? startup.createdAt.toString() : new Date().toISOString()
         };
@@ -125,11 +158,11 @@ const InvestorDashboard = () => {
     ? transactionsData.transactions.map(transaction => {
         // Create a fully typed transaction with appropriate field names
         const typedTransaction: FirebaseTransaction = {
-          id: transaction.id?.toString() || "",
+          id: String(transaction.id || crypto.randomUUID()),
           amount: transaction.amount,
           status: transaction.status,
-          startupId: transaction.startupId || "",
-          investorId: transaction.investorId || "",
+          startupId: String(transaction.startupId || ""),
+          investorId: String(transaction.investorId || ""),
           paymentMethod: transaction.paymentMethod || "card",
           transactionId: transaction.transactionId || null,
           createdAt: transaction.createdAt ? transaction.createdAt.toString() : new Date().toISOString()

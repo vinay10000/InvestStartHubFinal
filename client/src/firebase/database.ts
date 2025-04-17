@@ -13,6 +13,8 @@ export interface FirebaseUser {
   role?: string;
   walletAddress?: string;
   createdAt?: string;
+  online?: boolean;
+  lastActive?: string;
 }
 
 // Get user by uid

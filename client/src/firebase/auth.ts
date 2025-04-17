@@ -113,9 +113,8 @@ export const signInWithEmail = async (
         });
       }
     } else {
-      // Update user's last login time and online status
+      // Update user's last login time
       await updateUser(user.uid, {
-        online: true,
         lastActive: new Date().toISOString()
       });
     }
@@ -178,9 +177,8 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
       } else {
         console.log("Found existing Firebase user:", user.uid);
         
-        // Update the online status in the database for real-time presence
+        // Update the last active time in the database
         await updateUser(user.uid, { 
-          online: true,
           lastActive: new Date().toISOString()
         });
       }
