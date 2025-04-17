@@ -131,6 +131,9 @@ const FounderDashboard = () => {
       
       // Remove the file from the payload as we've extracted the URL
       delete startupPayload.upiQrCodeFile;
+      delete startupPayload.pitchDeckFile;
+      delete startupPayload.financialReportFile;
+      delete startupPayload.investorAgreementFile;
       
       console.log("Creating startup with data:", startupPayload);
       
@@ -183,6 +186,9 @@ const FounderDashboard = () => {
           // Add to local state for immediate UI update
           setMyStartups(prev => [...prev, typedStartupData]);
           console.log("Added new startup to local state:", typedStartupData);
+          
+          // Handle document uploads if any
+          await uploadStartupDocuments(result.id, startupData);
         }
         
         setIsCreateDialogOpen(false);
@@ -191,6 +197,88 @@ const FounderDashboard = () => {
       }
     } catch (error) {
       console.error("Error creating startup:", error);
+    }
+  };
+  
+  // Upload documents for a startup
+  const uploadStartupDocuments = async (startupId: string, startupData: any) => {
+    try {
+      const { uploadDocumentFile } = useDocuments();
+      const { uploadStartupDocument } = await import('@/services/imagekit');
+      
+      // Handle pitch deck upload
+      if (startupData.pitchDeckFile) {
+        try {
+          console.log("Uploading pitch deck for startup:", startupId);
+          const uploadResult = await uploadStartupDocument(
+            parseInt(startupId),
+            'pitch_deck',
+            startupData.pitchDeckFile
+          );
+          
+          // Create document record
+          await uploadDocumentFile({
+            startupId,
+            documentType: 'pitch_deck',
+            file: startupData.pitchDeckFile,
+            name: startupData.pitchDeckFile.name
+          });
+          
+          console.log("Pitch deck uploaded:", uploadResult);
+        } catch (error) {
+          console.error("Error uploading pitch deck:", error);
+        }
+      }
+      
+      // Handle financial report upload
+      if (startupData.financialReportFile) {
+        try {
+          console.log("Uploading financial report for startup:", startupId);
+          const uploadResult = await uploadStartupDocument(
+            parseInt(startupId),
+            'financial_report',
+            startupData.financialReportFile
+          );
+          
+          // Create document record
+          await uploadDocumentFile({
+            startupId,
+            documentType: 'financial_report',
+            file: startupData.financialReportFile,
+            name: startupData.financialReportFile.name
+          });
+          
+          console.log("Financial report uploaded:", uploadResult);
+        } catch (error) {
+          console.error("Error uploading financial report:", error);
+        }
+      }
+      
+      // Handle investor agreement upload
+      if (startupData.investorAgreementFile) {
+        try {
+          console.log("Uploading investor agreement for startup:", startupId);
+          const uploadResult = await uploadStartupDocument(
+            parseInt(startupId),
+            'investor_agreement',
+            startupData.investorAgreementFile
+          );
+          
+          // Create document record
+          await uploadDocumentFile({
+            startupId,
+            documentType: 'investor_agreement',
+            file: startupData.investorAgreementFile,
+            name: startupData.investorAgreementFile.name
+          });
+          
+          console.log("Investor agreement uploaded:", uploadResult);
+        } catch (error) {
+          console.error("Error uploading investor agreement:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error uploading startup documents:", error);
     }
   };
 
