@@ -16,6 +16,7 @@ import StartupDetails from "@/pages/StartupDetails";
 import Transactions from "@/pages/Transactions";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
+import WalletConnection from "@/pages/WalletConnection";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";

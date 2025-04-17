@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertStartupSchema } from "@shared/schema";
-import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet } from "lucide-react";
+import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet, CheckCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import WalletConnect from "@/components/auth/WalletConnect";
 import { useAuth } from "@/hooks/useAuth";
@@ -738,6 +738,31 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
           </CardContent>
         </Card>
 
+        {/* Wallet connection section */}
+        <div className="mt-8 p-4 border rounded-lg bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium">Connect Wallet</h3>
+              <p className="text-sm text-gray-500">
+                You need to connect a wallet to receive cryptocurrency investments
+              </p>
+            </div>
+            <WalletConnect 
+              onConnect={handleWalletConnect}
+              showBalance={false} 
+              showAddress={user?.walletAddress ? true : false}
+              buttonVariant={user?.walletAddress ? "outline" : "default"}
+              showDialogOnConnect={false}
+            />
+          </div>
+          {user?.walletAddress && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Wallet connected: {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(user.walletAddress.length - 4)}</span>
+            </div>
+          )}
+        </div>
+        
         <div className="flex justify-end mt-8">
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
