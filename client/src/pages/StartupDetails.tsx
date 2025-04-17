@@ -46,6 +46,10 @@ const StartupDetails = () => {
   const createChatMutation = createChat();
 
   // Log debug information about fetched data
+  console.log("StartupDetails - ID from params:", id);
+  console.log("StartupDetails - Startup ID being used for query:", startupId);
+  console.log("StartupDetails - Current user:", user);
+  console.log("StartupDetails - User role:", user?.role);
   console.log("StartupDetails - Fetched startup data:", startupData);
   console.log("StartupDetails - Fetched documents data:", documentsData);
   
@@ -97,8 +101,15 @@ const StartupDetails = () => {
   // Debug founderId and user ID
   console.log("Startup details - founderId:", founderId, "user.id:", user?.id, "user.uid:", user?.uid);
   
-  // Check both user.id and user.uid against founderId for compatibility
-  const isFounder = (user?.id === founderId) || (user?.uid === founderId);
+  // Check if the user is the founder - check multiple ID forms
+  const isFounder = user?.role === "founder" && (
+    (user?.id === founderId) || 
+    (user?.uid === founderId) || 
+    (founderId && user?.id && founderId.toString() === user.id.toString()) ||
+    (user?.firebaseId === founderId) ||
+    // If we don't have a founderId but the user is a founder, assume they can edit
+    (user?.role === "founder" && !founderId)
+  );
   
   // For this implementation, we'll just show investor UI to anyone who isn't the founder
   // This allows us to test the full functionality even if role detection has issues
@@ -130,7 +141,14 @@ const StartupDetails = () => {
 
   // Handle investment button click based on wallet connection status
   const handleInvestClick = () => {
-    if (!hasWalletConnected) {
+    // For UPI payments, we don't need a wallet
+    if (paymentMethod === "upi") {
+      setIsInvestDialogOpen(true);
+      return;
+    }
+    
+    // Only check wallet for MetaMask payments
+    if (paymentMethod === "metamask" && !hasWalletConnected) {
       // Redirect to wallet connection page with return URL
       const returnUrl = `/startup/${id}`;
       setLocation(`/wallet-connect?returnUrl=${encodeURIComponent(returnUrl)}`);
@@ -142,7 +160,7 @@ const StartupDetails = () => {
         duration: 5000,
       });
     } else {
-      // User has wallet connected, proceed to investment dialog
+      // User has wallet connected for MetaMask payment or is using UPI
       setIsInvestDialogOpen(true);
     }
   };
