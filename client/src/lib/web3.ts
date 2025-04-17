@@ -101,8 +101,28 @@ export const switchNetwork = async (chainId: number): Promise<boolean> => {
     if (error.code === 4902) {
       // Add the network
       try {
-        // For now we only support Sepolia testnet
-        if (chainId === 11155111) {
+        // Support for Ganache local network
+        if (chainId === 1337) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0x539", // 1337 in hex
+                chainName: "Ganache Network",
+                nativeCurrency: {
+                  name: "Ethereum",
+                  symbol: "ETH",
+                  decimals: 18,
+                },
+                rpcUrls: ["http://127.0.0.1:8545/"],
+                blockExplorerUrls: null,
+              },
+            ],
+          });
+          return true;
+        }
+        // Also support Sepolia testnet
+        else if (chainId === 11155111) {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
             params: [

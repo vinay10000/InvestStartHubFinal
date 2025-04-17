@@ -31,7 +31,7 @@ interface WalletConnectProps {
   showDialogOnConnect?: boolean;
 }
 
-const SUPPORTED_CHAIN_ID = 11155111; // Sepolia testnet
+const SUPPORTED_CHAIN_ID = 1337; // Ganache local testnet
 
 const WalletConnect: React.FC<WalletConnectProps> = ({
   onConnect,
@@ -91,7 +91,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
       if (currentChainId !== SUPPORTED_CHAIN_ID) {
         toast({
           title: "Switching Network",
-          description: "Switching to Sepolia testnet for this application",
+          description: "Switching to Ganache network for this application",
         });
         
         const switched = await changeNetwork(SUPPORTED_CHAIN_ID.toString());
@@ -99,7 +99,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
         if (!switched) {
           toast({
             title: "Network switch failed",
-            description: "Please manually switch to Sepolia testnet",
+            description: "Please manually switch to Ganache network (Chain ID: 1337)",
             variant: "destructive",
           });
         }
@@ -146,6 +146,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
     const numId = id ? Number(id) : null;
     
     if (numId === 1) return "Ethereum Mainnet";
+    if (numId === 1337) return "Ganache Network";
     if (numId === 11155111) return "Sepolia Testnet";
     if (numId === 137) return "Polygon";
     if (numId === 80001) return "Mumbai Testnet";
@@ -192,14 +193,14 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Wrong Network</AlertTitle>
               <AlertDescription>
-                Please switch to Sepolia testnet to use this application.
+                Please switch to Ganache network to use this application.
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="mt-2"
                   onClick={() => changeNetwork(SUPPORTED_CHAIN_ID.toString())}
                 >
-                  Switch to Sepolia
+                  Switch to Ganache
                 </Button>
               </AlertDescription>
             </Alert>
