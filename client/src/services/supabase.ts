@@ -91,18 +91,29 @@ export const updateUser = async (id: string, updates: UserUpdate): Promise<User 
 
 // Startup operations
 export const createStartup = async (startup: StartupInsert): Promise<Startup | null> => {
-  const { data, error } = await supabase
-    .from('startups')
-    .insert(startup)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error creating startup:', error);
-    return null;
+  // Check for empty strings in founder_id which should be a valid UUID
+  if (!startup.founder_id || startup.founder_id === '') {
+    console.error('Error: founder_id cannot be empty');
+    throw new Error('Founder ID is required and must be a valid value');
   }
-  
-  return data;
+
+  try {
+    const { data, error } = await supabase
+      .from('startups')
+      .insert(startup)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating startup:', error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error creating startup:', error);
+    throw error;
+  }
 };
 
 export const getStartups = async (): Promise<Startup[]> => {

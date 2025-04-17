@@ -142,6 +142,12 @@ const FounderDashboard = () => {
       try {
         const { createStartup } = await import('@/services/supabase');
         
+        // Check if we have a valid userId
+        if (!userId) {
+          console.error("Error: User ID is required to create a startup");
+          throw new Error("User ID is required to create a startup");
+        }
+        
         // Convert the payload to match Supabase format
         const supabasePayload = {
           name: startupPayload.name,
@@ -195,9 +201,21 @@ const FounderDashboard = () => {
         setIsCreateDialogOpen(false);
       } catch (error) {
         console.error("Error creating startup in Supabase:", error);
+        // Show a more user-friendly error using toast or alert
+        if (error instanceof Error) {
+          alert(`Failed to create startup: ${error.message}`);
+        } else {
+          alert("Failed to create startup due to an unexpected error. Please try again or contact support.");
+        }
       }
     } catch (error) {
       console.error("Error creating startup:", error);
+      // Show a more user-friendly error
+      if (error instanceof Error) {
+        alert(`Failed to create startup: ${error.message}`);
+      } else {
+        alert("Failed to create startup due to an unexpected error. Please try again or contact support.");
+      }
     }
   };
   

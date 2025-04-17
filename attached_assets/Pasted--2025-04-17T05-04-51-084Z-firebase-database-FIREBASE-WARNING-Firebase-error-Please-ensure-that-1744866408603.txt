@@ -1,0 +1,44 @@
+[2025-04-17T05:04:51.084Z]  @firebase/database: FIREBASE WARNING: Firebase error. Please ensure that you have the URL of your Firebase Realtime Database instance configured correctly. (https://ggfinal-3eda9-default-rtdb.firebaseio.com/) 
+defaultLogHandler @ chunk-WORT2X74.js?v=3568d0c6:1381
+firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fggfinal-3eda9%2Fdatabases%2F(default)&gsessionid=gX2Wvd3rpSTScLvFOF6OxcDIfrOKGOQq8U4naZm7CRE&SID=tfsrPPTBecxXbtMaijbIVg&RID=79613&TYPE=terminate&zx=7958eus2aayd:1 
+            
+            
+           Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+FounderDashboard.tsx:139 Creating startup with data: {name: 'TYSON FOUNDATIONS', description: 'TYSON FOUNDATIONS IS A PRESTIGIOUS STARTUP FOUNDED BY TYSON', pitch: 'TYSON FOUNDATIONS IS A PRESTIGIOUS STARTUP FOUNDED BY TYSON', investmentStage: 'pre-seed', upiId: 'tyson@upi', …}
+FounderDashboard.tsx:162 Creating startup in Supabase with data: {name: 'TYSON FOUNDATIONS', description: 'TYSON FOUNDATIONS IS A PRESTIGIOUS STARTUP FOUNDED BY TYSON', pitch: 'TYSON FOUNDATIONS IS A PRESTIGIOUS STARTUP FOUNDED BY TYSON', investment_stage: 'pre-seed', category: null, …}
+@supabase_supabase-js.js?v=3568d0c6:3900 
+            
+            
+           POST https://raxzexylcqwgfuexccpd.supabase.co/rest/v1/startups?select=* 400 (Bad Request)
+(anonymous) @ @supabase_supabase-js.js?v=3568d0c6:3900
+(anonymous) @ @supabase_supabase-js.js?v=3568d0c6:3921
+fulfilled @ @supabase_supabase-js.js?v=3568d0c6:3873
+Promise.then
+step @ @supabase_supabase-js.js?v=3568d0c6:3886
+(anonymous) @ @supabase_supabase-js.js?v=3568d0c6:3888
+__awaiter6 @ @supabase_supabase-js.js?v=3568d0c6:3870
+(anonymous) @ @supabase_supabase-js.js?v=3568d0c6:3911
+then @ @supabase_supabase-js.js?v=3568d0c6:89
+supabase.ts:101 Error creating startup: {code: '22P02', details: null, hint: null, message: 'invalid input syntax for type uuid: ""'}
+createStartup @ supabase.ts:101
+await in createStartup
+handleCreateStartup @ FounderDashboard.tsx:163
+await in handleCreateStartup
+handleSubmit @ StartupForm.tsx:317
+(anonymous) @ chunk-BW5TH624.js?v=3568d0c6:1675
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=3568d0c6:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=3568d0c6:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=3568d0c6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=3568d0c6:3736
+executeDispatch @ chunk-276SZO74.js?v=3568d0c6:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=3568d0c6:7034
+processDispatchQueue @ chunk-276SZO74.js?v=3568d0c6:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=3568d0c6:7051
+(anonymous) @ chunk-276SZO74.js?v=3568d0c6:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=3568d0c6:18913
+batchedUpdates @ chunk-276SZO74.js?v=3568d0c6:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=3568d0c6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=3568d0c6:5478
+dispatchEvent @ chunk-276SZO74.js?v=3568d0c6:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=3568d0c6:5449
