@@ -478,6 +478,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: logout,
     updateProfile,
     connectWallet,
+    disconnectWallet,
   };
 
   return (

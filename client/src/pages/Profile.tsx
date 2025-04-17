@@ -22,7 +22,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, disconnectWallet } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ProfileFormValues>({
@@ -153,6 +153,25 @@ const Profile = () => {
                 </CardHeader>
                 <CardContent>
                   <WalletConnect />
+                  
+                  {user?.walletAddress && (
+                    <div className="mt-6 pt-6 border-t">
+                      <h3 className="font-medium mb-2">Disconnect Wallet</h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        If you need to change your wallet or disconnect for security reasons, you can do so here.
+                      </p>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          if (confirm("Are you sure you want to disconnect your wallet?")) {
+                            disconnectWallet();
+                          }
+                        }}
+                      >
+                        Disconnect Wallet
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
