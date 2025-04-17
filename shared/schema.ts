@@ -52,8 +52,8 @@ export const documents = pgTable("documents", {
 // Transaction table for investments
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
-  startupId: integer("startup_id").notNull(),
-  investorId: integer("investor_id").notNull(),
+  startupId: text("startup_id").notNull(), // Changed to text for Firebase compatibility
+  investorId: text("investor_id").notNull(), // Changed to text for Firebase compatibility
   amount: text("amount").notNull(),
   paymentMethod: text("payment_method").notNull(), // "metamask" or "upi"
   transactionId: text("transaction_id"),
