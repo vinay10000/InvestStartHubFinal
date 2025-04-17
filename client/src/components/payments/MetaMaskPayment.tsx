@@ -90,48 +90,105 @@ const MetaMaskPayment = ({
   // Effect to load founder's wallet address when startup data changes
   useEffect(() => {
     const loadFounderInfo = async () => {
-      if (!startupData) {
-        console.log("[MetaMaskPayment] No startup data available yet");
-        setFounderWalletStatus('loading');
-        return;
-      }
-      
-      if (!startupData.founderId) {
-        console.error("[MetaMaskPayment] Startup data missing founderId:", startupData);
-        setFounderWalletStatus('error');
-        return;
-      }
-      
       try {
-        // Import getUserByUid function only when needed to avoid circular dependencies
-        const { getUserByUid } = await import('@/firebase/database');
-        console.log("[MetaMaskPayment] Fetching founder info for ID:", startupData.founderId);
+        if (!startupData) {
+          console.log("[MetaMaskPayment] No startup data available yet");
+          // Set a timeout to avoid infinite loading if startup data doesn't arrive
+          const timer = setTimeout(() => {
+            // If after 5 seconds we still don't have data, show an error
+            if (founderWalletStatus === 'loading') {
+              console.error("[MetaMaskPayment] Timeout waiting for startup data");
+              setFounderWalletStatus('error');
+            }
+          }, 5000);
+          return () => clearTimeout(timer);
+        }
         
-        const founder = await getUserByUid(startupData.founderId);
-        
-        if (!founder) {
-          console.error("[MetaMaskPayment] Founder not found for ID:", startupData.founderId);
+        if (!startupData.founderId) {
+          console.error("[MetaMaskPayment] Startup data missing founderId:", startupData);
           setFounderWalletStatus('error');
           return;
         }
         
-        if (founder.walletAddress) {
-          console.log("[MetaMaskPayment] Found founder wallet address:", founder.walletAddress);
-          setFounderInfo(founder);
-          setFounderWalletStatus('found');
-        } else {
-          console.warn("[MetaMaskPayment] Founder has no wallet address connected:", founder);
-          setFounderInfo(founder);
-          setFounderWalletStatus('not_found');
+        try {
+          // Since we're likely having Firebase issues, let's provide a fallback mechanism
+          // We'll look for the wallet address directly in the startup data if available
+          // Using type assertion to avoid TypeScript errors with custom properties
+          const startupWithCustomFields = startupData as any;
+          
+          if (startupWithCustomFields.founderWalletAddress) {
+            console.log("[MetaMaskPayment] Using wallet address from startup data:", startupWithCustomFields.founderWalletAddress);
+            setFounderInfo({
+              id: startupData.founderId,
+              walletAddress: startupWithCustomFields.founderWalletAddress,
+              name: startupWithCustomFields.founderName || "Founder"
+            });
+            setFounderWalletStatus('found');
+            return;
+          }
+          
+          // Try to get user information from the database
+          try {
+            // Import getUserByUid function only when needed to avoid circular dependencies
+            const { getUserByUid } = await import('@/firebase/database');
+            console.log("[MetaMaskPayment] Fetching founder info for ID:", startupData.founderId);
+            
+            const founder = await getUserByUid(startupData.founderId);
+            
+            if (!founder) {
+              console.error("[MetaMaskPayment] Founder not found for ID:", startupData.founderId);
+              setFounderWalletStatus('error');
+              return;
+            }
+            
+            if (founder.walletAddress) {
+              console.log("[MetaMaskPayment] Found founder wallet address:", founder.walletAddress);
+              setFounderInfo(founder);
+              setFounderWalletStatus('found');
+            } else {
+              console.warn("[MetaMaskPayment] Founder has no wallet address connected:", founder);
+              setFounderInfo(founder);
+              setFounderWalletStatus('not_found');
+            }
+          } catch (dbErr) {
+            // If Firebase database query fails, let's show an error after a short timeout
+            console.error("[MetaMaskPayment] Error fetching founder info from database:", dbErr);
+            
+            // Check if startup data might have wallet info we can use as fallback
+            if (startupWithCustomFields && startupWithCustomFields.founderWalletAddress) {
+              setFounderInfo({
+                id: startupData.founderId,
+                walletAddress: startupWithCustomFields.founderWalletAddress,
+                name: startupWithCustomFields.founderName || "Founder"
+              });
+              setFounderWalletStatus('found');
+            } else {
+              setFounderWalletStatus('error');
+            }
+          }
+          
+        } catch (err) {
+          console.error("[MetaMaskPayment] Error in founder info processing:", err);
+          setFounderWalletStatus('error');
         }
       } catch (err) {
-        console.error("[MetaMaskPayment] Error fetching founder info:", err);
+        console.error("[MetaMaskPayment] Critical error in loadFounderInfo:", err);
         setFounderWalletStatus('error');
       }
     };
     
     loadFounderInfo();
-  }, [startupData]);
+    
+    // Set a global timeout to exit loading state if something goes wrong
+    const globalTimer = setTimeout(() => {
+      if (founderWalletStatus === 'loading') {
+        console.warn("[MetaMaskPayment] Global timeout reached, forcing state to error");
+        setFounderWalletStatus('error');
+      }
+    }, 8000);
+    
+    return () => clearTimeout(globalTimer);
+  }, [startupData, founderWalletStatus]);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -457,6 +514,19 @@ const MetaMaskPayment = ({
           <p className="text-sm text-muted-foreground mt-2">
             Verifying founder's wallet address for direct transfer
           </p>
+          
+          {/* Add a button to skip loading and proceed anyways */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-4" 
+            onClick={() => {
+              // Force the status to error which will show the fallback form
+              setFounderWalletStatus('error');
+            }}
+          >
+            Skip verification and proceed
+          </Button>
         </CardContent>
       </Card>
     );
