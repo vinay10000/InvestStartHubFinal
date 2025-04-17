@@ -245,9 +245,25 @@ const MetaMaskPayment = ({
       let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
       
       // Validate if we have a wallet address
-      if (!founderWalletAddress) {
-        console.error("[MetaMaskPayment] No founder wallet address found for startup:", startupId);
-        throw new Error("Founder has not connected a wallet address. Please contact the founder or choose another payment method.");
+      if (!founderWalletAddress || founderWalletAddress === "0x") {
+        // Try to get a valid wallet address from founderInfo.id if we have one
+        if (founderInfo?.id) {
+          console.log("[MetaMaskPayment] Attempting to use founder ID to find wallet:", founderInfo.id);
+          
+          // If we have a manual entry mode with ID, use it
+          if (manualFounderInfo?.walletAddress && 
+              manualFounderInfo.walletAddress !== "0x" && 
+              manualFounderInfo.walletAddress.startsWith("0x")) {
+            founderWalletAddress = manualFounderInfo.walletAddress;
+            console.log("[MetaMaskPayment] Using manually entered wallet address:", founderWalletAddress);
+          }
+        }
+      }
+      
+      // Final validation - if we still don't have a valid address, show error
+      if (!founderWalletAddress || !founderWalletAddress.startsWith("0x") || founderWalletAddress === "0x") {
+        console.error("[MetaMaskPayment] No valid founder wallet address found for startup:", startupId);
+        throw new Error("Founder has not connected a valid wallet address. Please contact the founder or choose another payment method.");
       }
       
       // Ensure startupId is a valid number for blockchain

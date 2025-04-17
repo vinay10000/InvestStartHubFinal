@@ -31,11 +31,12 @@ const firebaseConfig = {
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}.firebaseio.com`,
 };
 
-let app;
-let auth;
-let firestore;
-let storage;
-let database;
+// Initialize with proper types
+let app: ReturnType<typeof initializeApp>;
+let auth: ReturnType<typeof getAuth>;
+let firestore: ReturnType<typeof getFirestore>;
+let storage: ReturnType<typeof getStorage>;
+let database: ReturnType<typeof getDatabase>;
 
 // Initialize Firebase only if we have proper configuration
 try {
