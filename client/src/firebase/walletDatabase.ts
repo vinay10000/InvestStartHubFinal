@@ -1,6 +1,9 @@
 import { ref, set, get, child, Database } from 'firebase/database';
 import { database } from './config';
 
+// Type assertion to ensure TypeScript recognizes database as Database type
+const db = database as Database;
+
 // Interface for wallet data structure
 export interface WalletData {
   address: string;

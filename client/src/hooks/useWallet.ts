@@ -98,7 +98,7 @@ export const useWallet = (userId?: string | null) => {
       await saveWalletAddress(
         targetUserId,
         address,
-        user?.displayName || undefined,
+        user?.username || undefined,
         user?.role || undefined
       );
       
@@ -106,7 +106,7 @@ export const useWallet = (userId?: string | null) => {
       const newWalletData: WalletData = {
         address,
         userId: targetUserId,
-        userName: user?.displayName,
+        userName: user?.username,
         role: user?.role,
         createdAt: Date.now(),
         updatedAt: Date.now()
@@ -166,7 +166,7 @@ export const useWallet = (userId?: string | null) => {
       } : {
         address,
         userId: targetUserId,
-        userName: user?.displayName,
+        userName: user?.username,
         role: user?.role,
         createdAt: Date.now(),
         updatedAt: Date.now()
@@ -178,7 +178,7 @@ export const useWallet = (userId?: string | null) => {
       const updatedWallet = {
         address,
         userId: targetUserId,
-        userName: user?.displayName,
+        userName: user?.username,
         role: user?.role,
         createdAt: walletData?.createdAt || Date.now(),
         updatedAt: Date.now()

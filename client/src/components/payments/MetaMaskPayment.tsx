@@ -450,6 +450,16 @@ const MetaMaskPayment = ({
                 walletAddress: "0x",  // This will be replaced by user input
                 name: "Manual Payment"
               });
+              
+              // Create a manual wallet entry by prompting the user
+              const walletAddress = prompt("Enter the founder's wallet address (0x...)", "0x");
+              if (walletAddress && walletAddress.startsWith("0x")) {
+                setManualFounderInfo({
+                  id: "manual",
+                  walletAddress: walletAddress,
+                  name: "Manual Payment"
+                });
+              }
             }}
           >
             Enter wallet address manually
