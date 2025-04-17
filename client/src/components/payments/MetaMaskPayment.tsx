@@ -81,6 +81,30 @@ const MetaMaskPayment = ({
   // Fetch the complete startup data to access founder details
   const { data: startupData } = useStartup(startupId ? startupId.toString() : "");
   
+  // Get founder info once we have startup data
+  const [founderInfo, setFounderInfo] = useState<any>(null);
+  
+  // Effect to load founder's wallet address when startup data changes
+  useEffect(() => {
+    const loadFounderInfo = async () => {
+      if (startupData && startupData.founderId) {
+        try {
+          // Import getUserByUid function only when needed to avoid circular dependencies
+          const { getUserByUid } = await import('@/firebase/database');
+          const founder = await getUserByUid(startupData.founderId);
+          if (founder && founder.walletAddress) {
+            console.log("[MetaMaskPayment] Found founder wallet address:", founder.walletAddress);
+            setFounderInfo(founder);
+          }
+        } catch (err) {
+          console.error("[MetaMaskPayment] Error fetching founder info:", err);
+        }
+      }
+    };
+    
+    loadFounderInfo();
+  }, [startupData]);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [networkName, setNetworkName] = useState<string>("Unknown Network");
@@ -178,10 +202,22 @@ const MetaMaskPayment = ({
       const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
       
       // Get founder wallet address from startup data if available
-      const founderWalletAddress = startupData?.startup?.walletAddress || 
-                                   startupData?.walletAddress || 
-                                   startupData?.founderWalletAddress || 
-                                   startupData?.founder?.walletAddress;
+      let founderWalletAddress: string | undefined = undefined;
+      
+      // Safe extraction of founder wallet address from various possible data structures
+      if (startupData) {
+        // Check all possible locations where wallet address might be stored
+        if (typeof startupData === 'object') {
+          // Check common patterns for wallet address storage
+          if ('walletAddress' in startupData) {
+            founderWalletAddress = (startupData as any).walletAddress;
+          } else if ('founderWalletAddress' in startupData) {
+            founderWalletAddress = (startupData as any).founderWalletAddress;
+          } else if ('founderId' in startupData && typeof startupData.founderId === 'object') {
+            founderWalletAddress = (startupData.founderId as any).walletAddress;
+          }
+        }
+      }
                                    
       // Log the startup data and wallet address being used
       console.log("[MetaMaskPayment] Startup data for investment:", {
@@ -191,7 +227,7 @@ const MetaMaskPayment = ({
       });
       
       // Invest using the contract with real startup ID
-      const result = await investInStartup(startupId, cleanAmount);
+      const result = await investInStartup(startupId, cleanAmount, founderWalletAddress);
       
       if (result) {
         // Store transaction hash

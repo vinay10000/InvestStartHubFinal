@@ -115,11 +115,12 @@ export const getStartupFromContract = async (startupId: number) => {
 /**
  * Invest in a startup with ETH
  */
-export const investInStartup = async (startupId: number, amount: string) => {
+export const investInStartup = async (startupId: number, amount: string, founderWalletAddress?: string) => {
   console.log(`[Contract Interaction] Starting investment process`);
-  console.log(`[Contract Interaction] Raw inputs - startupId:`, startupId, "amount:", amount, "types:", {
+  console.log(`[Contract Interaction] Raw inputs - startupId:`, startupId, "amount:", amount, "founderWalletAddress:", founderWalletAddress, "types:", {
     startupIdType: typeof startupId,
-    amountType: typeof amount
+    amountType: typeof amount,
+    founderWalletAddressType: typeof founderWalletAddress
   });
   
   try {
@@ -166,6 +167,32 @@ export const investInStartup = async (startupId: number, amount: string) => {
     console.log(`[Contract Interaction] Investing in startup ${contractStartupId} with ${cleanAmount} ETH`);
     
     try {
+      // If we have the actual startup information from the contract, log it
+      if (contractStartupId > 0) {
+        try {
+          // Get startup information from the contract to confirm it exists
+          const contractStartup = await contract.getStartup(contractStartupId);
+          console.log(`[Contract Interaction] Startup info from contract:`, {
+            id: contractStartup.id.toString(),
+            founderAddress: contractStartup.founderAddress,
+            name: contractStartup.name,
+            fundingGoal: ethers.formatEther(contractStartup.fundingGoal),
+            currentFunding: ethers.formatEther(contractStartup.currentFunding)
+          });
+          
+          // If we have a founder wallet address from parameters, check if it matches the contract
+          if (founderWalletAddress) {
+            console.log(`[Contract Interaction] Checking founder wallet address:`, {
+              providedAddress: founderWalletAddress,
+              contractAddress: contractStartup.founderAddress,
+              match: founderWalletAddress.toLowerCase() === contractStartup.founderAddress.toLowerCase()
+            });
+          }
+        } catch (err) {
+          console.log(`[Contract Interaction] Could not retrieve startup from contract: ${err}`);
+        }
+      }
+      
       // Convert ETH amount to wei safely using a string that parseEther can handle
       const amountInWei = ethers.parseEther(cleanAmount);
       console.log(`[Contract Interaction] Amount in Wei: ${amountInWei.toString()}`);
