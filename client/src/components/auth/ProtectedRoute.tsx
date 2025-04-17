@@ -36,15 +36,26 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       
       // First check localStorage, then user object, then default to investor
       const storedRole = localStorage.getItem('user_role');
-      const userRole = storedRole || user.role || 'investor'; // Prioritize localStorage
+      // Normalize roles to lowercase for consistent comparison
+      const userRole = (storedRole || user.role || 'investor').toLowerCase();
       
-      console.log('ProtectedRoute: User authenticated with role:', userRole);
+      console.log('⭐ IMPORTANT - ProtectedRoute debug info:', {
+        storedRole,
+        userObjectRole: user.role,
+        finalUserRole: userRole,
+        requiredRole: requiredRole?.toLowerCase(),
+        requestedPath: window.location.pathname
+      });
       
       // If role-specific route and user doesn't have the required role
-      if (requiredRole && userRole.toLowerCase() !== requiredRole.toLowerCase()) {
-        console.log(`Role mismatch: User has ${userRole}, but ${requiredRole} is required`);
-        navigate('/');
-        return;
+      if (requiredRole) {
+        const normalizedRequiredRole = requiredRole.toLowerCase();
+        if (userRole !== normalizedRequiredRole) {
+          console.log(`⭐ CRITICAL ERROR - Role mismatch: User has '${userRole}', but '${normalizedRequiredRole}' is required`);
+          // Redirect to home page if role doesn't match
+          navigate('/');
+          return;
+        }
       }
     }
   }, [loading, user, requiredRole, navigate]);
@@ -69,10 +80,20 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     if (requiredRole) {
       // First check localStorage, then user object, then default to investor
       const storedRole = localStorage.getItem('user_role');
-      const userRole = storedRole || user.role || 'investor'; // Prioritize localStorage
+      // Normalize roles to lowercase for consistent comparison
+      const userRole = (storedRole || user.role || 'investor').toLowerCase();
+      const normalizedRequiredRole = requiredRole.toLowerCase();
       
-      if (userRole.toLowerCase() !== requiredRole.toLowerCase()) {
-        console.log(`ProtectedRoute: Not rendering - role mismatch. User has ${userRole}, but ${requiredRole} is required`);
+      console.log('⭐ IMPORTANT - ProtectedRoute rendering check:', {
+        storedRole,
+        userObjectRole: user.role,
+        finalUserRole: userRole,
+        requiredRole: normalizedRequiredRole,
+        doRolesMatch: userRole === normalizedRequiredRole
+      });
+      
+      if (userRole !== normalizedRequiredRole) {
+        console.log(`ProtectedRoute: Not rendering - role mismatch. User has '${userRole}', but '${normalizedRequiredRole}' is required`);
         return null; // Don't render if role doesn't match
       }
     }

@@ -32,11 +32,14 @@ export const signUpWithEmail = async (
   role: "founder" | "investor"
 ): Promise<UserCredential> => {
   try {
-    console.log(`Creating new user account for ${email} with role ${role}`);
+    console.log(`⭐ IMPORTANT: Creating new user account for ${email} with ROLE "${role.toUpperCase()}"`);
     
     // Create firebase auth user first
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+    
+    // Force role to lowercase for consistency
+    const normalizedRole = role.toLowerCase();
     
     // Generate a default profile picture
     const profilePicture = createDefaultAvatar(username);
@@ -49,20 +52,20 @@ export const signUpWithEmail = async (
     
     console.log("Updated user profile in Firebase Auth with displayName and photoURL");
     
-    // Create user in Firebase Realtime Database
+    // Create user in Firebase Realtime Database with normalized role
     await updateUser(user.uid, {
       username,
       email,
-      role,
+      role: normalizedRole, // Use normalized role here
       walletAddress: "",
       profilePicture,
     });
     
-    console.log("User created successfully in Firebase:", user.uid);
+    console.log("User created successfully in Firebase:", user.uid, "with role:", normalizedRole);
     
-    // Store role in localStorage for immediate availability across components
-    localStorage.setItem('user_role', role);
-    console.log("Saved user role to localStorage during signup:", role);
+    // Store normalized role in localStorage for immediate availability across components
+    localStorage.setItem('user_role', normalizedRole);
+    console.log("⭐ IMPORTANT: Saved user role to localStorage during signup:", normalizedRole);
     
     // Force a refresh of the auth token to ensure updated claims
     await user.getIdToken(true);
