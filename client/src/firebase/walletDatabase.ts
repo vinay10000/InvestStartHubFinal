@@ -38,7 +38,7 @@ export const saveWalletAddress = async (
     };
 
     // Create a reference to the user's wallet
-    const walletRef = ref(database, `${WALLETS_PATH}/${userId}`);
+    const walletRef = ref(db, `${WALLETS_PATH}/${userId}`);
     
     // Store the wallet data
     await set(walletRef, walletData);
@@ -46,7 +46,7 @@ export const saveWalletAddress = async (
     console.log(`[Wallet DB] Saved wallet address for user ${userId}: ${walletAddress}`);
     
     // Also store in an index by wallet address for reverse lookup
-    const addressRef = ref(database, `wallet_addresses/${walletAddress.toLowerCase()}`);
+    const addressRef = ref(db, `wallet_addresses/${walletAddress.toLowerCase()}`);
     await set(addressRef, { userId, updatedAt: now });
     
     return;
