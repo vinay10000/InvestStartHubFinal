@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
 
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   
   // Make sure we wait for auth to complete before accessing user data
   // Extract user ID more safely, prioritizing Firebase UID
@@ -292,7 +294,8 @@ const FounderDashboard = () => {
           alert(`Startup ${result.name} created successfully!`);
           
           // Redirect to the startup details page using the Firebase ID
-          window.location.href = `/startup/${result.id}`;
+          // Use setLocation from wouter for SPA navigation
+          setLocation(`/startup/${result.id}`);
           
         } else {
           throw new Error("Failed to create startup - no ID returned");

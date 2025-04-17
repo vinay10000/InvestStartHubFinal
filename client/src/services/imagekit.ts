@@ -121,7 +121,7 @@ export const uploadStartupDocument = async (
 
 // Upload UPI QR code
 export const uploadUpiQRCode = async (
-  startupId: number,
+  startupId: string | number,
   file: File
 ): Promise<{
   url: string,

@@ -116,11 +116,9 @@ const StartupDetails = () => {
   
   // Check if the user is the founder - check multiple ID forms
   const isFounder = user?.role === "founder" && (
-    (user?.id === founderId) || 
-    (user?.uid === founderId) || 
+    // Convert both to strings for comparison to avoid type mismatch
     (founderId && user?.id && String(founderId) === String(user.id)) ||
-    // Try accessing Firebase ID via user.uid instead
-    (user?.uid === founderId) ||
+    (founderId && user?.uid && String(founderId) === String(user.uid)) ||
     // If we don't have a founderId but the user is a founder, assume they can edit
     (user?.role === "founder" && !founderId)
   );
