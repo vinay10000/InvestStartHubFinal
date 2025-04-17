@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useSimpleAuth } from '@/hooks/useSimpleAuth'; // Use our simplified auth hook
+import { useAuth } from '@/hooks/useAuth'; // Use our main auth hook
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -9,24 +9,27 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { user, loading } = useSimpleAuth(); // Use our simplified auth context
+  const { user, loading } = useAuth(); // Use our main auth context
   const [, navigate] = useLocation();
 
   useEffect(() => {
     if (!loading) {
       // If not authenticated, redirect to login
       if (!user) {
+        console.log('ProtectedRoute: User not authenticated, redirecting to signin');
         navigate('/signin?redirect=' + window.location.pathname);
         return;
       }
       
       // Get role from user object or localStorage
-      const userRole = user.customClaims?.role || 
+      const userRole = user.role || 
                        localStorage.getItem('user_role') || 
                        'investor'; // Default role
       
+      console.log('ProtectedRoute: User authenticated with role:', userRole);
+      
       // If role-specific route and user doesn't have the required role
-      if (requiredRole && userRole !== requiredRole) {
+      if (requiredRole && userRole.toLowerCase() !== requiredRole.toLowerCase()) {
         console.log(`Role mismatch: User has ${userRole}, but ${requiredRole} is required`);
         navigate('/');
         return;
@@ -47,11 +50,12 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   if (user) {
     // For Firebase auth, extract role and check
     if (requiredRole) {
-      const userRole = user.customClaims?.role || 
+      const userRole = user.role || 
                       localStorage.getItem('user_role') || 
                       'investor'; // Default role
       
-      if (userRole !== requiredRole) {
+      if (userRole.toLowerCase() !== requiredRole.toLowerCase()) {
+        console.log(`ProtectedRoute: Not rendering - role mismatch. User has ${userRole}, but ${requiredRole} is required`);
         return null; // Don't render if role doesn't match
       }
     }

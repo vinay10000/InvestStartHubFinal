@@ -211,7 +211,7 @@ const Header = () => {
                               Transactions
                             </span>
                           </Link>
-                          {(user.customClaims?.role === "founder" || localStorage.getItem('user_role') === "founder") ? (
+                          {(user.role === "founder" || localStorage.getItem('user_role') === "founder") ? (
                             <Link href="/founder/dashboard">
                               <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                                 My Startups

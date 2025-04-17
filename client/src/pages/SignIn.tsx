@@ -43,11 +43,12 @@ const SignIn = () => {
           
           if (dbUser && dbUser.role) {
             // Store the role in localStorage for convenience
-            localStorage.setItem('user_role', dbUser.role);
-            console.log("Set user role from Firebase DB:", dbUser.role);
+            const userRole = dbUser.role.toLowerCase();
+            localStorage.setItem('user_role', userRole);
+            console.log("Set user role from Firebase DB:", userRole);
             
             // Direct redirect based on role instead of going through /dashboard
-            if (dbUser.role.toLowerCase() === 'founder') {
+            if (userRole === 'founder') {
               console.log("Redirecting to founder dashboard");
               navigate('/founder/dashboard');
             } else {
@@ -55,9 +56,13 @@ const SignIn = () => {
               navigate('/investor/dashboard');
             }
             return; // Skip the generic redirect below
+          } else {
+            console.error("No role found in user data, using default 'investor'");
+            localStorage.setItem('user_role', 'investor');
           }
         } catch (error) {
           console.error("Error getting user from Firebase DB:", error);
+          localStorage.setItem('user_role', 'investor');
         }
       }
       
@@ -90,11 +95,12 @@ const SignIn = () => {
           
           if (dbUser && dbUser.role) {
             // Store the role in localStorage for convenience
-            localStorage.setItem('user_role', dbUser.role);
-            console.log("Set user role from Firebase DB (Google login):", dbUser.role);
+            const userRole = dbUser.role.toLowerCase();
+            localStorage.setItem('user_role', userRole);
+            console.log("Set user role from Firebase DB (Google login):", userRole);
             
             // Direct redirect based on role instead of going through /dashboard
-            if (dbUser.role.toLowerCase() === 'founder') {
+            if (userRole === 'founder') {
               console.log("Redirecting to founder dashboard (Google login)");
               navigate('/founder/dashboard');
               return; // Skip the generic redirect below
