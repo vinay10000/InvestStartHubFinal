@@ -152,7 +152,14 @@ const Profile = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <WalletConnect />
+                  <WalletConnect 
+                    onDisconnect={() => {
+                      // Call the disconnectWallet function from our auth context
+                      disconnectWallet().catch(error => {
+                        console.error("Error disconnecting wallet from auth context:", error);
+                      });
+                    }}
+                  />
                   
                   {user?.walletAddress && (
                     <div className="mt-6 pt-6 border-t">
@@ -164,7 +171,16 @@ const Profile = () => {
                         variant="destructive" 
                         onClick={() => {
                           if (confirm("Are you sure you want to disconnect your wallet?")) {
-                            disconnectWallet();
+                            // Remove wallet_connected flag from localStorage
+                            localStorage.removeItem('wallet_connected');
+                            
+                            // Call disconnectWallet from auth context
+                            disconnectWallet().then(() => {
+                              // Force reload the page to ensure all states are reset
+                              window.location.reload();
+                            }).catch(error => {
+                              console.error("Error disconnecting wallet:", error);
+                            });
                           }
                         }}
                       >

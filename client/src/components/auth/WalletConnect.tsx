@@ -112,18 +112,26 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
   
   // Handle disconnect (this is limited with MetaMask, as it doesn't support programmatic disconnect)
   const handleDisconnect = () => {
-    // Can't actually disconnect from MetaMask programmatically,
-    // but we can inform the app that the user wants to disconnect
+    // Remove wallet connected flag from localStorage
+    localStorage.removeItem('wallet_connected');
+    
+    // Call the onDisconnect callback to let the parent component handle necessary state updates
     if (onDisconnect) {
       onDisconnect();
     }
     
     toast({
       title: "Wallet Disconnected",
-      description: "To fully disconnect, please use the MetaMask extension",
+      description: "Your wallet has been disconnected from this application",
     });
     
+    // Close the dialog
     setDialogOpen(false);
+    
+    // Force page reload to ensure all wallet state is cleared
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
   
   // Handle copy address
