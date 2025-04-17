@@ -93,6 +93,32 @@ const MetaMaskPayment = ({
     hasWallet
   } = useFounderWallet(startupId);
   
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isWalletLoading) {
+      // If loading takes more than 5 seconds, switch to manual mode
+      timeoutId = setTimeout(() => {
+        console.log("[MetaMaskPayment] Timeout reached, switching to manual entry mode");
+        // Force render the payment form with a dummy wallet
+        setManualFounderInfo({
+          id: "manual",
+          walletAddress: "0x", // This will be replaced by user input
+        });
+        
+        toast({
+          title: "Automatic Verification Timeout",
+          description: "Switched to manual payment mode. Please enter the wallet address manually.",
+        });
+      }, 5000); // 5 seconds timeout
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isWalletLoading, toast]);
+  
   // Combine manual entry with hook data
   const founderInfo = manualFounderInfo || hookFounderInfo;
   

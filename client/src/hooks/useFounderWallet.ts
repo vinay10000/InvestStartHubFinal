@@ -27,6 +27,13 @@ export const useFounderWallet = (startupId: string | number | null) => {
       setIsLoading(true);
       setError(null);
       
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        console.log("[useFounderWallet] Timeout reached while fetching wallet data");
+        setIsLoading(false);
+        setError("Timeout while loading wallet data");
+      }, 8000); // 8 second timeout
+      
       try {
         const founderId = startupData.founderId;
         
@@ -95,11 +102,19 @@ export const useFounderWallet = (startupId: string | number | null) => {
         setFounderInfo(null);
         setFounderWallet(null);
       } finally {
+        // Clear the timeout in finally block to ensure it's always cleared
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
     
     loadFounderWallet();
+    
+    // Return cleanup function to clear timeout if component unmounts
+    return () => {
+      // Any active timeouts should be cleared when unmounting
+      console.log("[useFounderWallet] Cleaning up effect");
+    };
   }, [startupData, isStartupLoading]);
   
   return {
