@@ -93,31 +93,81 @@ const MetaMaskPayment = ({
     hasWallet
   } = useFounderWallet(startupId);
   
-  // Add a timeout to prevent infinite loading
+  // Add a quick timeout to prevent infinite loading and automatically prompt for manual entry
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
     if (isWalletLoading) {
-      // If loading takes more than 5 seconds, switch to manual mode
+      // Start quick timeout (3 seconds) because users get impatient 
       timeoutId = setTimeout(() => {
-        console.log("[MetaMaskPayment] Timeout reached, switching to manual entry mode");
-        // Force render the payment form with a dummy wallet
-        setManualFounderInfo({
-          id: "manual",
-          walletAddress: "0x", // This will be replaced by user input
-        });
+        console.log("[MetaMaskPayment] Timeout reached, prompting for manual wallet entry");
         
-        toast({
-          title: "Automatic Verification Timeout",
-          description: "Switched to manual payment mode. Please enter the wallet address manually.",
-        });
-      }, 5000); // 5 seconds timeout
+        // Get wallet address from user via prompt
+        const walletAddress = prompt(
+          "Enter the founder's wallet address (0x...) to proceed with payment", 
+          "0x"
+        );
+        
+        if (walletAddress && walletAddress.startsWith("0x") && walletAddress.length >= 42) {
+          // Set manual mode with the entered address
+          setManualFounderInfo({
+            id: "manual",
+            walletAddress: walletAddress,
+            name: "Manual Payment"
+          });
+          
+          // Show success notification
+          toast({
+            title: "Wallet Address Entered",
+            description: "You can now proceed with the payment to the provided address.",
+          });
+          
+          // Also save this wallet to the database for future use
+          import('@/firebase/walletDatabase').then(walletDb => {
+            // Use the startup ID directly 
+            if (startupId && walletDb.saveWalletAddress) {
+              walletDb.saveWalletAddress(
+                startupId.toString(), 
+                walletAddress, 
+                "Founder", 
+                "founder"
+              ).then(() => {
+                console.log("[MetaMaskPayment] Saved manually entered wallet address to database for founder:", startupId);
+              }).catch(err => {
+                console.error("[MetaMaskPayment] Error saving wallet address:", err);
+              });
+            }
+          }).catch(error => {
+            console.error("[MetaMaskPayment] Error importing wallet database:", error);
+          });
+        } else if (walletAddress) {
+          // Invalid address format
+          toast({
+            title: "Invalid Wallet Address",
+            description: "Please enter a valid Ethereum wallet address starting with 0x",
+            variant: "destructive"
+          });
+          // Keep loading status to allow retry
+        } else {
+          // User canceled - set empty manual info to show manual entry button
+          setManualFounderInfo({
+            id: "manual",
+            walletAddress: null,
+            name: "Manual Payment"
+          });
+          
+          toast({
+            title: "Manual Entry Required",
+            description: "Please enter the founder's wallet address to continue.",
+          });
+        }
+      }, 3000); // Reduced to 3 seconds for better UX
     }
     
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isWalletLoading, toast]);
+  }, [isWalletLoading, toast, startupId]);
   
   // Combine manual entry with hook data
   const founderInfo = manualFounderInfo || hookFounderInfo;

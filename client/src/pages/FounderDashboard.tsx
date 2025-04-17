@@ -77,14 +77,17 @@ const FounderDashboard = () => {
       category: firebaseStartup.category || null,
       investmentStage: firebaseStartup.investment_stage || "",
       founderId: parseInt(String(firebaseStartup.founderId)) || 0,
-      createdAt: new Date(),
+      createdAt: firebaseStartup.createdAt ? new Date(firebaseStartup.createdAt) : new Date(),
       logoUrl: firebaseStartup.logo_url || null,
       upiQrCode: firebaseStartup.upi_qr_code || null,
       pitch: firebaseStartup.pitch || "",
       fundingGoal: firebaseStartup.funding_goal || "0",
       currentFunding: firebaseStartup.current_funding || "0",
       websiteUrl: firebaseStartup.website_url || null,
-      upiId: firebaseStartup.upi_id || null
+      upiId: firebaseStartup.upi_id || null,
+      // Add required fields that might be missing
+      mediaUrls: firebaseStartup.mediaUrls || [],
+      videoUrl: firebaseStartup.videoUrl || null
     };
   };
   
@@ -93,48 +96,72 @@ const FounderDashboard = () => {
     const fetchStartups = async () => {
       if (userId) {
         try {
-          console.log("Fetching startups for userId:", userId);
+          console.log("[FounderDashboard] Fetching startups for userId:", userId);
           
-          // Get startups from Firebase
-          // Try both UID and ID to ensure maximum compatibility
-          let startups = await firebaseGetStartupsByFounderId(userId.toString());
+          // Try to get all possible user identifiers to maximize chances of finding startups
+          const possibleUserIds = new Set<string>();
           
-          // If we have a user.uid that's different from userId (which might be user.id), try that too
+          // Always try the primary userId
+          possibleUserIds.add(userId.toString());
+          
+          // If user.uid exists and is different, add it too
           if (user?.uid && user.uid !== userId.toString()) {
-            console.log("Also trying to fetch startups with UID:", user.uid);
-            const uidStartups = await firebaseGetStartupsByFounderId(user.uid);
+            possibleUserIds.add(user.uid);
+          }
+          
+          // If user.id exists and is different from both, add it as well
+          if (user?.id && typeof user.id === 'string' && 
+              user.id !== userId.toString() && user.id !== user?.uid) {
+            possibleUserIds.add(user.id);
+          }
+          
+          console.log("[FounderDashboard] Will try these user IDs:", Array.from(possibleUserIds));
+          
+          // Create an array to hold all found startups
+          let allStartups: FirebaseStartup[] = [];
+          const existingIds = new Set<string>(); // Track IDs to avoid duplicates
+          
+          // Try each user ID in sequence
+          for (const id of possibleUserIds) {
+            console.log(`[FounderDashboard] Trying to fetch startups with user ID: ${id}`);
+            const foundStartups = await firebaseGetStartupsByFounderId(id);
             
-            // Merge the results (avoid duplicates by id)
-            if (uidStartups && uidStartups.length > 0) {
-              const existingIds = new Set(startups.map(s => s.id));
-              uidStartups.forEach(startup => {
-                if (!existingIds.has(startup.id)) {
-                  startups.push(startup);
+            if (foundStartups && foundStartups.length > 0) {
+              console.log(`[FounderDashboard] Found ${foundStartups.length} startups with ID ${id}`);
+              
+              // Add only unique startups based on ID
+              foundStartups.forEach(startup => {
+                if (startup.id && !existingIds.has(startup.id)) {
+                  existingIds.add(startup.id);
+                  allStartups.push(startup);
                 }
               });
             }
           }
           
-          console.log("Fetched founder startups from Firebase:", startups);
+          console.log("[FounderDashboard] Total startups found:", allStartups.length, allStartups);
           
-          if (startups && startups.length > 0) {
-            // Format startups for UI consistency if needed
-            const formattedStartups = startups.map(startup => ({
+          if (allStartups.length > 0) {
+            // Format startups for UI consistency
+            const formattedStartups = allStartups.map(startup => ({
               id: startup.id || '',
-              name: startup.name,
-              description: startup.description,
+              name: startup.name || 'Unnamed Startup',
+              description: startup.description || '',
               category: startup.category,
               investment_stage: startup.investment_stage,
-              investmentStage: startup.investment_stage,
-              founder_id: startup.founderId,
-              founderId: startup.founderId,
+              investmentStage: startup.investment_stage || 'Seed',
+              founder_id: startup.founderId || userId.toString(),
+              founderId: startup.founderId || userId.toString(),
               logo_url: startup.logo_url,
               logoUrl: startup.logo_url,
               upi_qr_code: startup.upi_qr_code,
               upiQrCode: startup.upi_qr_code,
-              pitch: startup.pitch,
-              funding_goal: startup.funding_goal,
-              upi_id: startup.upi_id
+              pitch: startup.pitch || '',
+              funding_goal: startup.funding_goal || '0',
+              upi_id: startup.upi_id,
+              // Make sure we have all required fields
+              mediaUrls: startup.mediaUrls || [],  // Add missing field
+              videoUrl: startup.videoUrl || null   // Add missing field
             } as FirebaseStartup));
             
             setMyStartups(formattedStartups);
@@ -142,15 +169,21 @@ const FounderDashboard = () => {
             // Convert to UI-ready format
             const uiReadyStartups = formattedStartups.map(startup => adaptFirebaseStartupToUI(startup));
             setAdaptedStartups(uiReadyStartups);
-            setStartupsLoading(false);
+            console.log("[FounderDashboard] Set adapted startups:", uiReadyStartups);
           } else {
-            console.log("No startups found for this user in Firebase");
-            setStartupsLoading(false);
+            console.log("[FounderDashboard] No startups found for this user in Firebase");
           }
+          
+          // Always update loading state when done
+          setStartupsLoading(false);
         } catch (error) {
-          console.error("Error fetching startups from Firebase:", error);
+          console.error("[FounderDashboard] Error fetching startups from Firebase:", error);
           setStartupsLoading(false);
         }
+      } else {
+        // No userId, set loading to false
+        console.log("[FounderDashboard] No userId available, cannot fetch startups");
+        setStartupsLoading(false);
       }
     };
     
