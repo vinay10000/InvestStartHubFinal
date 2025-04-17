@@ -79,7 +79,6 @@ const UPIPayment = ({
         paymentMethod: "upi",
         transactionId: values.referenceId,
         status: "pending", // Will be verified by admin
-        notes: `UPI Payment by ${values.fullName} with Ref ID: ${values.referenceId}` // Include full name in notes
       });
       
       // Notify user
@@ -205,10 +204,19 @@ const UPIPayment = ({
                 src={upiQrCode} 
                 alt="UPI QR Code" 
                 className="w-full max-w-[200px] h-auto"
+                onError={(e) => {
+                  console.error("Failed to load UPI QR code image:", upiQrCode);
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null; // Prevent infinite error loop
+                  target.src = "https://via.placeholder.com/200x200?text=QR+Code+Not+Available";
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground text-center">
               Scan this QR code with any UPI app to pay
+            </p>
+            <p className="text-xs text-muted-foreground text-center mt-1">
+              QR Code URL: {upiQrCode.length > 30 ? upiQrCode.substring(0, 30) + '...' : upiQrCode}
             </p>
           </div>
         )}

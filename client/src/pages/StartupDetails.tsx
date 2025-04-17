@@ -47,6 +47,20 @@ const StartupDetails = () => {
   // Log debug information about fetched data
   console.log("StartupDetails - Fetched startup data:", startupData);
   console.log("StartupDetails - Fetched documents data:", documentsData);
+  
+  // Add more detailed logging for debugging
+  if (startupData) {
+    // Use conditional access to avoid TypeScript errors
+    console.log("StartupDetails - UPI QR code URL:", 
+      startupData.upi_qr_code || (startupData as any).upiQrCode || "Not available");
+    console.log("StartupDetails - UPI ID:", 
+      startupData.upi_id || (startupData as any).upiId || "Not available");
+  }
+  
+  // Log document URLs if available
+  if (documentsData && documentsData.documents && documentsData.documents.length > 0) {
+    console.log("StartupDetails - Document URLs:", documentsData.documents.map((doc: any) => doc.fileUrl));
+  }
 
   // Safely extract data with null checks and type handling
   const startup = startupData;

@@ -68,18 +68,53 @@ export const deleteDocument = async (documentId: string | number) => {
  * @param filename - The suggested filename for the download
  */
 export const downloadDocument = (url: string, filename: string) => {
-  // Create an invisible anchor element
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename || 'document';
-  document.body.appendChild(a);
-  a.click();
-  
-  // Cleanup
-  setTimeout(() => {
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  }, 100);
+  try {
+    console.log("Attempting to download document:", url, filename);
+    
+    // Check for valid URL
+    if (!url || typeof url !== 'string' || url.trim() === '') {
+      console.error("Invalid document URL for download:", url);
+      throw new Error("Invalid document URL");
+    }
+    
+    // Create an invisible anchor element
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'document';
+    a.target = '_blank'; // Open in new tab if download doesn't work
+    
+    // Add error handler
+    a.onerror = (err) => {
+      console.error("Error during document download:", err);
+      throw new Error("Failed to download document");
+    };
+    
+    // Append and trigger click
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(a);
+      // Only revoke if it's an object URL (blob:)
+      if (url.startsWith('blob:')) {
+        window.URL.revokeObjectURL(url);
+      }
+    }, 100);
+    
+    return true;
+  } catch (error) {
+    console.error("Error in downloadDocument:", error);
+    
+    // Fallback - try to open in new tab
+    try {
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error("Fallback also failed:", err);
+    }
+    
+    throw error;
+  }
 };
 
 /**

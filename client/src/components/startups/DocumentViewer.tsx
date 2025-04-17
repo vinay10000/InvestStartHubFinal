@@ -75,18 +75,45 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
   };
 
   const getDocumentPreviewUrl = (document: Document): string => {
-    // For PDFs, Google Docs Viewer provides a good preview
-    if (document.mimeType?.includes('pdf')) {
-      return `https://docs.google.com/viewer?url=${encodeURIComponent(document.fileUrl)}&embedded=true`;
-    }
-    
-    // For images, direct link works
-    if (document.mimeType?.includes('image')) {
+    try {
+      // Log the document being previewed
+      console.log("Getting preview URL for document:", document);
+      
+      // For PDFs, Google Docs Viewer provides a good preview
+      if (document.mimeType?.includes('pdf')) {
+        const encodedUrl = encodeURIComponent(document.fileUrl);
+        console.log("Using Google Docs viewer for PDF:", encodedUrl);
+        return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
+      }
+      
+      // For images, direct link works
+      if (document.mimeType?.includes('image')) {
+        console.log("Using direct link for image:", document.fileUrl);
+        return document.fileUrl;
+      }
+      
+      // For documents uploaded to ImageKit or other managed services
+      if (document.fileUrl.includes('imagekit.io') || 
+          document.fileUrl.includes('ik.imagekit.io') || 
+          document.fileUrl.includes('cdn.')) {
+        console.log("Using direct link for managed document:", document.fileUrl);
+        return document.fileUrl;
+      }
+      
+      // For local file uploads
+      if (document.fileUrl.startsWith('/uploads/')) {
+        console.log("Using local path for upload:", document.fileUrl);
+        return document.fileUrl;
+      }
+      
+      // For other documents, we'll use the download link, but log it first
+      console.log("Using default document URL:", document.fileUrl);
+      return document.fileUrl;
+    } catch (error) {
+      console.error("Error creating document preview URL:", error);
+      // Return original URL as fallback
       return document.fileUrl;
     }
-    
-    // For other documents, we'll use the download link
-    return document.fileUrl;
   };
 
   const handleDownload = (document: Document) => {
@@ -155,6 +182,10 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
                     {document.mimeType.split('/')[1]?.toUpperCase() || document.mimeType}
                   </Badge>
                 )}
+                {/* Debug info for document URL */}
+                <span className="text-xs text-gray-400 mt-1 truncate max-w-[200px]">
+                  {document.fileUrl ? (document.fileUrl.length > 25 ? document.fileUrl.substring(0, 25) + '...' : document.fileUrl) : 'No URL'}
+                </span>
               </div>
             </TableCell>
             <TableCell className="hidden md:table-cell">
