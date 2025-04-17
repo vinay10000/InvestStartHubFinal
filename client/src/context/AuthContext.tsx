@@ -77,7 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
         } as unknown as User;
         
-        console.log("Setting user state with:", formattedUser);
+        // Store user role in localStorage for consistent routing
+        localStorage.setItem('user_role', formattedUser.role);
+        
+        console.log("Setting user state with:", formattedUser, "Role saved to localStorage:", formattedUser.role);
         setUser(formattedUser);
         return formattedUser;
       } else {
@@ -110,7 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: new Date(),
         } as unknown as User;
         
-        console.log("Setting new user state with:", formattedUser);
+        // Store user role in localStorage for consistent routing
+        localStorage.setItem('user_role', formattedUser.role);
+        
+        console.log("Setting new user state with:", formattedUser, "Role saved to localStorage:", formattedUser.role);
         setUser(formattedUser);
         return formattedUser;
       }
@@ -129,7 +135,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(),
       } as unknown as User;
       
-      console.log("Setting minimal user state due to error:", minimalUser);
+      // Store user role in localStorage for consistent routing
+      localStorage.setItem('user_role', minimalUser.role);
+      
+      console.log("Setting minimal user state due to error:", minimalUser, "Role saved to localStorage:", minimalUser.role);
       setUser(minimalUser);
       return minimalUser;
     }

@@ -75,7 +75,10 @@ const WalletPrompt: React.FC<WalletPromptProps> = ({
         
         // Redirect to the appropriate dashboard based on user role
         if (user) {
-          const userRole = user.role || localStorage.getItem('user_role') || 'investor';
+          // Check localStorage first for the role, then fallback to user object
+          const userRole = localStorage.getItem('user_role') || user.role || 'investor';
+          
+          console.log('WalletPrompt: Redirecting user with role:', userRole);
           
           if (userRole === 'founder') {
             navigate('/founder/dashboard');
