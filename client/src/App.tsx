@@ -127,29 +127,14 @@ function GlobalWalletChecker() {
     // Check if user has wallet address
     const hasWallet = user.walletAddress && user.walletAddress !== '';
     
-    // Check if this is a new user (set during signup)
-    const isNewUser = localStorage.getItem('new_user_wallet_prompt') === 'true';
-    
-    // Check cooldown period for existing users
-    const lastPromptTime = localStorage.getItem('wallet_prompt_last_shown');
-    const currentTime = Date.now();
-    const promptCooldown = 24 * 60 * 60 * 1000; // 24 hours
-    const showDueToTime = !lastPromptTime || (currentTime - Number(lastPromptTime)) > promptCooldown;
-    
-    // Show prompt if:
-    // 1. User has no wallet, AND
-    // 2. Either it's a new user OR the cooldown period has passed
-    if (!hasWallet && (isNewUser || showDueToTime)) {
-      // Update last shown time
-      localStorage.setItem('wallet_prompt_last_shown', currentTime.toString());
-      
-      // Clear new user flag
-      if (isNewUser) {
-        localStorage.removeItem('new_user_wallet_prompt');
-      }
-      
-      // Show the prompt
+    // Always show prompt for users without a wallet
+    // This is a fallback in case they somehow bypass ProtectedRoute checks
+    if (!hasWallet) {
+      console.log('GlobalWalletChecker: User has no wallet connected, showing wallet prompt');
       setShowWalletPrompt(true);
+    } else {
+      // If they have a wallet, make sure prompt is hidden
+      setShowWalletPrompt(false);
     }
   }, [user]);
   

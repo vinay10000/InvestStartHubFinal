@@ -188,12 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Force synchronization after signup
       await synchronizeUserData(result.user);
       
-      // Set a flag to show wallet prompt immediately for new users
-      localStorage.setItem('new_user_wallet_prompt', 'true');
-      
       toast({
         title: "Account created successfully",
-        description: "You are now signed in.",
+        description: "You are now signed in. Please connect your wallet to continue.",
       });
     } catch (error: any) {
       console.error("Error in signUp:", error);

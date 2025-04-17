@@ -9,87 +9,93 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLocation } from 'wouter';
 
 interface WalletPromptProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const WalletPrompt: React.FC<WalletPromptProps> = ({ children }) => {
-  const { user, connectWallet } = useAuth();
+const WalletPrompt: React.FC<WalletPromptProps> = ({ 
+  children, 
+  open: externalOpen, 
+  onOpenChange: externalOnOpenChange 
+}) => {
+  const { user, connectWallet, signOut } = useAuth();
   const [showPrompt, setShowPrompt] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
+  const [, navigate] = useLocation();
+
+  // Determine if we're in controlled mode (props) or uncontrolled mode (internal state)
+  const isControlled = externalOpen !== undefined;
+  const isOpen = isControlled ? externalOpen : showPrompt;
+  
+  const handleOpenChange = (open: boolean) => {
+    if (isControlled && externalOnOpenChange) {
+      externalOnOpenChange(open);
+    } else {
+      setShowPrompt(open);
+    }
+  };
 
   useEffect(() => {
     // Skip when not authenticated or still loading
-    if (!user) {
+    if (!user || isControlled) {
       return;
     }
 
     // Check if user has connected a wallet
     const hasWallet = user.walletAddress && user.walletAddress !== '';
     
-    // Also check localStorage to avoid showing prompt too frequently
-    const lastPromptTime = localStorage.getItem('wallet_prompt_last_shown');
-    const currentTime = Date.now();
-    const promptCooldown = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    
-    // Show prompt if:
-    // 1. No wallet is connected
-    // 2. We haven't checked this session
-    // 3. We haven't shown the prompt in the last 24 hours
-    const showDueToTime = !lastPromptTime || (currentTime - Number(lastPromptTime)) > promptCooldown;
-    
-    if (!hasWallet && !hasChecked && showDueToTime) {
-      // Update last prompt time
-      localStorage.setItem('wallet_prompt_last_shown', currentTime.toString());
-      
-      // Show prompt
+    // Always show prompt if no wallet is connected
+    if (!hasWallet && !hasChecked) {
       setShowPrompt(true);
       setHasChecked(true);
     } else if (!hasChecked) {
       // Just mark as checked without showing
       setHasChecked(true);
     }
-  }, [user, hasChecked]);
+  }, [user, hasChecked, isControlled]);
 
   // Callback when wallet is connected
   const handleWalletConnect = (address: string) => {
     connectWallet(address)
       .then(() => {
-        setShowPrompt(false);
+        handleOpenChange(false);
       })
       .catch((error) => {
         console.error("Error connecting wallet:", error);
       });
   };
 
-  // Allow user to skip wallet connection for now
-  const handleSkip = () => {
-    setShowPrompt(false);
+  // Handle logout if user doesn't want to connect a wallet
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/signin');
   };
 
   return (
     <>
       {children}
 
-      <Dialog open={showPrompt} onOpenChange={setShowPrompt}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={isOpen} onOpenChange={handleOpenChange} modal={true}>
+        <DialogContent className="sm:max-w-md" onEscapeKeyDown={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Connect Your Wallet</DialogTitle>
             <DialogDescription>
-              To fully use our platform, you need to connect a MetaMask wallet. This will allow you to invest in startups using cryptocurrency.
+              To use our platform, you need to connect a MetaMask wallet. This is required for all users and cannot be skipped.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
-            <Alert>
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Important</AlertTitle>
+              <AlertTitle>Required</AlertTitle>
               <AlertDescription>
-                Both investors and founders need to connect a wallet to transfer or receive funds.
+                Both investors and founders must connect a wallet to use the platform. This is necessary for secure transactions.
               </AlertDescription>
             </Alert>
 
@@ -104,11 +110,14 @@ const WalletPrompt: React.FC<WalletPromptProps> = ({ children }) => {
           </div>
 
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={handleSkip}>
-              Skip for now
-            </Button>
             <div className="text-xs text-muted-foreground">
-              You can connect your wallet later from your profile
+              If you don't want to connect a wallet, you'll need to log out
+            </div>
+            <div 
+              onClick={handleLogout} 
+              className="text-sm text-red-500 cursor-pointer hover:underline"
+            >
+              Log out instead
             </div>
           </DialogFooter>
         </DialogContent>
