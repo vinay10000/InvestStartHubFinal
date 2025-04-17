@@ -23,7 +23,10 @@ export function useStartups() {
   const useAllStartups = () => {
     return useQuery({
       queryKey: ['startups'],
-      queryFn: () => getStartups(),
+      queryFn: async () => {
+        const startups = await getStartups();
+        return { startups }; // Match expected API response structure
+      },
     });
   };
 
@@ -33,7 +36,10 @@ export function useStartups() {
     
     return useQuery({
       queryKey: ['startups', 'founder', id],
-      queryFn: () => id ? getStartupsByFounderId(id.toString()) : Promise.resolve([]),
+      queryFn: async () => {
+        const startups = id ? await getStartupsByFounderId(id.toString()) : [];
+        return { startups }; // Match expected API response structure
+      },
       enabled: !!id,
     });
   };

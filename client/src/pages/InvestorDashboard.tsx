@@ -65,12 +65,12 @@ const InvestorDashboard = () => {
     const fetchTransactions = async () => {
       if (userId && typeof userId === 'string' && userId.length > 20) {
         try {
-          const { getFirestoreTransactionsByInvestorId } = await import('@/firebase/firestore');
-          const transactions = await getFirestoreTransactionsByInvestorId(userId);
-          console.log("Fetched transactions from Firestore:", transactions);
+          const { getTransactionsByInvestorId } = await import('@/firebase/database');
+          const transactions = await getTransactionsByInvestorId(userId);
+          console.log("Fetched transactions from Firebase Realtime Database:", transactions);
           setFirebaseTransactions(transactions);
         } catch (error) {
-          console.error("Error fetching transactions from Firestore:", error);
+          console.error("Error fetching transactions from Firebase Realtime Database:", error);
         }
       }
     };

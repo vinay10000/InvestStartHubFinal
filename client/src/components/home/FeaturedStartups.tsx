@@ -11,7 +11,7 @@ const defaultImages = [
   "https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80"
 ];
 
-const getStageColorClasses = (stage: string) => {
+const getStageColorClasses = (stage: string | undefined) => {
   // Normalize the stage name for consistent comparison
   const normalizedStage = stage?.toLowerCase().trim() || '';
   

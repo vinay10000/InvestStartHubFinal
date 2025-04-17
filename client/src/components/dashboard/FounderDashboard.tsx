@@ -226,18 +226,18 @@ const FounderDashboard = () => {
                 {startups.map((startup) => (
                   <div key={startup.id} className="flex items-center space-x-4">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={startup.logoUrl || ""} alt={startup.name} />
+                      <AvatarImage src={startup.logo_url || ""} alt={startup.name} />
                       <AvatarFallback>{startup.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium leading-none">{startup.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatCurrency(typeof startup.fundingGoal === 'string' ? parseFloat(startup.fundingGoal) : (startup.fundingGoal || 0))}
+                          {formatCurrency(typeof startup.funding_goal === 'string' ? parseFloat(startup.funding_goal) : (startup.funding_goal || 0))}
                         </p>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {startup.category || 'Tech'} • {startup.investmentStage || 'Seed'}
+                        {startup.category || 'Tech'} • {startup.investment_stage || 'Seed'}
                       </p>
                     </div>
                   </div>
