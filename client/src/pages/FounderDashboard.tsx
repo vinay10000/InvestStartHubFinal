@@ -21,6 +21,7 @@ const FounderDashboard = () => {
   const { useFounderStartups, useCreateStartup } = useStartups();
   const { getTransactionsByFounderId } = useTransactions();
   const documents = useDocuments();
+  const { uploadDocumentFile } = documents;
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
@@ -203,20 +204,12 @@ const FounderDashboard = () => {
   // Upload documents for a startup
   const uploadStartupDocuments = async (startupId: string, startupData: any) => {
     try {
-      const { uploadDocumentFile } = useDocuments();
-      const { uploadStartupDocument } = await import('@/services/imagekit');
-      
       // Handle pitch deck upload
       if (startupData.pitchDeckFile) {
         try {
           console.log("Uploading pitch deck for startup:", startupId);
-          const uploadResult = await uploadStartupDocument(
-            parseInt(startupId),
-            'pitch_deck',
-            startupData.pitchDeckFile
-          );
           
-          // Create document record
+          // Create document record using our hook function extracted at the top level
           await uploadDocumentFile({
             startupId,
             documentType: 'pitch_deck',
@@ -224,7 +217,7 @@ const FounderDashboard = () => {
             name: startupData.pitchDeckFile.name
           });
           
-          console.log("Pitch deck uploaded:", uploadResult);
+          console.log("Pitch deck uploaded successfully");
         } catch (error) {
           console.error("Error uploading pitch deck:", error);
         }
@@ -234,11 +227,6 @@ const FounderDashboard = () => {
       if (startupData.financialReportFile) {
         try {
           console.log("Uploading financial report for startup:", startupId);
-          const uploadResult = await uploadStartupDocument(
-            parseInt(startupId),
-            'financial_report',
-            startupData.financialReportFile
-          );
           
           // Create document record
           await uploadDocumentFile({
@@ -248,7 +236,7 @@ const FounderDashboard = () => {
             name: startupData.financialReportFile.name
           });
           
-          console.log("Financial report uploaded:", uploadResult);
+          console.log("Financial report uploaded successfully");
         } catch (error) {
           console.error("Error uploading financial report:", error);
         }
@@ -258,11 +246,6 @@ const FounderDashboard = () => {
       if (startupData.investorAgreementFile) {
         try {
           console.log("Uploading investor agreement for startup:", startupId);
-          const uploadResult = await uploadStartupDocument(
-            parseInt(startupId),
-            'investor_agreement',
-            startupData.investorAgreementFile
-          );
           
           // Create document record
           await uploadDocumentFile({
@@ -272,7 +255,7 @@ const FounderDashboard = () => {
             name: startupData.investorAgreementFile.name
           });
           
-          console.log("Investor agreement uploaded:", uploadResult);
+          console.log("Investor agreement uploaded successfully");
         } catch (error) {
           console.error("Error uploading investor agreement:", error);
         }
@@ -546,7 +529,7 @@ const FounderDashboard = () => {
                 <DocumentUploadSection 
                   startupId={String(selectedStartupId)}
                   onDocumentUpload={async (file, documentType, startupId) => {
-                    await documents.uploadDocumentFile({
+                    await uploadDocumentFile({
                       startupId,
                       documentType,
                       file,
