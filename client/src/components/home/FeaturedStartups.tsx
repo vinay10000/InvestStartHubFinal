@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFirestoreStartups } from "@/firebase/firestore";
+import { getStartups, FirebaseStartup } from "@/firebase/database";
 
 // Default images for startups that don't have images
 const defaultImages = [
@@ -31,26 +31,28 @@ const getStageColorClasses = (stage: string) => {
 };
 
 const FeaturedStartups = () => {
-  const [startups, setStartups] = useState<any[]>([]);
+  const [startups, setStartups] = useState<FirebaseStartup[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch startups from Firestore
+  // Fetch startups from Firebase Realtime Database
   useEffect(() => {
     const fetchStartups = async () => {
       try {
         setLoading(true);
-        const firestoreStartups = await getFirestoreStartups();
+        // Get all startups from Firebase Realtime Database
+        const firebaseStartups = await getStartups();
         
         // Sort by creation date (newest first) and limit to 3 for featured display
-        const sortedStartups = firestoreStartups
+        const sortedStartups = firebaseStartups
           .sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
-            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+            const dateA = a.createdAt ? new Date(a.createdAt) : new Date();
+            const dateB = b.createdAt ? new Date(b.createdAt) : new Date();
             return dateB.getTime() - dateA.getTime();
           })
           .slice(0, 3);
           
         setStartups(sortedStartups);
+        console.log("Featured startups loaded:", sortedStartups.length);
       } catch (error) {
         console.error("Error fetching startups:", error);
         // Leave startups empty on error
@@ -106,15 +108,15 @@ const FeaturedStartups = () => {
                 <div className="flex-shrink-0">
                   <img 
                     className="h-48 w-full object-cover" 
-                    src={startup.logoUrl || defaultImages[index % defaultImages.length]} 
+                    src={startup.logo_url || defaultImages[index % defaultImages.length]} 
                     alt={`${startup.name} logo`} 
                   />
                 </div>
                 <div className="flex-1 bg-white p-6 flex flex-col justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-primary">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.investmentStage)}`}>
-                        {startup.investmentStage || "Not Specified"}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.investment_stage)}`}>
+                        {startup.investment_stage || "Not Specified"}
                       </span>
                     </p>
                     <a href="#" className="block mt-2">

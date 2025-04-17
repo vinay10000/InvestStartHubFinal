@@ -49,16 +49,16 @@ const InvestorDashboard = () => {
   const [firebaseStartups, setFirebaseStartups] = useState<FirebaseStartup[]>([]);
   const [firebaseTransactions, setFirebaseTransactions] = useState<FirebaseTransaction[]>([]);
 
-  // Load startups and transactions from Firebase if using Firebase auth
+  // Load startups and transactions from Firebase Realtime Database
   useEffect(() => {
     const fetchAllStartups = async () => {
       try {
-        const { getFirestoreStartups } = await import('@/firebase/firestore');
-        const startups = await getFirestoreStartups();
-        console.log("Fetched startups from Firestore:", startups);
+        const { getStartups } = await import('@/firebase/database');
+        const startups = await getStartups();
+        console.log("Fetched startups from Firebase Realtime Database:", startups);
         setFirebaseStartups(startups);
       } catch (error) {
-        console.error("Error fetching startups from Firestore:", error);
+        console.error("Error fetching startups from Firebase Realtime Database:", error);
       }
     };
     
