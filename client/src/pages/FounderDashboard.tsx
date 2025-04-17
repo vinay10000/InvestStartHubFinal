@@ -551,7 +551,7 @@ const FounderDashboard = () => {
                 </Card>
               ))}
             </div>
-          ) : combinedStartups.length === 0 ? (
+          ) : adaptedStartups.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center p-8">
                 <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
@@ -584,7 +584,7 @@ const FounderDashboard = () => {
                 <Skeleton className="h-8 w-full" />
               </CardContent>
             </Card>
-          ) : combinedStartups.length === 0 ? (
+          ) : adaptedStartups.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center p-8">
                 <FileText className="h-16 w-16 text-muted-foreground mb-4" />

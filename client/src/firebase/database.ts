@@ -1,8 +1,7 @@
 import { getDatabase, ref, set, get, push, remove, update, query, orderByChild, equalTo } from "firebase/database";
-import { app } from "./firebase";
+import { app, database } from "./firebase";
 
-// Initialize the Firebase Realtime Database
-const database = getDatabase(app);
+// We're using the database instance from firebase.ts for consistency
 
 // Startup related functions
 export interface FirebaseStartup {
