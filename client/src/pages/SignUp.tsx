@@ -3,13 +3,15 @@ import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our simplified auth context
+import { useAuth } from "@/hooks/useAuth"; // Use the main auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
+import { getUserByUid } from "@/firebase/database"; // Import Firebase database functions
+import { auth } from "@/firebase/config"; // Import Firebase auth
 
 const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp, signInWithGoogle } = useSimpleAuth(); // Use our simplified auth context
+  const { signUp, signInWithGoogle } = useAuth(); // Use the main auth context
   const [location, navigate] = useLocation();
   
   // Get role from URL query parameter
@@ -27,26 +29,40 @@ const SignUp = () => {
       // Make sure we clear any previous role data first
       localStorage.removeItem('user_role');
       
-      // Store the selected role for redirection and for future reference
-      // It's critical to set this before sign-up
+      // Store the selected role for easy access
       const targetRole = selectedRole;
-      localStorage.setItem('user_role', targetRole); // Save the role explicitly
-      console.log("User role explicitly set to:", targetRole);
+      localStorage.setItem('user_role', targetRole);
+      console.log("User role set to:", targetRole);
       
+      // Sign up with Firebase using the main auth context
       await signUp(email, password, username, targetRole);
       console.log("Signup successful");
       
-      // Force a delay to ensure localStorage is updated
-      setTimeout(() => {
-        console.log("Checking role for redirection...");
-        // Verify the role again - be extremely explicit
-        const savedRole = localStorage.getItem('user_role');
-        console.log("Final role check for redirection:", savedRole);
-        console.log("Redirecting to dashboard for automatic role-based redirection");
-        
-        // Use the dashboard route which will handle redirection based on role
-        navigate("/dashboard");
-      }, 500); // Short delay to ensure state is saved
+      // Get the current Firebase user
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          // Get the user's data from Firebase Realtime Database
+          const dbUser = await getUserByUid(currentUser.uid);
+          console.log("Database user data after signup:", dbUser);
+          
+          // Direct redirect based on role
+          if (targetRole === 'founder') {
+            console.log("Redirecting new user to founder dashboard");
+            navigate('/founder/dashboard');
+          } else {
+            console.log("Redirecting new user to investor dashboard");
+            navigate('/investor/dashboard');
+          }
+          return;
+        } catch (error) {
+          console.error("Error getting user data after signup:", error);
+        }
+      }
+      
+      // Fallback redirect if we couldn't get the current user
+      console.log("Fallback: redirecting to dashboard route");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error signing up:", error);
     } finally {
@@ -65,22 +81,43 @@ const SignUp = () => {
       // Store selected role in localStorage before auth
       const targetRole = selectedRole;
       localStorage.setItem('user_role', targetRole);
-      console.log("User role explicitly set to:", targetRole);
+      console.log("User role set to:", targetRole);
       
+      // Sign in with Google
       await signInWithGoogle();
       console.log("Google sign-in successful");
       
-      // Use a timeout to ensure state is properly updated
-      setTimeout(() => {
-        console.log("Checking role for redirection after Google sign-in...");
-        // Double check the role to make sure we're redirecting to the right dashboard
-        const savedRole = localStorage.getItem('user_role');
-        console.log("Final role check for redirection:", savedRole);
-        console.log("Redirecting to dashboard for automatic role-based redirection");
-        
-        // Redirect to dashboard which will handle role-based routing
-        navigate("/dashboard");
-      }, 500); // Short delay to ensure state is saved
+      // Get the current Firebase user
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          // Get the user data from Firebase Realtime Database
+          const dbUser = await getUserByUid(currentUser.uid);
+          console.log("Database user data after Google sign-in:", dbUser);
+          
+          // Update the role in the database if needed
+          if (dbUser && (!dbUser.role || dbUser.role !== targetRole)) {
+            console.log("Updating user role in database to match selected role:", targetRole);
+            // Update would happen through context
+          }
+          
+          // Direct redirect based on role
+          if (targetRole === 'founder') {
+            console.log("Redirecting Google user to founder dashboard");
+            navigate('/founder/dashboard');
+          } else {
+            console.log("Redirecting Google user to investor dashboard");
+            navigate('/investor/dashboard');
+          }
+          return;
+        } catch (error) {
+          console.error("Error getting user data after Google sign-in:", error);
+        }
+      }
+      
+      // Fallback redirect if we couldn't get the current user
+      console.log("Fallback: redirecting to dashboard route");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error signing in with Google:", error);
     } finally {

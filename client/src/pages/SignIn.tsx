@@ -45,17 +45,25 @@ const SignIn = () => {
             // Store the role in localStorage for convenience
             localStorage.setItem('user_role', dbUser.role);
             console.log("Set user role from Firebase DB:", dbUser.role);
+            
+            // Direct redirect based on role instead of going through /dashboard
+            if (dbUser.role.toLowerCase() === 'founder') {
+              console.log("Redirecting to founder dashboard");
+              navigate('/founder/dashboard');
+            } else {
+              console.log("Redirecting to investor dashboard");
+              navigate('/investor/dashboard');
+            }
+            return; // Skip the generic redirect below
           }
         } catch (error) {
           console.error("Error getting user from Firebase DB:", error);
         }
       }
       
-      // Redirect to the dashboard route that will handle role-based redirection
-      setTimeout(() => {
-        console.log("Redirecting to the dashboard");
-        navigate('/dashboard');
-      }, 500);
+      // Generic fallback redirect - only happens if we couldn't get the role above
+      console.log("Redirecting to the dashboard (generic)");
+      navigate('/dashboard');
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {
@@ -84,6 +92,17 @@ const SignIn = () => {
             // Store the role in localStorage for convenience
             localStorage.setItem('user_role', dbUser.role);
             console.log("Set user role from Firebase DB (Google login):", dbUser.role);
+            
+            // Direct redirect based on role instead of going through /dashboard
+            if (dbUser.role.toLowerCase() === 'founder') {
+              console.log("Redirecting to founder dashboard (Google login)");
+              navigate('/founder/dashboard');
+              return; // Skip the generic redirect below
+            } else {
+              console.log("Redirecting to investor dashboard (Google login)");
+              navigate('/investor/dashboard');
+              return; // Skip the generic redirect below
+            }
           } else {
             // Default to investor if we can't get the role
             localStorage.setItem('user_role', 'investor');
@@ -96,11 +115,9 @@ const SignIn = () => {
         }
       }
       
-      // Redirect to the dashboard route that will handle role-based redirection
-      setTimeout(() => {
-        console.log("Redirecting to the dashboard (Google login)");
-        navigate('/dashboard');
-      }, 500);
+      // Generic fallback redirect if we couldn't determine the role above
+      console.log("Redirecting to the dashboard (Google login - generic fallback)");
+      navigate('/dashboard');
     } catch (error) {
       console.error("Error signing in with Google:", error);
     } finally {

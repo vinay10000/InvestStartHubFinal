@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth"; // Use our new hook
+import { useAuth } from "@/hooks/useAuth"; // Use the main auth hook
 import {
   Sheet,
   SheetContent,
@@ -20,11 +20,11 @@ import NotificationIcon from "../chat/NotificationIcon";
 
 const Header = () => {
   const [location, navigate] = useLocation();
-  const { user, loading, signOut } = useSimpleAuth(); // Use our simplified auth context
+  const { user, loading, signOut } = useAuth(); // Use our main auth context
   const [isOpen, setIsOpen] = useState(false);
 
   // Debug auth state in the header
-  console.log("Header rendering with simplified auth state:", { user, loading });
+  console.log("Header rendering with auth state:", { user, loading });
 
   const handleSignOut = async () => {
     console.log("Signing out user");
