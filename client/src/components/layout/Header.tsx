@@ -46,19 +46,19 @@ const Header = () => {
     
     // First check for role in user object directly (from AuthContext)
     if (user.role) {
-      console.log("Using role from user object:", user.role);
+      console.log("Header - Using role from user object:", user.role);
       return user.role.toLowerCase() === "founder" ? "/founder/dashboard" : "/investor/dashboard";
     }
     
     // Fallback to localStorage if available
     const savedRole = localStorage.getItem('user_role');
     if (savedRole) {
-      console.log("Using role from localStorage:", savedRole);
-      return savedRole === "founder" ? "/founder/dashboard" : "/investor/dashboard";
+      console.log("Header - Using role from localStorage:", savedRole);
+      return savedRole.toLowerCase() === "founder" ? "/founder/dashboard" : "/investor/dashboard";
     }
     
     // Final fallback
-    console.log("No role found, defaulting to investor");
+    console.log("Header - No role found, defaulting to investor");
     return "/investor/dashboard";
   };
 
