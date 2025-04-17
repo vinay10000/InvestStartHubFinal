@@ -6,11 +6,18 @@ import StartupInvestmentABI from "@/contracts/StartupInvestment.json";
 import StartupTokenFactoryABI from "@/contracts/StartupTokenFactory.json";
 import StartupTokenABI from "@/contracts/StartupToken.json";
 
-// Contract addresses - these would be set after deployment
+// Import deployment data from assets
+import deploymentData from "@/assets/deployment.json";
+
+// Contract addresses from deployment or environment variables as fallback
 const CONTRACT_ADDRESSES = {
-  // Use environment variables if available, otherwise use placeholder addresses for development
-  INVESTMENT: import.meta.env.VITE_INVESTMENT_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000",
-  FACTORY: import.meta.env.VITE_FACTORY_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000"
+  // Use environment variables if available, deployment data as secondary, fallback to placeholder addresses
+  INVESTMENT: import.meta.env.VITE_INVESTMENT_CONTRACT_ADDRESS || 
+              deploymentData.startupInvestment || 
+              "0x5FbDB2315678afecb367f032d93F642f64180aa3", // Default Hardhat first address
+  FACTORY: import.meta.env.VITE_FACTORY_CONTRACT_ADDRESS || 
+           deploymentData.startupTokenFactory || 
+           "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"  // Default Hardhat second address
 };
 
 /**

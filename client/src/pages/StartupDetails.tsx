@@ -25,8 +25,9 @@ import UPIPayment from "@/components/payments/UPIPayment";
 
 const StartupDetails = () => {
   const { id } = useParams();
-  // Handle both numeric IDs (for local storage) and string IDs (for Firestore)
-  const startupId = id && !isNaN(parseInt(id)) ? parseInt(id) : id;
+  // Handle string IDs for Firebase (primary storage method)
+  // Note: We're prioritizing string IDs because Firebase uses string IDs
+  const startupId = id ? id : null;
   const { user } = useAuth();
   const { useStartup, useUpdateStartup } = useStartups();
   const { getDocumentsByStartupId } = useDocuments();
@@ -40,8 +41,8 @@ const StartupDetails = () => {
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
 
   // Only fetch if we have a valid ID
-  const { data: startupData, isLoading: startupLoading } = useStartup(startupId?.toString());
-  const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(startupId);
+  const { data: startupData, isLoading: startupLoading } = useStartup(startupId ? startupId.toString() : "");
+  const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(startupId ? startupId.toString() : "");
   
   const updateStartupMutation = useUpdateStartup();
   const createChatMutation = createChat();
