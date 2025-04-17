@@ -73,6 +73,9 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
     const connected = await connect();
     
     if (connected && address) {
+      // Mark wallet as connected in localStorage to prevent further prompts
+      localStorage.setItem('wallet_connected', 'true');
+      
       toast({
         title: "Wallet Connected",
         description: `Connected to ${truncateAddress(address)}`,

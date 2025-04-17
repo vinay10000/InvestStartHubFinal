@@ -47,11 +47,18 @@ const WalletPrompt: React.FC<WalletPromptProps> = ({
       return;
     }
 
-    // Check if user has connected a wallet
+    // Check if user has connected a wallet or has previously connected
     const hasWallet = user.walletAddress && user.walletAddress !== '';
+    const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
     
-    // Always show prompt if no wallet is connected
-    if (!hasWallet && !hasChecked) {
+    // If user has a wallet in their profile or has previously connected, store that state
+    if (hasWallet) {
+      localStorage.setItem('wallet_connected', 'true');
+    }
+    
+    // Only show prompt if no wallet is connected and hasn't been connected before
+    if (!hasWallet && !hasConnectedWallet && !hasChecked) {
+      console.log('WalletPrompt: User has no wallet connected, showing prompt');
       setShowPrompt(true);
       setHasChecked(true);
     } else if (!hasChecked) {
