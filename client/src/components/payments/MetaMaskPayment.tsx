@@ -85,22 +85,48 @@ const MetaMaskPayment = ({
   
   // Get founder info once we have startup data
   const [founderInfo, setFounderInfo] = useState<any>(null);
+  const [founderWalletStatus, setFounderWalletStatus] = useState<'loading' | 'found' | 'not_found' | 'error'>('loading');
   
   // Effect to load founder's wallet address when startup data changes
   useEffect(() => {
     const loadFounderInfo = async () => {
-      if (startupData && startupData.founderId) {
-        try {
-          // Import getUserByUid function only when needed to avoid circular dependencies
-          const { getUserByUid } = await import('@/firebase/database');
-          const founder = await getUserByUid(startupData.founderId);
-          if (founder && founder.walletAddress) {
-            console.log("[MetaMaskPayment] Found founder wallet address:", founder.walletAddress);
-            setFounderInfo(founder);
-          }
-        } catch (err) {
-          console.error("[MetaMaskPayment] Error fetching founder info:", err);
+      if (!startupData) {
+        console.log("[MetaMaskPayment] No startup data available yet");
+        setFounderWalletStatus('loading');
+        return;
+      }
+      
+      if (!startupData.founderId) {
+        console.error("[MetaMaskPayment] Startup data missing founderId:", startupData);
+        setFounderWalletStatus('error');
+        return;
+      }
+      
+      try {
+        // Import getUserByUid function only when needed to avoid circular dependencies
+        const { getUserByUid } = await import('@/firebase/database');
+        console.log("[MetaMaskPayment] Fetching founder info for ID:", startupData.founderId);
+        
+        const founder = await getUserByUid(startupData.founderId);
+        
+        if (!founder) {
+          console.error("[MetaMaskPayment] Founder not found for ID:", startupData.founderId);
+          setFounderWalletStatus('error');
+          return;
         }
+        
+        if (founder.walletAddress) {
+          console.log("[MetaMaskPayment] Found founder wallet address:", founder.walletAddress);
+          setFounderInfo(founder);
+          setFounderWalletStatus('found');
+        } else {
+          console.warn("[MetaMaskPayment] Founder has no wallet address connected:", founder);
+          setFounderInfo(founder);
+          setFounderWalletStatus('not_found');
+        }
+      } catch (err) {
+        console.error("[MetaMaskPayment] Error fetching founder info:", err);
+        setFounderWalletStatus('error');
       }
     };
     
@@ -204,15 +230,13 @@ const MetaMaskPayment = ({
       const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
       
       // Use the founder wallet address from our founderInfo state
-      // This was loaded in the useEffect when startup data changed
+      // This was loaded in the useEffect when startup data changes
       let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
       
-      // IMPORTANT: Hard-code founder address for testing if we didn't get it from the database
-      // This is for development only - replace with proper address lookup in production
+      // Validate if we have a wallet address
       if (!founderWalletAddress) {
-        // Use a known valid wallet address for testing
-        founderWalletAddress = "0xb4dc25e38f4e85eb922222b63205051838c2f57a";
-        console.log("[MetaMaskPayment] WARNING: Using default founder address for testing:", founderWalletAddress);
+        console.error("[MetaMaskPayment] No founder wallet address found for startup:", startupId);
+        throw new Error("Founder has not connected a wallet address. Please contact the founder or choose another payment method.");
       }
       
       // Ensure startupId is a valid number for blockchain
@@ -414,6 +438,61 @@ const MetaMaskPayment = ({
     );
   }
   
+  // Show loading state while we fetch founder wallet info
+  if (founderWalletStatus === 'loading') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Pay with MetaMask
+          </CardTitle>
+          <CardDescription>
+            Use Ethereum to invest in {startupName}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mb-4 text-primary" />
+          <p>Loading payment information...</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Verifying founder's wallet address for direct transfer
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Show error when founder hasn't connected a wallet
+  if (founderWalletStatus === 'not_found' || founderWalletStatus === 'error') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-amber-600">
+            <AlertTriangle className="h-5 w-5" />
+            Wallet Not Available
+          </CardTitle>
+          <CardDescription>
+            Cannot process cryptocurrency payments at this time
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 border rounded-lg bg-amber-50 text-amber-800">
+            <h4 className="font-medium mb-2">
+              {founderWalletStatus === 'not_found' 
+                ? "Founder hasn't connected a wallet" 
+                : "Error retrieving founder's wallet"}
+            </h4>
+            <p className="text-sm">
+              {founderWalletStatus === 'not_found'
+                ? "The founder of this startup hasn't connected a cryptocurrency wallet address yet. Please try again later or use an alternative payment method."
+                : "There was an error retrieving the founder's wallet information. Please try again later or use an alternative payment method."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Render payment form
   return (
     <Card>
@@ -442,6 +521,19 @@ const MetaMaskPayment = ({
               <span className="text-muted-foreground">Balance:</span>
               <span className="font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
             </div>
+          </div>
+        )}
+        
+        {/* Founder wallet info */}
+        {founderInfo && founderInfo.walletAddress && (
+          <div className="mb-4 p-3 border rounded-lg bg-blue-50 text-blue-800 text-sm">
+            <p className="flex items-center">
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              <span>Direct transfer to founder available</span>
+            </p>
+            <p className="text-xs mt-1 text-blue-600">
+              Investments will be sent directly to the founder's Ethereum wallet
+            </p>
           </div>
         )}
         
