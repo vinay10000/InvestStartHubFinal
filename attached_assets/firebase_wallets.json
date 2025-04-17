@@ -1,0 +1,47 @@
+{
+  "users": {},
+  "startups": {},
+  "transactions": {},
+  "chats": {},
+  "messages": {},
+  "wallets": {
+    "1": {
+      "address": "0xb4dc25e38f4e85eb922222b63205051838c2f57a",
+      "userId": "1",
+      "userName": "Founder",
+      "role": "founder",
+      "createdAt": 1744904000000,
+      "updatedAt": 1744904000000
+    },
+    "-OO3Ja4sDg5-dWWVnDgU": {
+      "address": "0xb4dc25e38f4e85eb922222b63205051838c2f57a",
+      "userId": "-OO3Ja4sDg5-dWWVnDgU",
+      "userName": "Test Founder",
+      "role": "founder",
+      "createdAt": 1744904000000,
+      "updatedAt": 1744904000000
+    },
+    "-OO3QgOok6sXzmTM5_aR": {
+      "address": "0xb4dc25e38f4e85eb922222b63205051838c2f57a",
+      "userId": "-OO3QgOok6sXzmTM5_aR",
+      "userName": "Demo Founder",
+      "role": "founder",
+      "createdAt": 1744904000000,
+      "updatedAt": 1744904000000
+    },
+    "1711": {
+      "address": "0xb4dc25e38f4e85eb922222b63205051838c2f57a",
+      "userId": "1711",
+      "userName": "Numeric ID Founder",
+      "role": "founder",
+      "createdAt": 1744904000000,
+      "updatedAt": 1744904000000
+    }
+  },
+  "wallet_addresses": {
+    "0xb4dc25e38f4e85eb922222b63205051838c2f57a": {
+      "userId": "1",
+      "updatedAt": 1744904000000
+    }
+  }
+}

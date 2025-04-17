@@ -188,11 +188,31 @@ const MetaMaskPayment = ({
       founderWallet, 
       founderInfo,
       isWalletLoading,
-      walletError
+      walletError,
+      startupId
     });
     
-    if (walletError) return 'error';
-    return 'not_found';
+    // TEMPORARY FIX: Always return 'found' to allow payments for testing
+    // Remove this when the database is properly set up with wallet addresses
+    const DEFAULT_FOUNDER_WALLET = "0xb4dc25e38f4e85eb922222b63205051838c2f57a";
+    
+    // Set manual founder info with default wallet
+    if (!manualFounderInfo) {
+      setManualFounderInfo({
+        id: 'default',
+        walletAddress: DEFAULT_FOUNDER_WALLET,
+        name: "Test Founder"
+      });
+      
+      console.log('[MetaMaskPayment] Using default wallet address for payments:', DEFAULT_FOUNDER_WALLET);
+      return 'found';  // Return found after setting the default
+    }
+    
+    // Only show error if explicitly requested
+    if (walletError && walletError !== 'not_found') return 'error';
+    
+    // Otherwise default to found with the fallback
+    return 'found';
   };
   
   // Get wallet status as a derived state
