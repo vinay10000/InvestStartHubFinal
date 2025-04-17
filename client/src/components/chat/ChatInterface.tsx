@@ -55,10 +55,19 @@ const ChatInterface = ({ chatId, otherUserInfo }: ChatInterfaceProps) => {
     
     // Update the unread count for the current user
     const chatRef = ref(database, `chats/${chatId}`);
-    update(chatRef, {
-      [unreadCountField]: 0, // Reset unread count for current user
-      lastAccessed: {
-        [user.id]: Date.now() // Update last accessed timestamp
+    
+    // Get current data and update with new values
+    get(chatRef).then(snapshot => {
+      if (snapshot.exists()) {
+        const currentData = snapshot.val();
+        set(chatRef, {
+          ...currentData,
+          [unreadCountField]: 0, // Reset unread count for current user
+          lastAccessed: {
+            ...(currentData.lastAccessed || {}),
+            [user.id]: Date.now() // Update last accessed timestamp
+          }
+        });
       }
     });
     
@@ -78,7 +87,23 @@ const ChatInterface = ({ chatId, otherUserInfo }: ChatInterfaceProps) => {
         
         // Update all messages at once if there are any updates
         if (Object.keys(updates).length > 0) {
-          update(messagesRef, updates);
+          // For each message that needs to be updated
+          Object.entries(updates).forEach(([path, value]) => {
+            const [msgId, field] = path.split('/');
+            // Create a specific ref for each message and update it
+            const msgRef = ref(database, `chats/${chatId}/messages/${msgId}`);
+            // Get current message data
+            get(msgRef).then(snapshot => {
+              if (snapshot.exists()) {
+                const msgData = snapshot.val();
+                // Update the specific field
+                set(msgRef, {
+                  ...msgData,
+                  [field]: value
+                });
+              }
+            });
+          });
         }
       }
     });
@@ -125,11 +150,32 @@ const ChatInterface = ({ chatId, otherUserInfo }: ChatInterfaceProps) => {
           
           // Update all messages at once if there are any updates
           if (Object.keys(updates).length > 0) {
-            update(messagesRef, updates);
+            // Update each message individually
+            Object.entries(updates).forEach(([path, value]) => {
+              const [msgId, field] = path.split('/');
+              const msgRef = ref(database, `chats/${chatId}/messages/${msgId}`);
+              
+              get(msgRef).then(snapshot => {
+                if (snapshot.exists()) {
+                  const msgData = snapshot.val();
+                  set(msgRef, {
+                    ...msgData,
+                    [field]: value
+                  });
+                }
+              });
+            });
             
             // Also update the unread counter for this chat
-            update(ref(database, `chats/${chatId}`), {
-              [unreadCountField]: 0 // Reset unread count
+            const chatRef = ref(database, `chats/${chatId}`);
+            get(chatRef).then(snapshot => {
+              if (snapshot.exists()) {
+                const chatData = snapshot.val();
+                set(chatRef, {
+                  ...chatData,
+                  [unreadCountField]: 0 // Reset unread count
+                });
+              }
             });
           }
         }
@@ -191,11 +237,23 @@ const ChatInterface = ({ chatId, otherUserInfo }: ChatInterfaceProps) => {
       
       // Update chat metadata
       const chatRef = ref(database, `chats/${chatId}`);
-      update(chatRef, {
-        lastMessage: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-        timestamp: serverTimestamp(),
-        [otherUnreadField]: (await get(ref(database, `chats/${chatId}/${otherUnreadField}`))).val() + 1 || 1
-      });
+      
+      // Get current chat data
+      const chatSnapshot = await get(chatRef);
+      if (chatSnapshot.exists()) {
+        const chatData = chatSnapshot.val();
+        
+        // Get current unread count or default to 0
+        const currentUnreadCount = chatData[otherUnreadField] || 0;
+        
+        // Update chat data with new values
+        await set(chatRef, {
+          ...chatData,
+          lastMessage: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+          timestamp: serverTimestamp(),
+          [otherUnreadField]: currentUnreadCount + 1
+        });
+      }
       
       // Clear the input
       setMessage("");

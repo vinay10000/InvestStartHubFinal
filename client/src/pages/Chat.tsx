@@ -81,9 +81,23 @@ const Chat = () => {
         ...chatData
       })).filter(chat => {
         // Filter chats where user is a participant
+        // Convert IDs to strings for comparison to handle both number and string types
+        const userId = String(user.id);
+        const founderId = String(chat.founderId);
+        const investorId = String(chat.investorId);
+        
+        // Log for debugging
+        console.log("Chat filtering", {
+          chatId: id,
+          userId,
+          founderId, 
+          investorId,
+          isMatch: isFounder ? (founderId === userId) : (investorId === userId)
+        });
+        
         return isFounder 
-          ? chat.founderId === user.id
-          : chat.investorId === user.id;
+          ? founderId === userId
+          : investorId === userId;
       });
       
       // Sort by timestamp (most recent first)
