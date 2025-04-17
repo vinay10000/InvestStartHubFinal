@@ -60,6 +60,10 @@ export const signUpWithEmail = async (
     
     console.log("User created successfully in Firebase:", user.uid);
     
+    // Store role in localStorage for immediate availability across components
+    localStorage.setItem('user_role', role);
+    console.log("Saved user role to localStorage during signup:", role);
+    
     // Force a refresh of the auth token to ensure updated claims
     await user.getIdToken(true);
     
@@ -97,13 +101,20 @@ export const signInWithEmail = async (
       const profilePicture = user.photoURL || createDefaultAvatar(username);
       
       // Create user in Realtime Database if it doesn't exist
+      // Default role for new users
+      const defaultRole = "investor";
+      
       await updateUser(user.uid, {
         username,
         email,
-        role: "investor", // Default role
+        role: defaultRole,
         walletAddress: "",
         profilePicture,
       });
+      
+      // Store default role in localStorage
+      localStorage.setItem('user_role', defaultRole);
+      console.log("Created new user record with default role in localStorage:", defaultRole);
       
       // Update the user's profile in Firebase Auth if needed
       if (!user.displayName || !user.photoURL) {
@@ -113,6 +124,12 @@ export const signInWithEmail = async (
         });
       }
     } else {
+      // Store existing user's role in localStorage
+      if (userData.role) {
+        localStorage.setItem('user_role', userData.role);
+        console.log("Saved existing user role to localStorage during sign-in:", userData.role);
+      }
+      
       // Update user's last login time
       await updateUser(user.uid, {
         lastActive: new Date().toISOString()
@@ -173,9 +190,17 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
           profilePicture,
         });
         
-        console.log("Created new Firebase user from Google sign-in:", user.uid);
+        // Store default role in localStorage
+        localStorage.setItem('user_role', "investor");
+        console.log("Created new Firebase user from Google sign-in:", user.uid, "with default role: investor");
       } else {
         console.log("Found existing Firebase user:", user.uid);
+        
+        // Store existing user's role in localStorage
+        if (dbUser.role) {
+          localStorage.setItem('user_role', dbUser.role);
+          console.log("Saved existing user role to localStorage during Google sign-in:", dbUser.role);
+        }
         
         // Update the last active time in the database
         await updateUser(user.uid, { 
@@ -210,11 +235,21 @@ export const signOut = async (): Promise<void> => {
       });
     }
     
+    // Clear localStorage values related to authentication
+    localStorage.removeItem('wallet_connected');
+    localStorage.removeItem('user_role');
+    console.log("Cleared wallet_connected and user_role from localStorage during sign-out");
+    
     // Sign out from Firebase
     console.log("Signing out from Firebase");
     return firebaseSignOut(auth);
   } catch (error) {
     console.error("Error during sign out:", error);
+    // Clear localStorage values before attempting sign-out again
+    localStorage.removeItem('wallet_connected');
+    localStorage.removeItem('user_role');
+    console.log("Cleared localStorage during sign-out error recovery");
+    
     // Still try to sign out even if the status update failed
     return firebaseSignOut(auth);
   }
