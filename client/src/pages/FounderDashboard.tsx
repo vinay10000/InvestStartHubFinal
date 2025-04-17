@@ -74,27 +74,13 @@ const FounderDashboard = () => {
   
   // Convert Firebase startups to the format expected by StartupCard
   const adaptFirebaseStartupToUI = (firebaseStartup: FirebaseStartup): Startup => {
-    // Ensure the ID is a string before trying to parse it
-    const idString = typeof firebaseStartup.id === 'string' ? firebaseStartup.id : '0';
+    // Store both the original Firebase ID and a numeric ID for different use cases
+    const originalId = typeof firebaseStartup.id === 'string' ? firebaseStartup.id : '0';
     
-    // Create a safe numerical ID, using a hash of the string ID if it can't be parsed
-    let numericId = 0;
-    try {
-      // Try to parse as an integer
-      numericId = parseInt(idString);
-      // If the result is NaN, use a simple hash
-      if (isNaN(numericId)) {
-        // Create a simple hash from the string
-        numericId = idString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      }
-    } catch (e) {
-      console.error("Error parsing ID:", idString, e);
-      // Use a timestamp as fallback
-      numericId = Date.now();
-    }
-    
+    // CRITICAL: We use the original Firebase ID (like -OO3QgOok6sXzmTM5_aR) instead of 
+    // converting to a number. This ensures consistency with database IDs.
     return {
-      id: numericId, 
+      id: originalId, // Keep the original Firebase ID for lookups
       name: firebaseStartup.name,
       description: firebaseStartup.description,
       category: firebaseStartup.category || null,
