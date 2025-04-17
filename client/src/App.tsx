@@ -117,6 +117,12 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/wallet-connect">
+        <ProtectedRoute>
+          <WalletConnection />
+        </ProtectedRoute>
+      </Route>
+      
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

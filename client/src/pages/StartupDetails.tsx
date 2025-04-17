@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useStartups } from "@/hooks/useStartups";
 import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -31,6 +31,7 @@ const StartupDetails = () => {
   const { getDocumentsByStartupId } = useDocuments();
   const { createChat } = useChat();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -61,6 +62,9 @@ const StartupDetails = () => {
   if (documentsData && documentsData.documents && documentsData.documents.length > 0) {
     console.log("StartupDetails - Document URLs:", documentsData.documents.map((doc: any) => doc.fileUrl));
   }
+  
+  // Check if user has a connected wallet
+  const hasWalletConnected = user?.walletAddress && user.walletAddress !== '';
 
   // Safely extract data with null checks and type handling
   const startup = startupData;
@@ -124,6 +128,25 @@ const StartupDetails = () => {
     setIsUploadDialogOpen(false);
   };
 
+  // Handle investment button click based on wallet connection status
+  const handleInvestClick = () => {
+    if (!hasWalletConnected) {
+      // Redirect to wallet connection page with return URL
+      const returnUrl = `/startup/${id}`;
+      setLocation(`/wallet-connect?returnUrl=${encodeURIComponent(returnUrl)}`);
+      
+      // Show a toast notification
+      toast({
+        title: "Wallet Required",
+        description: "You need to connect a wallet to invest in this startup",
+        duration: 5000,
+      });
+    } else {
+      // User has wallet connected, proceed to investment dialog
+      setIsInvestDialogOpen(true);
+    }
+  };
+  
   const handleStartChat = async () => {
     if (!user || !startup) return;
     
@@ -349,7 +372,7 @@ const StartupDetails = () => {
                 <Button 
                   size="lg" 
                   className="font-semibold bg-green-600 hover:bg-green-700"
-                  onClick={() => setIsInvestDialogOpen(true)}
+                  onClick={handleInvestClick}
                 >
                   <DollarSign className="mr-2 h-5 w-5" />
                   Invest
