@@ -13,6 +13,7 @@ import DocumentUploadSection from "@/components/startups/DocumentUploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import TransactionList from "@/components/transactions/TransactionList";
 import { Startup } from "@shared/schema";
+import { getDatabase, ref, get, child } from "firebase/database";
 import { 
   createStartup as firebaseCreateStartup, 
   getStartupsByFounderId as firebaseGetStartupsByFounderId,
@@ -48,7 +49,7 @@ const FounderDashboard = () => {
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
   // Define types for Firebase data
   interface FirebaseStartup {
-    id: string;
+    id?: string;
     name: string;
     description: string;
     category?: string | null;
@@ -57,7 +58,10 @@ const FounderDashboard = () => {
     founderId: string | number;
     founder_id?: string | number;
     logoUrl?: string | null;
+    logo_url?: string | null;
     upiQrCode?: string | null;
+    upi_qr_code?: string | null;
+    upi_id?: string | null;
     [key: string]: any; // Allow for other properties
   }
   
@@ -70,8 +74,27 @@ const FounderDashboard = () => {
   
   // Convert Firebase startups to the format expected by StartupCard
   const adaptFirebaseStartupToUI = (firebaseStartup: FirebaseStartup): Startup => {
+    // Ensure the ID is a string before trying to parse it
+    const idString = typeof firebaseStartup.id === 'string' ? firebaseStartup.id : '0';
+    
+    // Create a safe numerical ID, using a hash of the string ID if it can't be parsed
+    let numericId = 0;
+    try {
+      // Try to parse as an integer
+      numericId = parseInt(idString);
+      // If the result is NaN, use a simple hash
+      if (isNaN(numericId)) {
+        // Create a simple hash from the string
+        numericId = idString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      }
+    } catch (e) {
+      console.error("Error parsing ID:", idString, e);
+      // Use a timestamp as fallback
+      numericId = Date.now();
+    }
+    
     return {
-      id: parseInt(firebaseStartup.id) || 0, // Convert string ID to number
+      id: numericId, 
       name: firebaseStartup.name,
       description: firebaseStartup.description,
       category: firebaseStartup.category || null,
@@ -122,12 +145,31 @@ const FounderDashboard = () => {
           const existingIds = new Set<string>(); // Track IDs to avoid duplicates
           
           // Try each user ID in sequence
-          for (const id of possibleUserIds) {
+          const userIdArray = Array.from(possibleUserIds);
+          console.log("[FounderDashboard] Trying IDs:", userIdArray);
+          for (const id of userIdArray) {
             console.log(`[FounderDashboard] Trying to fetch startups with user ID: ${id}`);
+            
+            // TEMPORARY LOGGING HACK - SHOW ALL STARTUPS
+            const allStartupsInDB = await fetch('/api/startups')
+              .then(res => res.json())
+              .catch(err => {
+                console.error("[FounderDashboard] Error fetching all startups:", err);
+                return [];
+              });
+            
+            console.log("[FounderDashboard] ALL STARTUPS IN DATABASE:", allStartupsInDB);
+            
+            // First log the user's Firebase auth info
+            console.log("[FounderDashboard] Current Firebase auth user:", user);
+            
+            // IMPORTANT: We've removed the direct database access code, as Firebase functions 
+            // should be sufficient. Just using the provided getStartupsByFounderId function.
+            
             const foundStartups = await firebaseGetStartupsByFounderId(id);
             
             if (foundStartups && foundStartups.length > 0) {
-              console.log(`[FounderDashboard] Found ${foundStartups.length} startups with ID ${id}`);
+              console.log(`[FounderDashboard] Found ${foundStartups.length} startups with ID ${id}:`, foundStartups);
               
               // Add only unique startups based on ID
               foundStartups.forEach(startup => {
@@ -136,6 +178,8 @@ const FounderDashboard = () => {
                   allStartups.push(startup);
                 }
               });
+            } else {
+              console.log(`[FounderDashboard] No startups found with ID ${id}`);
             }
           }
           

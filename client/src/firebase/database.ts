@@ -162,51 +162,82 @@ export const getStartups = async (): Promise<FirebaseStartup[]> => {
 export const getStartupsByFounderId = async (founderId: string): Promise<FirebaseStartup[]> => {
   try {
     if (!founderId) {
-      console.error("No founder ID provided");
+      console.error("[database] No founder ID provided");
       return [];
     }
 
     console.log("[database] Fetching startups for founder ID:", founderId);
     
-    // First try the exact match with the founderId
-    const startupsRef = ref(database, 'startups');
-    const founderStartupsQuery = query(startupsRef, orderByChild('founderId'), equalTo(founderId));
-    const snapshot = await get(founderStartupsQuery);
-
+    // ALWAYS get all startups first - Firebase query with orderByChild may be unreliable
+    // with authentication IDs that contain special characters
+    const allStartupsRef = ref(database, 'startups');
+    const allStartupsSnapshot = await get(allStartupsRef);
+    
     let startups: FirebaseStartup[] = [];
     
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
+    if (allStartupsSnapshot.exists()) {
+      console.log("[database] Got all startups from database, now filtering for founder:", founderId);
+      
+      // Log the first startup to understand its structure
+      const firstStartup = Object.values(allStartupsSnapshot.val())[0];
+      console.log("[database] First startup example:", firstStartup);
+      
+      // Loop through all startups and filter manually
+      allStartupsSnapshot.forEach((childSnapshot) => {
         const startup = childSnapshot.val();
-        startups.push(startup);
+        
+        // Direct comparison and flexible matching
+        // First try exact string match
+        if (startup.founderId === founderId) {
+          console.log("[database] Found startup with exact founderId match:", startup.id, startup.name);
+          startups.push(startup);
+        } 
+        // Try normalization - convert both to lowercase for case-insensitive comparison
+        else if (String(startup.founderId).toLowerCase() === founderId.toLowerCase()) {
+          console.log("[database] Found startup with case-insensitive match:", startup.id, startup.name);
+          startups.push(startup);
+        }
+        // Try trimming - remove whitespace
+        else if (String(startup.founderId).trim() === founderId.trim()) {
+          console.log("[database] Found startup with trimmed match:", startup.id, startup.name);
+          startups.push(startup);
+        }
+        // Check if one contains the other
+        else if (founderId.includes(startup.founderId) || String(startup.founderId).includes(founderId)) {
+          console.log("[database] Found startup with partial match:", startup.id, startup.name);
+          startups.push(startup);
+        }
       });
-      console.log(`[database] Found ${startups.length} startups with founderId=${founderId}`);
-    } else {
-      console.log("[database] No startups found with exact founderId match:", founderId);
       
-      // If no results, get all startups and do a more flexible match
-      console.log("[database] Trying flexible matching for founder ID");
-      const allStartupsRef = ref(database, 'startups');
-      const allStartupsSnapshot = await get(allStartupsRef);
-      
-      if (allStartupsSnapshot.exists()) {
+      if (startups.length === 0) {
+        console.log("[database] No matches found with standard criteria, now trying flexible matching");
+        
+        // Second pass with even more flexible matching
         allStartupsSnapshot.forEach((childSnapshot) => {
           const startup = childSnapshot.val();
           
-          // Check multiple possible founder ID formats
-          const matches = 
-            startup.founderId === founderId || 
-            startup.founderId === Number(founderId) || 
-            startup.founder_id === founderId ||
-            startup.founder_id === Number(founderId) ||
-            String(startup.founderId) === founderId;
+          // Convert both to strings for comparison
+          const founderIdStr = String(founderId).toLowerCase();
+          const startupFounderIdStr = String(startup.founderId).toLowerCase();
+          
+          // Check if part of the string matches
+          if (founderIdStr.length > 5 && startupFounderIdStr.length > 5) {
+            // Try to match the first 5-8 characters at least
+            const matchLength = Math.min(8, Math.min(founderIdStr.length, startupFounderIdStr.length));
             
-          if (matches) {
-            console.log("[database] Found startup with flexible match:", startup.id, startup.name);
-            startups.push(startup);
+            if (founderIdStr.substring(0, matchLength) === startupFounderIdStr.substring(0, matchLength)) {
+              console.log("[database] Found startup with prefix match:", startup.id, startup.name);
+              
+              // Make sure we're not adding duplicates
+              if (!startups.some(s => s.id === startup.id)) {
+                startups.push(startup);
+              }
+            }
           }
         });
       }
+    } else {
+      console.log("[database] No startups found in database at all");
     }
     
     if (startups.length > 0) {
@@ -214,6 +245,19 @@ export const getStartupsByFounderId = async (founderId: string): Promise<Firebas
       return startups;
     } else {
       console.log("[database] No startups found for founder ID after all attempts:", founderId);
+      
+      // As a last resort, log all startups in the database for debugging
+      if (allStartupsSnapshot.exists()) {
+        const allStartups: any[] = [];
+        allStartupsSnapshot.forEach(snapshot => {
+          allStartups.push({
+            id: snapshot.key,
+            ...snapshot.val(),
+          });
+        });
+        console.log("[database] All startups in database:", JSON.stringify(allStartups, null, 2));
+      }
+      
       return [];
     }
   } catch (error) {
