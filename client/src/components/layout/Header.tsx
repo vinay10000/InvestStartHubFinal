@@ -44,10 +44,10 @@ const Header = () => {
   const getDashboardPath = () => {
     if (!user) return "/";
     
-    // First check for role in customClaims (our added property)
-    if (user.customClaims?.role) {
-      console.log("Using role from customClaims:", user.customClaims.role);
-      return user.customClaims.role === "founder" ? "/founder/dashboard" : "/investor/dashboard";
+    // First check for role in user object directly (from AuthContext)
+    if (user.role) {
+      console.log("Using role from user object:", user.role);
+      return user.role.toLowerCase() === "founder" ? "/founder/dashboard" : "/investor/dashboard";
     }
     
     // Fallback to localStorage if available
@@ -123,12 +123,12 @@ const Header = () => {
                     <DropdownMenuItem onClick={() => navigate("/transactions")}>
                       <span>Transactions</span>
                     </DropdownMenuItem>
-                    {(user.customClaims?.role === "founder" || localStorage.getItem('user_role') === "founder") && (
+                    {(user.role === "founder" || localStorage.getItem('user_role') === "founder") && (
                       <DropdownMenuItem onClick={() => navigate("/founder/dashboard")}>
                         <span>My Startups</span>
                       </DropdownMenuItem>
                     )}
-                    {(user.customClaims?.role === "investor" || localStorage.getItem('user_role') === "investor") && (
+                    {(user.role === "investor" || localStorage.getItem('user_role') === "investor") && (
                       <DropdownMenuItem onClick={() => navigate("/investor/dashboard")}>
                         <span>Discover Startups</span>
                       </DropdownMenuItem>
