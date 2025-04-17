@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Clock, CheckCheck, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { database } from "@/firebase/config";
-import { ref, onValue, push, set, serverTimestamp, update, get } from "firebase/database";
+import { ref, onValue, push, set, serverTimestamp, get } from "firebase/database";
 
 interface ChatInterfaceProps {
   chatId: string; // Using string for Firebase chat IDs
@@ -48,6 +48,26 @@ const ChatInterface = ({ chatId, otherUserInfo }: ChatInterfaceProps) => {
   const userRole = user?.role || localStorage.getItem('user_role') || 'investor';
   const unreadCountField = userRole === 'founder' ? 'founderUnread' : 'investorUnread';
   const otherUnreadField = userRole === 'founder' ? 'investorUnread' : 'founderUnread';
+  
+  // Helper function to sort and process messages from various sources
+  const sortAndProcessMessages = (data: any): FirebaseMessage[] => {
+    if (!data) return [];
+    
+    // Convert object to array if needed
+    const messageList = typeof data === 'object' && !Array.isArray(data)
+      ? Object.entries(data).map(([id, value]: [string, any]) => ({
+          id,
+          ...value,
+        }))
+      : data;
+      
+    // Sort by timestamp
+    return messageList.sort((a: any, b: any) => {
+      const timeA = typeof a.timestamp === 'number' ? a.timestamp : Date.parse(a.timestamp || Date.now());
+      const timeB = typeof b.timestamp === 'number' ? b.timestamp : Date.parse(b.timestamp || Date.now());
+      return timeA - timeB;
+    });
+  };
 
   // Mark messages as read when the chat is opened
   useEffect(() => {
@@ -115,73 +135,113 @@ const ChatInterface = ({ chatId, otherUserInfo }: ChatInterfaceProps) => {
     
     setLoading(true);
     
+    // First check if the chat exists, create if needed
+    const chatRef = ref(database, `chats/${chatId}`);
+    get(chatRef).then(snapshot => {
+      if (!snapshot.exists()) {
+        // Initialize basic chat if it doesn't exist
+        console.log(`Chat ${chatId} not found in Firebase, creating basic record`);
+        
+        // Create a basic chat record with user's info
+        const userId = user.id;
+        const userName = user.username || "User";
+        const userRole = user.role || "investor";
+        
+        // Initialize with appropriate structure based on user role
+        set(chatRef, {
+          founderId: userRole === 'founder' ? String(userId) : '1',
+          investorId: userRole === 'investor' ? String(userId) : '2',
+          startupId: '1',
+          startupName: "Startup",
+          founderName: userRole === 'founder' ? userName : "Founder",
+          investorName: userRole === 'investor' ? userName : "Investor",
+          timestamp: Date.now(),
+          founderUnread: 0,
+          investorUnread: 0,
+          lastMessage: "",
+          lastAccessed: {
+            [userId]: Date.now()
+          }
+        });
+      }
+    });
+    
     // Reference to the chat messages in Firebase
     const messagesRef = ref(database, `chats/${chatId}/messages`);
     
     // Subscribe to real-time updates
     const unsubscribe = onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Convert object of messages to array and sort by timestamp
-        const messageList = Object.entries(data).map(([id, value]: [string, any]) => ({
-          id,
-          ...value,
-        }));
+      let data = snapshot.val();
+      
+      // If no messages in the new location, check the legacy location
+      if (!data) {
+        // Try to get messages from the legacy location
+        const legacyMessagesRef = ref(database, `messages/${chatId}`);
+        get(legacyMessagesRef).then(legacySnapshot => {
+          if (legacySnapshot.exists()) {
+            // Process legacy messages
+            const legacyData = legacySnapshot.val();
+            
+            // Process the legacy messages
+            const sortedMessages = sortAndProcessMessages(legacyData);
+            setMessages(sortedMessages);
+            setLoading(false);
+          } else {
+            // No messages in either location
+            setMessages([]);
+            setLoading(false);
+          }
+        });
+        return; // Exit this callback as we're handling it in the nested promise
+      }
+      
+      // Process messages from the main location
+      const sortedMessages = sortAndProcessMessages(data);
+      setMessages(sortedMessages);
+      
+      // Mark all messages from other user as read
+      if (user) {
+        const updates: Record<string, any> = {};
         
-        // Sort by timestamp
-        messageList.sort((a, b) => {
-          const timeA = typeof a.timestamp === 'number' ? a.timestamp : Date.parse(a.timestamp || Date.now());
-          const timeB = typeof b.timestamp === 'number' ? b.timestamp : Date.parse(b.timestamp || Date.now());
-          return timeA - timeB;
+        sortedMessages.forEach((msg) => {
+          // Only mark messages from the other user as read
+          if (msg.senderId !== user.id && !msg.read) {
+            updates[`${msg.id}/read`] = true;
+          }
         });
         
-        setMessages(messageList);
-        
-        // Mark all messages from other user as read
-        if (user) {
-          const updates: Record<string, any> = {};
-          
-          messageList.forEach((msg) => {
-            // Only mark messages from the other user as read
-            if (msg.senderId !== user.id && !msg.read) {
-              updates[`${msg.id}/read`] = true;
-            }
-          });
-          
-          // Update all messages at once if there are any updates
-          if (Object.keys(updates).length > 0) {
-            // Update each message individually
-            Object.entries(updates).forEach(([path, value]) => {
-              const [msgId, field] = path.split('/');
-              const msgRef = ref(database, `chats/${chatId}/messages/${msgId}`);
-              
-              get(msgRef).then(snapshot => {
-                if (snapshot.exists()) {
-                  const msgData = snapshot.val();
-                  set(msgRef, {
-                    ...msgData,
-                    [field]: value
-                  });
-                }
-              });
-            });
+        // Update all messages at once if there are any updates
+        if (Object.keys(updates).length > 0) {
+          // Update each message individually
+          Object.entries(updates).forEach(([path, value]) => {
+            const [msgId, field] = path.split('/');
+            const msgRef = ref(database, `chats/${chatId}/messages/${msgId}`);
             
-            // Also update the unread counter for this chat
-            const chatRef = ref(database, `chats/${chatId}`);
-            get(chatRef).then(snapshot => {
+            get(msgRef).then(snapshot => {
               if (snapshot.exists()) {
-                const chatData = snapshot.val();
-                set(chatRef, {
-                  ...chatData,
-                  [unreadCountField]: 0 // Reset unread count
+                const msgData = snapshot.val();
+                set(msgRef, {
+                  ...msgData,
+                  [field]: value
                 });
               }
             });
-          }
+          });
+          
+          // Also update the unread counter for this chat
+          const chatRef = ref(database, `chats/${chatId}`);
+          get(chatRef).then(snapshot => {
+            if (snapshot.exists()) {
+              const chatData = snapshot.val();
+              set(chatRef, {
+                ...chatData,
+                [unreadCountField]: 0 // Reset unread count
+              });
+            }
+          });
         }
-      } else {
-        setMessages([]);
       }
+      
       setLoading(false);
     });
     
