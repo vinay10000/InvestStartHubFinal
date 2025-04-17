@@ -456,7 +456,7 @@ const StartupDetails = () => {
                 <Card className="bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" 
                   onClick={() => {
                     setPaymentMethod("metamask");
-                    setIsInvestDialogOpen(true);
+                    handleInvestClick();
                   }}>
                   <CardHeader className="p-4">
                     <CardTitle className="text-lg flex items-center">
@@ -473,7 +473,14 @@ const StartupDetails = () => {
                       <li>• Secure Ethereum transactions</li>
                       <li>• Transparent on-chain verification</li>
                     </ul>
-                    <Button className="w-full mt-4" variant="outline">
+                    <Button 
+                      className="w-full mt-4" 
+                      variant="outline"
+                      onClick={() => {
+                        setPaymentMethod("metamask");
+                        handleInvestClick();
+                      }}
+                    >
                       Invest with MetaMask
                     </Button>
                   </CardContent>
@@ -483,7 +490,7 @@ const StartupDetails = () => {
                 <Card className="bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
                   onClick={() => {
                     setPaymentMethod("upi");
-                    setIsInvestDialogOpen(true);
+                    handleInvestClick();
                   }}>
                   <CardHeader className="p-4">
                     <CardTitle className="text-lg flex items-center">
@@ -500,7 +507,14 @@ const StartupDetails = () => {
                       <li>• Fast fiat currency transfers</li>
                       <li>• Submit transaction reference for verification</li>
                     </ul>
-                    <Button className="w-full mt-4" variant="outline">
+                    <Button 
+                      className="w-full mt-4" 
+                      variant="outline" 
+                      onClick={() => {
+                        setPaymentMethod("upi");
+                        handleInvestClick();
+                      }}
+                    >
                       Invest with UPI
                     </Button>
                   </CardContent>
