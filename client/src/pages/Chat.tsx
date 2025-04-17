@@ -31,6 +31,7 @@ interface FirebaseChat {
 const Chat = () => {
   const { id } = useParams();
   const chatId = id;
+  console.log("Chat page opened with ID:", chatId);
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -159,8 +160,8 @@ const Chat = () => {
   
   // Determine if user is a participant in this chat
   const isChatParticipant = activeChatData 
-    ? (isFounder && activeChatData.founderId === user?.id) || 
-      (!isFounder && activeChatData.investorId === user?.id)
+    ? (isFounder && String(activeChatData.founderId) === String(user?.id)) || 
+      (!isFounder && String(activeChatData.investorId) === String(user?.id))
     : false;
 
   // If active chat ID is invalid, reset

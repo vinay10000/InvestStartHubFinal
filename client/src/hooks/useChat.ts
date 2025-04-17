@@ -41,16 +41,18 @@ export const useChat = () => {
           // Create the chat in Firebase realtime database which accepts any data structure
           // This is separate from the Drizzle schema types
           const firebaseChatId = await createRealtimeChat({
-            // Convert IDs to strings for Firebase (it prefers string keys)
-            founderId: chatData.founderId.toString(),
-            investorId: chatData.investorId.toString(), 
-            startupId: chatData.startupId.toString(),
+            // We need to pass string values for Firebase
+            // TypeScript is complaining because we're mixing types, but this is intended
+            // as we're creating a separate entity in Firebase
+            founderId: String(chatData.founderId),
+            investorId: String(chatData.investorId), 
+            startupId: String(chatData.startupId),
             // Additional metadata for the Firebase chat
             timestamp: Date.now(),
             lastMessage: "",
             founderUnread: 0,
             investorUnread: 0
-          });
+          } as Record<string, any>);
           
           // Enhance the response with the Firebase chat ID if needed
           if (response && response.chat) {
@@ -103,10 +105,10 @@ export const useChat = () => {
         
         // Also send to Firebase Realtime Database for real-time updates
         await sendRealtimeMessage(chatId.toString(), {
-          senderId,
+          senderId: String(senderId),  // Convert to string for Firebase
           content,
           chatId: chatId.toString(),
-        });
+        } as Record<string, any>);
         
         return response;
       },

@@ -50,7 +50,7 @@ export const getChatsByUserId = async (userId: number, role: "founder" | "invest
 // Message CRUD operations
 export const sendRealtimeMessage = async (
   chatId: string, 
-  messageData: Omit<Message, "id" | "chatId" | "createdAt"> & { chatId: string }
+  messageData: Record<string, any> // Use a more flexible type for Firebase
 ): Promise<string> => {
   const messagesRef = ref(database, `messages/${chatId}`);
   const newMessageRef = push(messagesRef);
@@ -58,7 +58,23 @@ export const sendRealtimeMessage = async (
   await set(newMessageRef, {
     ...messageData,
     createdAt: new Date().toISOString(),
+    timestamp: Date.now(), // Add timestamp for easier sorting
   });
+  
+  // Update the last message in the chat
+  const chatRef = ref(database, `chats/${chatId}`);
+  
+  // Instead of using update which we don't have imported, use set with specific fields
+  const chatSnapshot = await get(chatRef);
+  if (chatSnapshot.exists()) {
+    // Get existing data and merge with our updates
+    const existingData = chatSnapshot.val();
+    await set(chatRef, {
+      ...existingData,
+      lastMessage: messageData.content || "",
+      timestamp: Date.now()
+    });
+  }
   
   return newMessageRef.key as string;
 };
