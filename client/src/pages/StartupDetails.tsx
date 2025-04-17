@@ -70,9 +70,13 @@ const StartupDetails = () => {
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
 
+  // Always convert the ID to string to properly handle Firebase IDs
+  const safeStartupId = startupId ? startupId.toString() : "";
+  console.log("[StartupDetails] Looking up startup with ID:", safeStartupId);
+  
   // Only fetch if we have a valid ID
-  const { data: startupData, isLoading: startupLoading } = useStartup(startupId ? startupId.toString() : "");
-  const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(startupId ? startupId.toString() : "");
+  const { data: startupData, isLoading: startupLoading } = useStartup(safeStartupId);
+  const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(safeStartupId);
   
   const updateStartupMutation = useUpdateStartup();
   const createChatMutation = createChat();

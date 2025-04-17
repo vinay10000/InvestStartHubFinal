@@ -269,14 +269,59 @@ export const getStartupsByFounderId = async (founderId: string): Promise<Firebas
 // Get startup by ID
 export const getStartupById = async (startupId: string): Promise<FirebaseStartup | null> => {
   try {
+    console.log("[database] Looking up startup with ID:", startupId);
+    
+    // Try to find by direct ID lookup first
     const startupRef = ref(database, `startups/${startupId}`);
     const snapshot = await get(startupRef);
 
     if (snapshot.exists()) {
-      return snapshot.val() as FirebaseStartup;
-    } else {
-      return null;
+      console.log("[database] Found startup by direct ID lookup:", snapshot.val());
+      const startup = snapshot.val() as FirebaseStartup;
+      // Ensure the startup has its ID
+      return { 
+        ...startup,
+        id: startupId  // Always include the ID
+      };
+    } 
+    
+    // If the numeric ID didn't work, try searching all startups
+    console.log("[database] Startup not found with direct lookup, checking all startups");
+    const allStartupsRef = ref(database, 'startups');
+    const allStartupsSnapshot = await get(allStartupsRef);
+    
+    if (allStartupsSnapshot.exists()) {
+      const startups = allStartupsSnapshot.val();
+      console.log("[database] Found startups:", Object.keys(startups).length);
+      
+      // Option 1: Try to find by Firebase key (negative ID format like -OO3Ja4sDg5-dWWVnDgU)
+      if (startups[startupId]) {
+        console.log("[database] Found by Firebase key in startups collection");
+        return { 
+          ...startups[startupId],
+          id: startupId 
+        };
+      }
+      
+      // Option 2: Try to find by numerical ID
+      const numericId = parseInt(startupId);
+      if (!isNaN(numericId)) {
+        for (const key in startups) {
+          const startup = startups[key];
+          if (startup.id === numericId || startup.id === startupId) {
+            console.log("[database] Found startup by numeric id match:", startup);
+            return { 
+              ...startup,
+              id: key  // Use Firebase key as ID
+            };
+          }
+        }
+      }
+      
+      console.log("[database] Startup not found in any lookup method");
     }
+    
+    return null;
   } catch (error) {
     console.error("Error getting startup by ID:", error);
     return null;
@@ -372,6 +417,9 @@ export const createDocument = async (documentData: FirebaseDocument): Promise<Fi
 // Get documents by startup ID
 export const getDocumentsByStartupId = async (startupId: string): Promise<FirebaseDocument[]> => {
   try {
+    console.log("[database] Fetching documents for startup ID:", startupId);
+    
+    // First try exact match
     const documentsRef = ref(database, 'documents');
     const startupDocumentsQuery = query(documentsRef, orderByChild('startupId'), equalTo(startupId));
     const snapshot = await get(startupDocumentsQuery);
@@ -382,10 +430,41 @@ export const getDocumentsByStartupId = async (startupId: string): Promise<Fireba
         const document = childSnapshot.val();
         documents.push(document);
       });
+      console.log(`[database] Found ${documents.length} documents with exact ID match:`, documents);
       return documents;
-    } else {
-      return [];
+    } 
+    
+    // If numerical ID was used, try string comparison
+    const numericId = parseInt(startupId);
+    if (!isNaN(numericId)) {
+      console.log("[database] No documents found with direct match, trying numerical conversion:", numericId);
+      
+      // Get all documents and filter manually
+      const allDocumentsRef = ref(database, 'documents');
+      const allSnapshot = await get(allDocumentsRef);
+      
+      if (allSnapshot.exists()) {
+        const documents: FirebaseDocument[] = [];
+        allSnapshot.forEach((childSnapshot) => {
+          const document = childSnapshot.val();
+          
+          // Check various ID formats
+          if (document.startupId === numericId || 
+              document.startupId === startupId ||
+              (typeof document.startupId === 'string' && parseInt(document.startupId) === numericId)) {
+            documents.push(document);
+          }
+        });
+        
+        console.log(`[database] Found ${documents.length} documents with numeric ID comparison:`, documents);
+        if (documents.length > 0) {
+          return documents;
+        }
+      }
     }
+    
+    console.log("[database] No documents found for startup:", startupId);
+    return [];
   } catch (error) {
     console.error("Error getting documents by startup ID:", error);
     return [];

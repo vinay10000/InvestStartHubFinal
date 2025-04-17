@@ -65,9 +65,21 @@ export function useStartups() {
 
   // Get startup by ID
   const useStartup = (id?: string) => {
+    console.log("[useStartups] Calling useStartup hook with ID:", id);
+    
     return useQuery({
       queryKey: ['startups', id],
-      queryFn: () => id ? getStartupById(id) : Promise.resolve(null),
+      queryFn: async () => {
+        if (!id) {
+          console.log("[useStartups] No ID provided to getStartupById, returning null");
+          return Promise.resolve(null);
+        }
+        
+        console.log("[useStartups] Fetching startup with ID:", id);
+        const result = await getStartupById(id);
+        console.log("[useStartups] getStartupById result:", result);
+        return result;
+      },
       enabled: !!id,
     });
   };
