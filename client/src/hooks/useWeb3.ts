@@ -33,18 +33,29 @@ export const useWeb3 = () => {
   // Check if MetaMask is installed on component mount
   useEffect(() => {
     const checkMetaMask = async () => {
+      // Check for wallet connection in localStorage
+      const localStorageWalletStatus = localStorage.getItem('wallet_connected');
+      const isStoredAsConnected = localStorageWalletStatus === 'true';
+
+      // Log for debugging
+      console.log("[useWeb3] Init - localStorage wallet status:", localStorageWalletStatus);
+      
       const installed = isMetaMaskInstalled();
       setIsInstalled(installed);
       
+      // Always attempt connection if stored as connected or if MetaMask reports connected
       if (installed) {
         try {
-          // Check if user is already connected
-          const connected = await isWalletConnected();
+          // Prioritize checking if MetaMask thinks we're connected
+          const metaMaskReportsConnected = await isWalletConnected();
+          console.log("[useWeb3] Init - MetaMask reports connected:", metaMaskReportsConnected);
           
-          if (connected) {
+          if (metaMaskReportsConnected || isStoredAsConnected) {
+            console.log("[useWeb3] Init - Attempting to connect wallet");
             const connectedAddress = await connectWallet();
             
             if (connectedAddress) {
+              console.log("[useWeb3] Init - Successfully connected to", connectedAddress);
               setAddress(connectedAddress);
               
               // Mark wallet as connected in localStorage
@@ -64,10 +75,16 @@ export const useWeb3 = () => {
                 const balanceValue = await getWalletBalance(connectedAddress);
                 setBalance(balanceValue);
               }
+            } else {
+              console.log("[useWeb3] Init - Could not get connected address, clearing localStorage flag");
+              // If we couldn't connect even though localStorage said we should, reset the flag
+              localStorage.removeItem('wallet_connected');
             }
           }
         } catch (error) {
-          console.error('Error initializing Web3:', error);
+          console.error('[useWeb3] Error initializing Web3:', error);
+          // On error, clear localStorage to prevent stuck states
+          localStorage.removeItem('wallet_connected');
         }
       }
     };
@@ -133,12 +150,17 @@ export const useWeb3 = () => {
     }
     
     setIsLoading(true);
+    console.log("[useWeb3] Connect - Attempting to connect wallet");
     
     try {
       const connectedAddress = await connectWallet();
       
       if (connectedAddress) {
+        console.log("[useWeb3] Connect - Successfully connected to", connectedAddress);
         setAddress(connectedAddress);
+        
+        // Always mark wallet as connected in localStorage
+        localStorage.setItem('wallet_connected', 'true');
         
         // Get chain ID
         const currentChainId = await getChainId();
@@ -160,8 +182,14 @@ export const useWeb3 = () => {
         
         return true;
       }
+      
+      console.log("[useWeb3] Connect - Failed to get connected address");
+      localStorage.removeItem('wallet_connected');
       return false;
     } catch (error: any) {
+      console.error("[useWeb3] Connect - Error:", error);
+      localStorage.removeItem('wallet_connected');
+      
       toast({
         title: 'Connection Failed',
         description: error.message || 'Failed to connect to MetaMask',
@@ -224,6 +252,11 @@ export const useWeb3 = () => {
     }
   }, [address]);
   
+  // Helper method to check if wallet is connected
+  const isWalletConnected = useCallback(() => {
+    return Boolean(address) || localStorage.getItem('wallet_connected') === 'true';
+  }, [address]);
+
   return {
     isInstalled,
     isLoading,
@@ -233,6 +266,7 @@ export const useWeb3 = () => {
     chainId,
     connect,
     changeNetwork,
-    refreshBalance
+    refreshBalance,
+    isWalletConnected
   };
 };

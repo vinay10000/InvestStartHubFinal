@@ -12,7 +12,7 @@ import { useWeb3 } from "@/hooks/useWeb3";
 import { useContractInteraction } from "@/hooks/useContractInteraction";
 import { formatCurrency, truncateAddress } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   amount: z.string()
@@ -32,11 +32,19 @@ const MetaMaskPayment = ({
   startupName,
   onPaymentComplete 
 }: MetaMaskPaymentProps) => {
-  const { isInstalled, address, connect } = useWeb3();
+  const { isInstalled, address, connect, isWalletConnected } = useWeb3();
   const { investInStartup } = useContractInteraction();
   const { createTransaction } = useTransactions();
-  const { user } = useSimpleAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Log connection status for debugging
+  console.log("[MetaMaskPayment] Wallet connection status:", {
+    address,
+    isWalletConnected: isWalletConnected(),
+    hasUserWallet: user?.walletAddress ? true : false,
+    localStorage: localStorage.getItem('wallet_connected')
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   

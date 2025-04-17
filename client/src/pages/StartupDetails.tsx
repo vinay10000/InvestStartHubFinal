@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useChat } from "@/hooks/useChat";
 import { useToast } from "@/hooks/use-toast";
+import { useWeb3 } from "@/hooks/useWeb3";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,16 +68,18 @@ const StartupDetails = () => {
     console.log("StartupDetails - Document URLs:", documentsData.documents.map((doc: any) => doc.fileUrl));
   }
   
-  // Check if user has a connected wallet - use multiple sources of truth
-  const hasWalletConnected = Boolean(
-    (user?.walletAddress && user.walletAddress !== '') || 
-    localStorage.getItem('wallet_connected') === 'true'
-  );
+  // Use useWeb3 hook for accurate wallet connection status
+  const { address: metamaskAddress, isWalletConnected } = useWeb3();
+  
+  // Use the dedicated isWalletConnected method which checks all sources of truth
+  const hasWalletConnected = isWalletConnected() || (user?.walletAddress && user.walletAddress !== '');
   
   // Log wallet connection status for debugging
   console.log("Wallet connection status:", { 
     userWalletAddress: user?.walletAddress,
+    metamaskAddress,
     localStorageWalletConnected: localStorage.getItem('wallet_connected'),
+    isWalletConnectedMethod: isWalletConnected(),
     hasWalletConnected 
   });
 
