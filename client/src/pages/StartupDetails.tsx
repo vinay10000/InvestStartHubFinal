@@ -198,7 +198,8 @@ const StartupDetails = () => {
         founderId,
         founderIdType: typeof founderId,
         userId: user.id,
-        userIdType: typeof user.id
+        userIdType: typeof user.id,
+        userRole: user.role
       });
       
       // Get startup ID - always convert to number for consistency with the API
@@ -209,19 +210,56 @@ const StartupDetails = () => {
         if (typeof startup.id === 'number') {
           startupIdNumber = startup.id;
         } else if (typeof startup.id === 'string') {
+          // First try to parse it directly
           const parsed = parseInt(startup.id);
           if (!isNaN(parsed)) {
             startupIdNumber = parsed;
           } else {
-            console.log("Using fallback startup ID because string ID couldn't be parsed:", startup.id);
+            // If it's a Firebase ID (non-numeric string), generate a numeric hash
+            // Simple hash function to convert string to number
+            const stringToNumber = (str: string): number => {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0; // Convert to 32bit integer
+              }
+              return Math.abs(hash) % 10000; // Keep it under 10000
+            };
+            
+            startupIdNumber = stringToNumber(startup.id);
+            console.log("Generated numeric ID for Firebase startup ID:", startupIdNumber);
           }
         }
       }
       
-      // Get founder ID - with fallback to 1
+      // Get founder ID based on role
       let founderIdNumber: number = 1;
       
-      if (founderId !== undefined && founderId !== null) {
+      if (user.role === 'founder') {
+        // If current user is the founder, use their ID
+        if (typeof user.id === 'number') {
+          founderIdNumber = user.id;
+        } else if (typeof user.id === 'string') {
+          const parsed = parseInt(user.id);
+          if (!isNaN(parsed)) {
+            founderIdNumber = parsed;
+          } else {
+            // Generate a numeric ID from the string
+            const stringToNumber = (str: string): number => {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+              }
+              return Math.abs(hash) % 10000;
+            };
+            
+            founderIdNumber = stringToNumber(user.id);
+            console.log("Generated numeric ID for founder:", founderIdNumber);
+          }
+        }
+      } else if (founderId !== undefined && founderId !== null) {
+        // Use the provided founder ID if available
         if (typeof founderId === 'number') {
           founderIdNumber = founderId;
         } else if (typeof founderId === 'string') {
@@ -229,15 +267,27 @@ const StartupDetails = () => {
           if (!isNaN(parsed)) {
             founderIdNumber = parsed;
           } else {
-            console.log("Using fallback founder ID because string ID couldn't be parsed:", founderId);
+            // Generate a numeric ID from the string
+            const stringToNumber = (str: string): number => {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+              }
+              return Math.abs(hash) % 10000;
+            };
+            
+            founderIdNumber = stringToNumber(founderId);
+            console.log("Generated numeric ID for founder string ID:", founderIdNumber);
           }
         }
       }
       
-      // Get investor ID (user ID) - with fallback to 2
+      // Get investor ID (user ID) with role-based logic
       let investorIdNumber: number = 2;
       
-      if (user.id !== undefined && user.id !== null) {
+      if (user.role === 'investor') {
+        // If current user is the investor, use their ID
         if (typeof user.id === 'number') {
           investorIdNumber = user.id;
         } else if (typeof user.id === 'string') {
@@ -245,7 +295,31 @@ const StartupDetails = () => {
           if (!isNaN(parsed)) {
             investorIdNumber = parsed;
           } else {
-            console.log("Using fallback investor ID because string ID couldn't be parsed:", user.id);
+            // Generate a numeric ID from the string
+            const stringToNumber = (str: string): number => {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+              }
+              return Math.abs(hash) % 10000;
+            };
+            
+            investorIdNumber = stringToNumber(user.id);
+            console.log("Generated numeric ID for investor:", investorIdNumber);
+          }
+        }
+      } else if (user.id !== undefined && user.id !== null) {
+        // For consistency, if we're not an investor but need an investor ID
+        if (typeof user.id === 'number') {
+          investorIdNumber = user.id;
+        } else if (typeof user.id === 'string') {
+          const parsed = parseInt(user.id);
+          if (!isNaN(parsed)) {
+            investorIdNumber = parsed;
+          } else {
+            // Use default investor ID
+            console.log("Using default investor ID (2) as we couldn't parse:", user.id);
           }
         }
       }
@@ -267,7 +341,7 @@ const StartupDetails = () => {
       // Show loading state or message
       toast({
         title: "Creating chat...",
-        description: "Connecting you with the startup founder",
+        description: "Connecting you with the " + (user.role === 'founder' ? "investor" : "startup founder"),
       });
       
       // Create the chat using the mutation 
@@ -285,7 +359,7 @@ const StartupDetails = () => {
       
       toast({
         title: "Chat created!",
-        description: "You can now communicate with the startup founder",
+        description: "You can now communicate with the " + (user.role === 'founder' ? "investor" : "startup founder"),
         variant: "default",
       });
       
