@@ -11,12 +11,13 @@ import DocumentUpload from "@/components/startups/DocumentUpload";
 import DocumentUploadSection from "@/components/startups/DocumentUploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import TransactionList from "@/components/transactions/TransactionList";
+import { Startup } from "@shared/schema";
 import { 
-  FirebaseStartup, 
   createStartup as firebaseCreateStartup, 
   getStartupsByFounderId as firebaseGetStartupsByFounderId,
   createDocument as firebaseCreateDocument,
-  getTransactionsByFounderId as firebaseGetTransactionsByFounderId
+  getTransactionsByFounderId as firebaseGetTransactionsByFounderId,
+  FirebaseStartup as ImportedFirebaseStartup
 } from "@/firebase/database";
 
 const FounderDashboard = () => {
