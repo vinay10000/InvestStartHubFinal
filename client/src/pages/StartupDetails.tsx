@@ -320,14 +320,29 @@ const StartupDetails = () => {
             )}
             
             {isInvestor && (
-              <>
+              <div className="flex flex-wrap gap-2">
+                {/* Invest Button */}
+                <Button 
+                  size="lg" 
+                  className="font-semibold bg-green-600 hover:bg-green-700"
+                  onClick={() => setIsInvestDialogOpen(true)}
+                >
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  Invest
+                </Button>
+                
+                {/* Chat Button */}
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={handleStartChat}
+                >
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Chat
+                </Button>
+                
+                {/* Investment Dialog */}
                 <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="lg" className="font-semibold bg-green-600 hover:bg-green-700">
-                      <DollarSign className="mr-2 h-5 w-5" />
-                      Invest Now
-                    </Button>
-                  </DialogTrigger>
                   <DialogContent className="sm:max-w-[550px]">
                     <DialogHeader>
                       <DialogTitle>Invest in {name}</DialogTitle>
@@ -362,12 +377,7 @@ const StartupDetails = () => {
                     </Tabs>
                   </DialogContent>
                 </Dialog>
-                
-                <Button variant="outline" onClick={handleStartChat}>
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Message
-                </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
