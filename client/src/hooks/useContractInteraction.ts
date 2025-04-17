@@ -41,14 +41,15 @@ export const useContractInteraction = () => {
   };
 
   // Invest in a startup
-  const investInStartup = async (startupId: number, amount: string) => {
+  const investInStartup = async (startupId: number, amount: string, founderWalletAddress?: string) => {
     const walletConnected = await ensureWalletConnected();
     if (!walletConnected) return null;
 
     setIsLoading(true);
 
     try {
-      const result = await contractInteraction.investInStartup(startupId, amount);
+      // Pass the founderWalletAddress to the contract interaction
+      const result = await contractInteraction.investInStartup(startupId, amount, founderWalletAddress);
       
       toast({
         title: "Investment Successful",

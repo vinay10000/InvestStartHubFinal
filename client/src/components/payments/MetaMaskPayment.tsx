@@ -201,23 +201,9 @@ const MetaMaskPayment = ({
       // Use fixed notation with appropriate decimal places (max 18 for Ethereum)
       const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
       
-      // Get founder wallet address from startup data if available
-      let founderWalletAddress: string | undefined = undefined;
-      
-      // Safe extraction of founder wallet address from various possible data structures
-      if (startupData) {
-        // Check all possible locations where wallet address might be stored
-        if (typeof startupData === 'object') {
-          // Check common patterns for wallet address storage
-          if ('walletAddress' in startupData) {
-            founderWalletAddress = (startupData as any).walletAddress;
-          } else if ('founderWalletAddress' in startupData) {
-            founderWalletAddress = (startupData as any).founderWalletAddress;
-          } else if ('founderId' in startupData && typeof startupData.founderId === 'object') {
-            founderWalletAddress = (startupData.founderId as any).walletAddress;
-          }
-        }
-      }
+      // Use the founder wallet address from our founderInfo state
+      // This was loaded in the useEffect when startup data changed
+      let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
                                    
       // Log the startup data and wallet address being used
       console.log("[MetaMaskPayment] Startup data for investment:", {
