@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useStartups } from "@/hooks/useStartups";
-import { useDocuments } from "@/hooks/useDocuments";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,27 +10,25 @@ import StartupCard from "@/components/startups/StartupCard";
 import DocumentUpload from "@/components/startups/DocumentUpload";
 import DocumentUploadSection from "@/components/startups/DocumentUploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";
 import { 
   FirebaseStartup, 
   createStartup as firebaseCreateStartup, 
   getStartupsByFounderId as firebaseGetStartupsByFounderId,
-  createDocument as firebaseCreateDocument
+  createDocument as firebaseCreateDocument,
+  getTransactionsByFounderId as firebaseGetTransactionsByFounderId
 } from "@/firebase/database";
 
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   // Make sure userId is correctly extracted from the auth state
-  // If we don't have user.id, try to use user.uid which might be present in Firebase auth
-  const userId = user?.id || user?.uid || "";
+  // Handle both database-style user.id and Firebase-style user.uid
+  const userId = user ? (user.id || (user as any)?.uid || "") : "";
   
   console.log("Current auth state:", { user, userId, authLoading });
   
-  const { useFounderStartups, useCreateStartup } = useStartups();
-  const { getTransactionsByFounderId } = useTransactions();
-  const documents = useDocuments();
-  const { uploadDocumentFile } = documents;
+  // No longer using hooks that depend on Supabase
+  // We'll use Firebase functions directly
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
@@ -53,8 +49,9 @@ const FounderDashboard = () => {
   
   const [myStartups, setMyStartups] = useState<FirebaseStartup[]>([]); // Store startups in state
 
-  // Wait for auth to resolve before making data queries
-  const { data: startupsData, isLoading: startupsLoading } = useFounderStartups();
+  // No longer using Supabase hooks for startups
+  const [startupsLoading, setStartupsLoading] = useState(true);
+  const [isCreatingStartup, setIsCreatingStartup] = useState(false);
   
   // Load startups from Firebase Realtime Database
   useEffect(() => {
@@ -100,14 +97,11 @@ const FounderDashboard = () => {
     }
   }, [userId]);
   
-  // Convert to a number for API call
-  const userIdNumber = userId ? (typeof userId === 'string' ? 
-    parseInt(userId) : userId) : undefined;
-    
-  const { data: transactionsData, isLoading: transactionsLoading } = getTransactionsByFounderId(userIdNumber?.toString());
+  // Firebase transactions - replace with direct Firebase call later
+  const [transactionsData, setTransactionsData] = useState<any>({transactions: []});
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
   
-  // Create startup mutation
-  const createStartupMutation = useCreateStartup();
+  // Removed Supabase mutation
 
   const handleCreateStartup = async (startupData: any) => {
     try {
@@ -345,31 +339,10 @@ const FounderDashboard = () => {
     }[];
   }
   
-  // Transform API startups to match expected format
-  const apiStartups = Array.isArray(startupsData)
-    ? startupsData.map(startup => {
-        const typedStartup: FirebaseStartup = {
-          id: startup.id.toString(),
-          name: startup.name,
-          description: startup.description,
-          category: startup.category,
-          investmentStage: startup.investment_stage,
-          investment_stage: startup.investment_stage,
-          founderId: startup.founder_id,
-          founder_id: startup.founder_id,
-          logoUrl: startup.logo_url,
-          logo_url: startup.logo_url,
-          upiQrCode: startup.upi_qr_code,
-          upi_qr_code: startup.upi_qr_code,
-          pitch: startup.pitch,
-          funding_goal: startup.funding_goal,
-          upi_id: startup.upi_id
-        };
-        return typedStartup;
-      })
-    : [];
+  // No longer need to transform API startups as we're using Firebase directly
     
-  const combinedStartups = myStartups.length > 0 ? myStartups : apiStartups;
+  // Now we're only using Firebase data
+  const combinedStartups = myStartups;
   const transactions = (transactionsData as ApiTransactionResponse)?.transactions || [];
 
   // Calculate metrics safely

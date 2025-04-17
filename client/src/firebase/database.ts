@@ -336,6 +336,36 @@ export const getTransactionsByInvestorId = async (investorId: string): Promise<F
   }
 };
 
+// Get transactions by founder ID (uses startup ID as a proxy)
+export const getTransactionsByFounderId = async (founderId: string): Promise<FirebaseTransaction[]> => {
+  try {
+    // First, get all startups owned by this founder
+    const founderStartups = await getStartupsByFounderId(founderId);
+    
+    if (founderStartups.length === 0) {
+      return [];
+    }
+    
+    // Get startup IDs
+    const startupIds = founderStartups.map(startup => startup.id);
+    
+    // For each startup, get its transactions
+    const allTransactions: FirebaseTransaction[] = [];
+    
+    for (const startupId of startupIds) {
+      if (startupId) {
+        const transactions = await getTransactionsByStartupId(startupId);
+        allTransactions.push(...transactions);
+      }
+    }
+    
+    return allTransactions;
+  } catch (error) {
+    console.error("Error getting transactions by founder ID:", error);
+    return [];
+  }
+};
+
 // Update transaction status
 export const updateTransactionStatus = async (transactionId: string, status: string): Promise<FirebaseTransaction | null> => {
   try {
