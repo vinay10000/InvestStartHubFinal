@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,12 +28,36 @@ const formSchema = z.object({
       return parsed > 0;
     }, "Amount must be greater than 0")
     .refine(val => {
-      const parsed = Number(val);
       // Check if the value has no more than 18 decimal places (Ethereum limit)
       const decimalPart = val.toString().split('.')[1] || '';
       return decimalPart.length <= 18;
     }, "Amount cannot have more than 18 decimal places")
 });
+
+// Helper function to get network name from chain ID
+const getNetworkName = (chainIdStr: string | null): string => {
+  if (!chainIdStr) return "Unknown Network";
+  
+  // Try to parse the chain ID as a number
+  let chainId: number;
+  try {
+    // Handle both decimal and hex formats
+    if (chainIdStr.startsWith('0x')) {
+      chainId = parseInt(chainIdStr, 16);
+    } else {
+      chainId = parseInt(chainIdStr, 10);
+    }
+    
+    if (isNaN(chainId)) return "Unknown Network";
+  } catch (e) {
+    return "Unknown Network";
+  }
+  
+  if (chainId === 1) return "Ethereum Mainnet";
+  if (chainId === 11155111) return "Sepolia Testnet";
+  if (chainId === 31337 || chainId === 1337) return "Local Development";
+  return `Chain ID: ${chainId}`;
+};
 
 interface MetaMaskPaymentProps {
   startupId: number;
@@ -58,26 +82,14 @@ const MetaMaskPayment = ({
   
   // Check network on mount and update when chainId changes
   useEffect(() => {
-    // Map chainId to network name based on numeric values
-    const chainIdNum = chainId ? Number(chainId) : null;
-    
-    if (chainIdNum === 1) {
-      setNetworkName("Ethereum Mainnet");
-    } else if (chainIdNum === 11155111) {
-      setNetworkName("Sepolia Testnet");
-    } else if (chainIdNum === 31337 || chainIdNum === 1337) {
-      setNetworkName("Local Development");
-    } else if (chainIdNum) {
-      setNetworkName(`Chain ID: ${chainIdNum}`);
-    } else {
-      setNetworkName("Unknown Network");
-    }
+    // Update network name based on chain ID
+    setNetworkName(getNetworkName(chainId));
     
     // Log connection status for debugging
     console.log("[MetaMaskPayment] Wallet connection status:", {
       address,
-      chainId: chainIdNum,
-      networkName: networkName,
+      chainId,
+      networkName: getNetworkName(chainId),
       balance,
       isWalletConnected: typeof isWalletConnected === 'function' ? isWalletConnected() : false,
       hasUserWallet: user?.walletAddress ? true : false,
@@ -270,16 +282,26 @@ const MetaMaskPayment = ({
           
           <div className="text-center">
             <a 
-              href={chainId === 11155111 
-                ? `https://sepolia.etherscan.io/tx/${txHash}`
-                : chainId === 1 
-                  ? `https://etherscan.io/tx/${txHash}`
-                  : `#`}
+              href={(() => {
+                const chainIdNum = chainId ? Number(chainId) : 0;
+                if (chainIdNum === 11155111) {
+                  return `https://sepolia.etherscan.io/tx/${txHash}`;
+                } else if (chainIdNum === 1) {
+                  return `https://etherscan.io/tx/${txHash}`;
+                } else {
+                  return `#`;
+                }
+              })()}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              <span>View Transaction on {chainId === 11155111 ? "Sepolia " : ""}Etherscan</span>
+              <span>
+                View Transaction on {(() => {
+                  const chainIdNum = chainId ? Number(chainId) : 0;
+                  return chainIdNum === 11155111 ? "Sepolia " : "";
+                })()}Etherscan
+              </span>
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
