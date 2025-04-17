@@ -29,6 +29,9 @@ export const startups = pgTable("startups", {
   websiteUrl: text("website_url"),
   upiId: text("upi_id"),
   upiQrCode: text("upi_qr_code"),
+  // Media fields
+  mediaUrls: text("media_urls").array(), // For storing multiple image URLs
+  videoUrl: text("video_url"), // For storing a single video URL
   createdAt: timestamp("created_at").defaultNow(),
 });
 

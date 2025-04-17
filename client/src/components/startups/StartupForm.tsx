@@ -28,6 +28,10 @@ const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
   pitchDeckFile: z.instanceof(File, { message: "Pitch deck is required" }).optional(),
   financialReportFile: z.instanceof(File, { message: "Financial report is required" }).optional(),
   investorAgreementFile: z.instanceof(File, { message: "Investor agreement is required" }).optional(),
+  // Media fields
+  logoFile: z.instanceof(File, { message: "Logo image is required" }).optional(),
+  mediaFiles: z.array(z.instanceof(File)).optional(),
+  videoFile: z.instanceof(File).optional(),
 });
 
 type StartupFormValues = z.infer<typeof startupFormSchema>;
@@ -48,8 +52,17 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
   const [pitchDeckFile, setPitchDeckFile] = useState<File | null>(null);
   const [financialReportFile, setFinancialReportFile] = useState<File | null>(null);
   const [investorAgreementFile, setInvestorAgreementFile] = useState<File | null>(null);
+  // New media state variables
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  // Preview states
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(defaultValues?.upiQrCode || null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(defaultValues?.logoUrl || null);
+  const [mediaPreviewUrls, setMediaPreviewUrls] = useState<string[]>([]);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [documentErrors, setDocumentErrors] = useState<Record<DocumentType, string | null>>({
     pitch_deck: null,
     financial_report: null,

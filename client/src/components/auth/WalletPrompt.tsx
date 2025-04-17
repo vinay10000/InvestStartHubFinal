@@ -56,16 +56,11 @@ const WalletPrompt: React.FC<WalletPromptProps> = ({
       localStorage.setItem('wallet_connected', 'true');
     }
     
-    // Only show prompt if no wallet is connected and hasn't been connected before
-    if (!hasWallet && !hasConnectedWallet && !hasChecked) {
-      console.log('WalletPrompt: User has no wallet connected, showing prompt');
-      setShowPrompt(true);
-      setHasChecked(true);
-    } else if (!hasChecked) {
-      // Just mark as checked without showing
-      setHasChecked(true);
-    }
-  }, [user, hasChecked, isControlled]);
+    // No longer automatically showing wallet prompt for all users
+    // Only show when explicitly requested through props
+    console.log('WalletPrompt: No longer auto-showing wallet prompt. Contextual connections only.');
+    setHasChecked(true);
+  }, [user, isControlled]);
 
   // Callback when wallet is connected
   const handleWalletConnect = (address: string) => {

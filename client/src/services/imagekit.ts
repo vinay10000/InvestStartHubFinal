@@ -208,11 +208,101 @@ export const uploadDocumentToImageKit = async (
   }
 };
 
+// Upload startup media (logo, images, videos)
+export const uploadStartupMedia = async (
+  startupId: number | string,
+  mediaType: 'logo' | 'image' | 'video',
+  file: File
+): Promise<{
+  url: string,
+  fileId: string,
+  fileName: string,
+  mimeType: string,
+  fileSize: number
+}> => {
+  try {
+    // Validate file type based on mediaType
+    const isValid = validateMediaFileType(file, mediaType);
+    if (!isValid) {
+      throw new Error(`Invalid file format for ${mediaType}`);
+    }
+    
+    // Check file size (max 20MB for any media)
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error(`File size should be less than 20MB`);
+    }
+    
+    // Create form data for upload
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${mediaType}_${timestamp}_${safeName}`;
+    
+    formData.append('fileName', fileName);
+    formData.append('folder', `startups/${startupId}/media/${mediaType}`);
+    formData.append('useUniqueFileName', 'false');
+    formData.append('tags', `${mediaType},startup`);
+    
+    // Upload via our server-side proxy endpoint
+    const response = await fetch('/api/imagekit/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `Failed to upload ${mediaType}`);
+    }
+    
+    return {
+      url: data.url,
+      fileId: data.fileId || '',
+      fileName: file.name, // Original file name
+      mimeType: file.type,
+      fileSize: file.size
+    };
+  } catch (error) {
+    console.error(`Error uploading ${mediaType}:`, error);
+    throw new Error(`Failed to upload ${mediaType}`);
+  }
+};
+
+// Validate media file type
+const validateMediaFileType = (file: File, mediaType: 'logo' | 'image' | 'video'): boolean => {
+  const fileType = file.type;
+  
+  switch (mediaType) {
+    case 'logo':
+      // Accept only images for logo
+      return fileType.startsWith('image/');
+      
+    case 'image':
+      // Accept all standard image formats
+      return fileType.startsWith('image/');
+      
+    case 'video':
+      // Accept standard video formats
+      return fileType.startsWith('video/') || 
+             fileType === 'application/mp4' ||
+             fileType === 'video/mp4' ||
+             fileType === 'video/webm' ||
+             fileType === 'video/quicktime';
+             
+    default:
+      return false;
+  }
+};
+
 export default {
   uploadFile,
   uploadStartupDocument,
   uploadUpiQRCode,
   uploadDocumentToImageKit,
+  uploadStartupMedia,
   deleteFile,
   getAuthenticationParams,
 };
