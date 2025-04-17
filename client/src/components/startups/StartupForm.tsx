@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertStartupSchema } from "@shared/schema";
-import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet, CheckCircle } from "lucide-react";
+import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet, CheckCircle, FileVideo, Plus, X } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import WalletConnect from "@/components/auth/WalletConnect";
 import { useAuth } from "@/hooks/useAuth";
@@ -229,6 +229,261 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
     }
   };
   
+  // Media file handlers
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB for logo)
+      if (file.size > 5 * 1024 * 1024) {
+        setMediaError("Logo file size should be less than 5MB");
+        return;
+      }
+      
+      // Check file type (only allow images)
+      if (!file.type.startsWith('image/')) {
+        setMediaError("Only image files are allowed for logo");
+        return;
+      }
+      
+      setMediaError(null);
+      setLogoFile(file);
+      form.setValue("logoFile", file);
+      
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleMediaFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const selectedFiles: File[] = [];
+      const newPreviewUrls: string[] = [];
+      let hasError = false;
+      
+      // Process each file
+      Array.from(files).forEach(file => {
+        // Check file size (max 10MB per image)
+        if (file.size > 10 * 1024 * 1024) {
+          setMediaError("Each image file size should be less than 10MB");
+          hasError = true;
+          return;
+        }
+        
+        // Check file type (only allow images)
+        if (!file.type.startsWith('image/')) {
+          setMediaError("Only image files are allowed for gallery images");
+          hasError = true;
+          return;
+        }
+        
+        // Add to selected files
+        selectedFiles.push(file);
+        
+        // Create preview URLs
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviewUrls.push(reader.result as string);
+          // When all files are processed, update state
+          if (newPreviewUrls.length === selectedFiles.length) {
+            setMediaPreviewUrls([...mediaPreviewUrls, ...newPreviewUrls]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      if (!hasError) {
+        setMediaError(null);
+        // Limit to max 5 images
+        const allMediaFiles = [...mediaFiles, ...selectedFiles].slice(0, 5);
+        setMediaFiles(allMediaFiles);
+        form.setValue("mediaFiles", allMediaFiles);
+      }
+    }
+  };
+  
+  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 20MB for video)
+      if (file.size > 20 * 1024 * 1024) {
+        setMediaError("Video file size should be less than 20MB");
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('video/') && 
+          file.type !== 'application/mp4' && 
+          !file.name.toLowerCase().endsWith('.mp4') &&
+          !file.name.toLowerCase().endsWith('.webm')) {
+        setMediaError("Only video files are allowed (MP4, WebM)");
+        return;
+      }
+      
+      setMediaError(null);
+      setVideoFile(file);
+      form.setValue("videoFile", file);
+      
+      // Create a preview thumbnail if possible
+      if (URL.createObjectURL) {
+        const videoUrl = URL.createObjectURL(file);
+        setVideoPreviewUrl(videoUrl);
+      }
+    }
+  };
+  
+  // Handle logo drag and drop
+  const handleLogoDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleLogoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      
+      // Check file size (max 5MB for logo)
+      if (file.size > 5 * 1024 * 1024) {
+        setMediaError("Logo file size should be less than 5MB");
+        return;
+      }
+      
+      // Check file type (only allow images)
+      if (!file.type.startsWith('image/')) {
+        setMediaError("Only image files are allowed for logo");
+        return;
+      }
+      
+      setMediaError(null);
+      setLogoFile(file);
+      form.setValue("logoFile", file);
+      
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // Handle media files drag and drop
+  const handleMediaDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleMediaDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = e.dataTransfer.files;
+      const selectedFiles: File[] = [];
+      const newPreviewUrls: string[] = [];
+      let hasError = false;
+      
+      // Process each file
+      Array.from(files).forEach(file => {
+        // Check file size (max 10MB per image)
+        if (file.size > 10 * 1024 * 1024) {
+          setMediaError("Each image file size should be less than 10MB");
+          hasError = true;
+          return;
+        }
+        
+        // Check file type (only allow images)
+        if (!file.type.startsWith('image/')) {
+          setMediaError("Only image files are allowed for gallery images");
+          hasError = true;
+          return;
+        }
+        
+        // Add to selected files
+        selectedFiles.push(file);
+        
+        // Create preview URLs
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviewUrls.push(reader.result as string);
+          // When all files are processed, update state
+          if (newPreviewUrls.length === selectedFiles.length) {
+            setMediaPreviewUrls([...mediaPreviewUrls, ...newPreviewUrls]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      if (!hasError) {
+        setMediaError(null);
+        // Limit to max 5 images total
+        const allMediaFiles = [...mediaFiles, ...selectedFiles].slice(0, 5);
+        setMediaFiles(allMediaFiles);
+        form.setValue("mediaFiles", allMediaFiles);
+      }
+    }
+  };
+  
+  // Handle video drag and drop
+  const handleVideoDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleVideoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      
+      // Check file size (max 20MB for video)
+      if (file.size > 20 * 1024 * 1024) {
+        setMediaError("Video file size should be less than 20MB");
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('video/') && 
+          file.type !== 'application/mp4' && 
+          !file.name.toLowerCase().endsWith('.mp4') &&
+          !file.name.toLowerCase().endsWith('.webm')) {
+        setMediaError("Only video files are allowed (MP4, WebM)");
+        return;
+      }
+      
+      setMediaError(null);
+      setVideoFile(file);
+      form.setValue("videoFile", file);
+      
+      // Create a preview thumbnail if possible
+      if (URL.createObjectURL) {
+        const videoUrl = URL.createObjectURL(file);
+        setVideoPreviewUrl(videoUrl);
+      }
+    }
+  };
+  
+  // Remove a media image from the list
+  const handleRemoveMedia = (index: number) => {
+    const updatedFiles = [...mediaFiles];
+    const updatedPreviews = [...mediaPreviewUrls];
+    
+    updatedFiles.splice(index, 1);
+    updatedPreviews.splice(index, 1);
+    
+    setMediaFiles(updatedFiles);
+    setMediaPreviewUrls(updatedPreviews);
+    form.setValue("mediaFiles", updatedFiles);
+  };
+  
   // Handle document drag and drop
   const handleDocumentDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -349,7 +604,11 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
       upiQrCodeFile: upiQrCodeFile || undefined,
       pitchDeckFile: pitchDeckFile || undefined,
       financialReportFile: financialReportFile || undefined,
-      investorAgreementFile: investorAgreementFile || undefined
+      investorAgreementFile: investorAgreementFile || undefined,
+      // Add media files
+      logoFile: logoFile || undefined,
+      mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
+      videoFile: videoFile || undefined
     });
   };
 
@@ -556,6 +815,214 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
             </FormItem>
           )}
         />
+
+        {/* Media Upload Section */}
+        <FormLabel className="text-lg font-medium mt-8 mb-4 block">Startup Media</FormLabel>
+        <Card className="border-dashed">
+          <CardContent className="p-6">
+            <Tabs defaultValue="logo" className="w-full">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="logo">Logo</TabsTrigger>
+                <TabsTrigger value="images">Images</TabsTrigger>
+                <TabsTrigger value="video">Video</TabsTrigger>
+              </TabsList>
+              
+              {/* Logo Upload */}
+              <TabsContent value="logo">
+                <FormField
+                  control={form.control}
+                  name="logoFile"
+                  render={({ field: { value, onChange, ...fieldProps } }) => (
+                    <FormItem>
+                      <FormControl>
+                        <div 
+                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
+                          onDragOver={handleLogoDragOver}
+                          onDrop={handleLogoDrop}
+                        >
+                          {logoPreviewUrl ? (
+                            <div className="flex flex-col items-center">
+                              <img src={logoPreviewUrl} alt="Logo Preview" className="w-40 h-40 object-contain mb-2" />
+                              <p className="text-sm font-medium">{logoFile?.name || "Current Logo"}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <Image className="h-8 w-8 text-gray-400" />
+                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
+                              <p className="text-xs text-gray-500">JPG, PNG, SVG (Max 5MB)</p>
+                            </>
+                          )}
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoFileChange}
+                            disabled={isLoading}
+                            className="hidden"
+                            id="logo-upload"
+                            {...fieldProps}
+                          />
+                          <label htmlFor="logo-upload" className="mt-2 cursor-pointer">
+                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
+                              {logoPreviewUrl ? "Change Logo" : "Upload Logo"}
+                            </div>
+                          </label>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Upload your startup logo (recommended size: 512x512px)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              
+              {/* Images Upload */}
+              <TabsContent value="images">
+                <FormField
+                  control={form.control}
+                  name="mediaFiles"
+                  render={({ field: { value, onChange, ...fieldProps } }) => (
+                    <FormItem>
+                      <FormControl>
+                        <div 
+                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
+                          onDragOver={handleMediaDragOver}
+                          onDrop={handleMediaDrop}
+                        >
+                          {mediaPreviewUrls.length > 0 ? (
+                            <div className="w-full">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                                {mediaPreviewUrls.map((url, index) => (
+                                  <div key={index} className="relative group">
+                                    <img src={url} alt={`Image ${index+1}`} className="w-full h-24 object-cover rounded" />
+                                    <button
+                                      type="button"
+                                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => handleRemoveMedia(index)}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                                {mediaPreviewUrls.length < 5 && (
+                                  <label htmlFor="images-upload" className="border-2 border-dashed border-gray-300 rounded flex items-center justify-center h-24 cursor-pointer">
+                                    <Plus className="w-8 h-8 text-gray-400" />
+                                  </label>
+                                )}
+                              </div>
+                              {mediaPreviewUrls.length < 5 && (
+                                <p className="text-xs text-center text-gray-500 mb-2">
+                                  {5 - mediaPreviewUrls.length} more image{mediaPreviewUrls.length === 4 ? '' : 's'} can be added
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <>
+                              <Image className="h-8 w-8 text-gray-400" />
+                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
+                              <p className="text-xs text-gray-500">JPG, PNG, GIF, etc. (Max 10MB each)</p>
+                            </>
+                          )}
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleMediaFilesChange}
+                            disabled={isLoading || mediaPreviewUrls.length >= 5}
+                            className="hidden"
+                            id="images-upload"
+                            multiple
+                            {...fieldProps}
+                          />
+                          {mediaPreviewUrls.length === 0 && (
+                            <label htmlFor="images-upload" className="mt-2 cursor-pointer">
+                              <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
+                                Upload Images
+                              </div>
+                            </label>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Upload up to 5 images showcasing your startup (products, team, offices, etc.)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              
+              {/* Video Upload */}
+              <TabsContent value="video">
+                <FormField
+                  control={form.control}
+                  name="videoFile"
+                  render={({ field: { value, onChange, ...fieldProps } }) => (
+                    <FormItem>
+                      <FormControl>
+                        <div 
+                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
+                          onDragOver={handleVideoDragOver}
+                          onDrop={handleVideoDrop}
+                        >
+                          {videoFile ? (
+                            <div className="flex flex-col items-center">
+                              {videoPreviewUrl ? (
+                                <video 
+                                  className="w-full h-48 object-contain mb-2" 
+                                  controls
+                                  src={videoPreviewUrl}
+                                />
+                              ) : (
+                                <FileVideo className="h-16 w-16 text-primary mb-2" />
+                              )}
+                              <p className="text-sm font-medium">{videoFile.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <FileVideo className="h-8 w-8 text-gray-400" />
+                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
+                              <p className="text-xs text-gray-500">MP4, WebM (Max 20MB)</p>
+                            </>
+                          )}
+                          <Input
+                            type="file"
+                            accept="video/*,.mp4,.webm"
+                            onChange={handleVideoFileChange}
+                            disabled={isLoading}
+                            className="hidden"
+                            id="video-upload"
+                            {...fieldProps}
+                          />
+                          <label htmlFor="video-upload" className="mt-2 cursor-pointer">
+                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
+                              {videoFile ? "Change Video" : "Upload Video"}
+                            </div>
+                          </label>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Upload a short pitch video or product demo (max 20MB)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+        
+        {mediaError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{mediaError}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Document Upload Section */}
         <FormLabel className="text-lg font-medium mt-8 mb-4 block">Important Documents</FormLabel>
