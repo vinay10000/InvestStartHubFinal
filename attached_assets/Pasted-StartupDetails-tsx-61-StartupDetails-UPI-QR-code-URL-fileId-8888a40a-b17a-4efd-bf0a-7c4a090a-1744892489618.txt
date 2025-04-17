@@ -1,0 +1,32 @@
+StartupDetails.tsx:61 StartupDetails - UPI QR code URL: 
+{fileId: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileName: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileSize: 5053, mimeType: 'image/png', url: '/uploads/8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png'}
+StartupDetails.tsx:63 StartupDetails - UPI ID: ferb@ixl
+StartupDetails.tsx:79 Wallet connection status: 
+{userWalletAddress: '', metamaskAddress: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', localStorageWalletConnected: 'true', isWalletConnectedMethod: true, hasWalletConnected: true}
+StartupDetails.tsx:116 Startup details - founderId: pTvcMD9S4iWaIfrMjuX0HkTjB4v1 user.id: MuVOGBJxgodrhuxgnicg76O4jlZ2 user.uid: MuVOGBJxgodrhuxgnicg76O4jlZ2
+StartupDetails.tsx:132 User role check: user: 
+{id: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', uid: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', username: 'zqsee', email: 'zqsee@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256', …}
+ role: investor isInvestor: true isFounder: false
+Header.tsx:27 Header rendering with auth state: 
+{user: {…}, loading: false}
+Header.tsx:49 Header - Using role from user object: investor
+StartupDetails.tsx:51 StartupDetails - ID from params: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:52 StartupDetails - Startup ID being used for query: -OO2Q_VDFBu46kZIumna
+StartupDetails.tsx:53 StartupDetails - Current user: 
+{id: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', uid: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', username: 'zqsee', email: 'zqsee@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256', …}
+StartupDetails.tsx:54 StartupDetails - User role: investor
+StartupDetails.tsx:55 StartupDetails - Fetched startup data: 
+{createdAt: '2025-04-17T11:07:14.509Z', current_funding: '0', description: 'Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations', founderId: 'pTvcMD9S4iWaIfrMjuX0HkTjB4v1', funding_goal: '80', …}
+StartupDetails.tsx:56 StartupDetails - Fetched documents data: 
+{documents: Array(0)}
+StartupDetails.tsx:61 StartupDetails - UPI QR code URL: 
+{fileId: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileName: '8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png', fileSize: 5053, mimeType: 'image/png', url: '/uploads/8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png'}
+StartupDetails.tsx:63 StartupDetails - UPI ID: ferb@ixl
+StartupDetails.tsx:79 Wallet connection status: 
+{userWalletAddress: '', metamaskAddress: '0xb4dc25e38f4e85eb922222b63205051838c2f57a', localStorageWalletConnected: 'true', isWalletConnectedMethod: true, hasWalletConnected: true}
+StartupDetails.tsx:116 Startup details - founderId: pTvcMD9S4iWaIfrMjuX0HkTjB4v1 user.id: MuVOGBJxgodrhuxgnicg76O4jlZ2 user.uid: MuVOGBJxgodrhuxgnicg76O4jlZ2
+StartupDetails.tsx:132 User role check: user: 
+{id: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', uid: 'MuVOGBJxgodrhuxgnicg76O4jlZ2', username: 'zqsee', email: 'zqsee@mail.com', profilePicture: 'https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256', …}
+ role: investor isInvestor: true isFounder: false
+﻿
+

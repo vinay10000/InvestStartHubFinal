@@ -181,8 +181,15 @@ const MetaMaskPayment = ({
         
         // Record transaction in our backend
         if (user) {
+          const startupIdForBackend = typeof startupId === 'number' ? startupId.toString() : startupId;
+          console.log("Recording transaction with IDs:", {
+            startupIdForBackend,
+            investorId: user.id,
+            transactionHash: result.transactionHash
+          });
+          
           await createTransaction.mutateAsync({
-            startupId,
+            startupId: startupIdForBackend,
             investorId: user.id,
             amount: cleanAmount,
             paymentMethod: "metamask",

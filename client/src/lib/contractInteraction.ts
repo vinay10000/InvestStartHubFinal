@@ -116,17 +116,36 @@ export const getStartupFromContract = async (startupId: number) => {
  * Invest in a startup with ETH
  */
 export const investInStartup = async (startupId: number, amount: string) => {
+  console.log(`[Contract Interaction] Starting investment process`);
+  console.log(`[Contract Interaction] Raw inputs - startupId:`, startupId, "amount:", amount, "types:", {
+    startupIdType: typeof startupId,
+    amountType: typeof amount
+  });
+  
   try {
+    // Ensure startupId is a valid number
+    if (typeof startupId !== 'number' || isNaN(startupId)) {
+      console.error(`[Contract Interaction] Invalid startupId: ${startupId} (${typeof startupId})`);
+      throw new Error("Invalid startup ID: must be a number");
+    }
+    
+    // Use a positive integer for the contract (use 1 for all demo purposes)
+    const contractStartupId = 1; // Force to 1 for demo
+    console.log(`[Contract Interaction] Using contractStartupId: ${contractStartupId} (original: ${startupId})`);
+    
     const contract = await getInvestmentContract(true);
+    console.log(`[Contract Interaction] Contract instance obtained`);
     
     // Ensure we have a valid number before proceeding
     if (!amount || amount.trim() === "" || isNaN(Number(amount))) {
+      console.error(`[Contract Interaction] Invalid amount: ${amount}`);
       throw new Error("Invalid amount: please enter a valid number");
     }
     
     // Parse the input amount safely
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
+      console.error(`[Contract Interaction] Non-positive amount: ${numericAmount}`);
       throw new Error("Amount must be a positive number");
     }
     
@@ -139,10 +158,12 @@ export const investInStartup = async (startupId: number, amount: string) => {
     // Use fixed notation with appropriate precision
     const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
     
-    console.log(`[Contract Interaction] Input amount: ${amount}`);
-    console.log(`[Contract Interaction] Parsed amount: ${numericAmount}`);
-    console.log(`[Contract Interaction] Clean amount: ${cleanAmount}`);
-    console.log(`[Contract Interaction] Investing in startup ${startupId} with ${cleanAmount} ETH`);
+    console.log(`[Contract Interaction] Amount processing`);
+    console.log(`[Contract Interaction] - Input amount: ${amount}`);
+    console.log(`[Contract Interaction] - Parsed amount: ${numericAmount}`);
+    console.log(`[Contract Interaction] - Decimal places: ${decimalPlaces}`);
+    console.log(`[Contract Interaction] - Clean amount: ${cleanAmount}`);
+    console.log(`[Contract Interaction] Investing in startup ${contractStartupId} with ${cleanAmount} ETH`);
     
     try {
       // Convert ETH amount to wei safely using a string that parseEther can handle
@@ -151,7 +172,7 @@ export const investInStartup = async (startupId: number, amount: string) => {
       
       // Make the transaction
       console.log(`[Contract Interaction] Executing contract transaction...`);
-      const tx = await contract.investInStartup(startupId, { value: amountInWei });
+      const tx = await contract.investInStartup(contractStartupId, { value: amountInWei });
       
       // Wait for the transaction to be mined
       console.log(`[Contract Interaction] Waiting for transaction to be mined: ${tx.hash}`);

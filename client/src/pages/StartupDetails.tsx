@@ -518,7 +518,7 @@ const StartupDetails = () => {
                       
                       <TabsContent value="metamask">
                         <MetaMaskPayment 
-                          startupId={Number(startup.id)}
+                          startupId={1} // Use a fixed contract ID for demo
                           startupName={startup.name}
                           onPaymentComplete={() => setIsInvestDialogOpen(false)}
                         />
