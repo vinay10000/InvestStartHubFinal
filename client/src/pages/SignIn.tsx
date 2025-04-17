@@ -68,29 +68,29 @@ const SignIn = () => {
       setIsLoading(true);
       console.log("Starting Google sign-in process");
       
-      // Check if there's an existing role in localStorage first
-      let existingRole = localStorage.getItem('user_role');
-      console.log("Existing role before Google sign-in:", existingRole);
-      
       await signInWithGoogle();
       console.log("Google sign-in successful");
       
-      // After Google sign-in, we should get the user from Firebase Authentication
-      const currentUser = auth.currentUser; // Import auth from firebase/config
+      // After Google sign-in, get the user from Firebase Authentication
+      const currentUser = auth.currentUser;
       
       if (currentUser && currentUser.uid) {
         try {
-          // Try to get the user's role from Firestore
-          const firestoreUser = await getFirestoreUser(currentUser.uid);
-          console.log("Firestore user data:", firestoreUser);
+          // Try to get the user's role from Firebase Realtime Database
+          const dbUser = await getUserByUid(currentUser.uid);
+          console.log("Database user data (Google login):", dbUser);
           
-          if (firestoreUser && firestoreUser.role) {
-            // Update the role in localStorage with the correct one from Firestore
-            localStorage.setItem('user_role', firestoreUser.role);
-            console.log("Set user role from Firestore:", firestoreUser.role);
+          if (dbUser && dbUser.role) {
+            // Store the role in localStorage for convenience
+            localStorage.setItem('user_role', dbUser.role);
+            console.log("Set user role from Firebase DB (Google login):", dbUser.role);
+          } else {
+            // Default to investor if we can't get the role
+            localStorage.setItem('user_role', 'investor');
+            console.log("Using default investor role (Google login)");
           }
         } catch (error) {
-          console.error("Error getting user from Firestore:", error);
+          console.error("Error getting user from Firebase DB (Google login):", error);
           // Default to investor if we can't get the role
           localStorage.setItem('user_role', 'investor');
         }
@@ -98,10 +98,7 @@ const SignIn = () => {
       
       // Redirect to the dashboard route that will handle role-based redirection
       setTimeout(() => {
-        // After login, we should use the user role directly from auth context
-        console.log("Redirecting to the dashboard");
-        
-        // Use the dashboard route which will automatically redirect based on role
+        console.log("Redirecting to the dashboard (Google login)");
         navigate('/dashboard');
       }, 500);
     } catch (error) {

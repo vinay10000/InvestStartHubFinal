@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 import { auth } from "./config";
 import { apiRequest } from "@/lib/queryClient";
-import { createFirestoreUser, getFirestoreUser, updateFirestoreUser } from "./firestore";
+import { getUserByUid, updateUser } from "./database";
 
 // Create a default avatar URL based on initials
 const createDefaultAvatar = (name: string) => {
@@ -49,8 +49,8 @@ export const signUpWithEmail = async (
     
     console.log("Updated user profile in Firebase Auth with displayName and photoURL");
     
-    // Create user in Firestore and Realtime DB
-    await createFirestoreUser(user.uid, {
+    // Create user in Firebase Realtime Database
+    await updateUser(user.uid, {
       username,
       email,
       role,
@@ -84,11 +84,11 @@ export const signInWithEmail = async (
     
     console.log("User authenticated successfully with Firebase:", user.uid);
     
-    // Check if user exists in Firestore
-    const userData = await getFirestoreUser(user.uid);
+    // Check if user exists in Firebase Realtime Database
+    const userData = await getUserByUid(user.uid);
     
     if (!userData) {
-      console.log("User exists in Firebase Auth but not in Firestore, creating record...");
+      console.log("User exists in Firebase Auth but not in Realtime DB, creating record...");
       
       // Generate a username from the email or display name
       const username = user.displayName || email.split('@')[0];
@@ -96,8 +96,8 @@ export const signInWithEmail = async (
       // Generate a default profile picture if needed
       const profilePicture = user.photoURL || createDefaultAvatar(username);
       
-      // Create user in Firestore if it doesn't exist
-      await createFirestoreUser(user.uid, {
+      // Create user in Realtime Database if it doesn't exist
+      await updateUser(user.uid, {
         username,
         email,
         role: "investor", // Default role
@@ -114,9 +114,9 @@ export const signInWithEmail = async (
       }
     } else {
       // Update user's last login time and online status
-      await updateFirestoreUser(user.uid, {
+      await updateUser(user.uid, {
         online: true,
-        lastActive: new Date()
+        lastActive: new Date().toISOString()
       });
     }
     
@@ -153,11 +153,11 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
     console.log("Google sign-in successful for:", user.email);
     
     if (user.email) {
-      // Check if user exists in Firestore
-      const firestoreUser = await getFirestoreUser(user.uid);
+      // Check if user exists in Firebase Realtime Database
+      const dbUser = await getUserByUid(user.uid);
       
-      if (!firestoreUser) {
-        console.log("Creating new Firestore user for Google sign-in");
+      if (!dbUser) {
+        console.log("Creating new Firebase user for Google sign-in");
         
         // Generate a username from the display name or email
         const username = user.displayName || user.email.split('@')[0];
@@ -165,8 +165,8 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
         // Use Google photo URL or generate default avatar
         const profilePicture = user.photoURL || createDefaultAvatar(username);
         
-        // Create a new user in Firestore
-        await createFirestoreUser(user.uid, {
+        // Create a new user in Firebase Realtime Database
+        await updateUser(user.uid, {
           username,
           email: user.email,
           role: "investor", // Default role for Google sign-ins
@@ -174,14 +174,14 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
           profilePicture,
         });
         
-        console.log("Created new Firestore user from Google sign-in:", user.uid);
+        console.log("Created new Firebase user from Google sign-in:", user.uid);
       } else {
-        console.log("Found existing Firestore user:", user.uid);
+        console.log("Found existing Firebase user:", user.uid);
         
         // Update the online status in the database for real-time presence
-        await updateFirestoreUser(user.uid, { 
+        await updateUser(user.uid, { 
           online: true,
-          lastActive: new Date()
+          lastActive: new Date().toISOString()
         });
       }
     }
@@ -207,9 +207,8 @@ export const signOut = async (): Promise<void> => {
       console.log("Updating online status for user:", currentUser.uid);
       
       // Update Realtime Database status
-      await updateFirestoreUser(currentUser.uid, { 
-        online: false,
-        lastActive: new Date()
+      await updateUser(currentUser.uid, { 
+        lastActive: new Date().toISOString()
       });
     }
     
