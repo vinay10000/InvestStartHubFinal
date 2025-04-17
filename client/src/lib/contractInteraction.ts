@@ -129,9 +129,9 @@ export const investInStartup = async (startupId: number, amount: string) => {
       throw new Error("Invalid startup ID: must be a number");
     }
     
-    // Use a positive integer for the contract (use 1 for all demo purposes)
-    const contractStartupId = 1; // Force to 1 for demo
-    console.log(`[Contract Interaction] Using contractStartupId: ${contractStartupId} (original: ${startupId})`);
+    // Use the actual startupId rather than forcing to 1
+    const contractStartupId = startupId;
+    console.log(`[Contract Interaction] Using contractStartupId: ${contractStartupId}`);
     
     const contract = await getInvestmentContract(true);
     console.log(`[Contract Interaction] Contract instance obtained`);
