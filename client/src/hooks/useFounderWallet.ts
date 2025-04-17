@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getWalletByUserId } from '@/firebase/walletDatabase';
+import { getWalletByUserId, getLastSavedWalletAddress } from '@/firebase/walletDatabase';
 import { getUserByUid } from '@/firebase/database';
 import { useStartups } from '@/hooks/useStartups';
 
@@ -65,6 +65,22 @@ export const useFounderWallet = (startupId: string | number | null) => {
             id: founderId,
             name: startupWithCustomFields.founderName || "Founder",
             walletAddress: startupWithCustomFields.founderWalletAddress
+          });
+          setIsLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        // Check for immediate in-memory wallet data for quick response
+        const cachedWalletAddress = getLastSavedWalletAddress(founderId.toString());
+        if (cachedWalletAddress) {
+          console.log("[useFounderWallet] Found wallet in synchronous memory cache:", cachedWalletAddress);
+          
+          setFounderWallet(cachedWalletAddress);
+          setFounderInfo({
+            id: founderId,
+            name: "Founder",
+            walletAddress: cachedWalletAddress
           });
           setIsLoading(false);
           clearTimeout(timeoutId);

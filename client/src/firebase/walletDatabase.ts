@@ -8,6 +8,14 @@ const db: Database = database as Database;
 // Add this line for debugging
 console.log("[Wallet DB] Database initialization status:", !!db);
 
+// Create a version that always works for debugging
+let lastSavedWalletAddress: Record<string, string> = {};
+
+// Add a simple function to get the wallet synchronously
+export const getLastSavedWalletAddress = (userId: string): string | null => {
+  return lastSavedWalletAddress[userId] || null;
+};
+
 // Interface for wallet data structure
 export interface WalletData {
   address: string;
@@ -47,6 +55,9 @@ export const saveWalletAddress = async (
     // Store the wallet data
     await set(walletRef, walletData);
     
+    // Save to in-memory cache for immediate use
+    lastSavedWalletAddress[userId] = walletAddress;
+    
     console.log(`[Wallet DB] Saved wallet address for user ${userId}: ${walletAddress}`);
     
     // Also store in an index by wallet address for reverse lookup
@@ -65,12 +76,32 @@ export const saveWalletAddress = async (
  */
 export const getWalletByUserId = async (userId: string): Promise<WalletData | null> => {
   try {
-    // Create a reference to the user's wallet
+    // Check in-memory cache first for instant access
+    const cachedAddress = lastSavedWalletAddress[userId];
+    if (cachedAddress) {
+      console.log(`[Wallet DB] Found cached wallet for user ${userId}: ${cachedAddress}`);
+      // Return a minimal wallet object with the cached address
+      return {
+        address: cachedAddress,
+        userId,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+    }
+    
+    // If not in cache, check Firebase
     const dbRef = ref(db);
     const snapshot = await get(child(dbRef, `${WALLETS_PATH}/${userId}`));
     
     if (snapshot.exists()) {
-      return snapshot.val() as WalletData;
+      const walletData = snapshot.val() as WalletData;
+      
+      // Update in-memory cache for future use
+      if (walletData && walletData.address) {
+        lastSavedWalletAddress[userId] = walletData.address;
+      }
+      
+      return walletData;
     }
     
     console.log(`[Wallet DB] No wallet found for user ${userId}`);
@@ -172,6 +203,9 @@ export const updateWalletAddress = async (
     // Update the address index
     const addressRef = ref(db, `wallet_addresses/${walletAddress.toLowerCase()}`);
     await set(addressRef, { userId, updatedAt: now });
+    
+    // Also update in-memory cache
+    lastSavedWalletAddress[userId] = walletAddress;
     
     console.log(`[Wallet DB] Updated wallet address for user ${userId}: ${walletAddress}`);
     return;
