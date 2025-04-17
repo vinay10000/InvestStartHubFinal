@@ -22,11 +22,22 @@ import {
 
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  // Handle extracting the user ID from the auth context
-  // Firebase UID should be available as user.uid added in AuthContext
+  
+  // Make sure we wait for auth to complete before accessing user data
+  // Extract user ID more safely, prioritizing Firebase UID
   const userId = user ? (user.uid || user.id || "") : "";
   
-  console.log("Current auth state:", { user, userId, authLoading, userDetails: JSON.stringify(user) });
+  // Debug auth state to diagnose issues
+  useEffect(() => {
+    console.log("Current auth state:", { 
+      user, 
+      userId, 
+      authLoading, 
+      hasUID: user?.uid ? "yes" : "no",
+      hasID: user?.id ? "yes" : "no", 
+      userDetails: user ? JSON.stringify(user) : "null" 
+    });
+  }, [user, userId, authLoading]);
   
   // No longer using hooks that depend on Supabase
   // We'll use Firebase functions directly
@@ -175,11 +186,29 @@ const FounderDashboard = () => {
   const handleCreateStartup = async (startupData: any) => {
     setIsCreatingStartup(true);
     try {
-      // Check if we have a valid userId
+      // Check if we have a valid user and userId
+      if (authLoading) {
+        console.error("Auth is still loading - please wait");
+        throw new Error("Authentication is still loading. Please try again in a moment.");
+      }
+      
+      if (!user) {
+        console.error("Error: User is not authenticated");
+        throw new Error("You must be logged in to create a startup");
+      }
+      
       if (!userId) {
         console.error("Error: User ID is required to create a startup");
         throw new Error("User ID is required to create a startup");
       }
+      
+      // Log the user information we're using
+      console.log("Creating startup with user:", { 
+        uid: user.uid,
+        id: user.id,
+        username: user.username,
+        isAuthenticated: !!user
+      });
       
       // Handle UPI QR Code file upload if provided
       let upiQrCodeUrl = null;
