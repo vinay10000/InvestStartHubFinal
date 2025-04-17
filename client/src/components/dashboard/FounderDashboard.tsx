@@ -25,18 +25,18 @@ import { useWeb3 } from "@/hooks/useWeb3";
 const FounderDashboard = () => {
   const { user } = useAuth();
   const { address } = useWeb3();
-  const { getStartupsByFounderId } = useStartups(user?.id);
-  const { getTransactionsByFounderId } = useTransactions();
+  const { useFounderStartups } = useStartups();
+  const { useFounderTransactions } = useTransactions();
   const contractInteraction = useContractInteraction();
   const [activeTab, setActiveTab] = useState("overview");
 
   // Fetch startups with safety check
-  const { data: startupsData, isLoading: isLoadingStartups } = getStartupsByFounderId();
+  const { data: startupsData, isLoading: isLoadingStartups } = useFounderStartups(user?.id);
   const startups = startupsData?.startups || [];
   console.log("Loaded startups:", startups.length, "Loading state:", isLoadingStartups);
 
-  // Fetch transactions with safety check - handle both Firebase string IDs and local numeric IDs
-  const { data: transactionsData, isLoading: isLoadingTransactions } = getTransactionsByFounderId(user?.id || 0);
+  // Fetch transactions with safety check
+  const { data: transactionsData, isLoading: isLoadingTransactions } = useFounderTransactions(user?.id);
   const transactions = transactionsData?.transactions || [];
   
   // Log for debugging

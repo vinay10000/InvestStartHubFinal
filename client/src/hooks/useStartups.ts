@@ -126,7 +126,10 @@ export function useTransactions() {
   const useStartupTransactions = (startupId?: string) => {
     return useQuery({
       queryKey: ['transactions', 'startup', startupId],
-      queryFn: () => startupId ? getTransactionsByStartupId(startupId) : Promise.resolve([]),
+      queryFn: async () => {
+        const transactions = startupId ? await getTransactionsByStartupId(startupId) : [];
+        return { transactions }; // Match expected API response structure
+      },
       enabled: !!startupId,
     });
   };
@@ -137,7 +140,10 @@ export function useTransactions() {
     
     return useQuery({
       queryKey: ['transactions', 'investor', id],
-      queryFn: () => id ? getTransactionsByInvestorId(id.toString()) : Promise.resolve([]),
+      queryFn: async () => {
+        const transactions = id ? await getTransactionsByInvestorId(id.toString()) : [];
+        return { transactions }; // Match expected API response structure
+      },
       enabled: !!id,
     });
   };
@@ -148,7 +154,10 @@ export function useTransactions() {
     
     return useQuery({
       queryKey: ['transactions', 'founder', id],
-      queryFn: () => id ? getTransactionsByFounderId(id.toString()) : Promise.resolve([]),
+      queryFn: async () => {
+        const transactions = id ? await getTransactionsByFounderId(id.toString()) : [];
+        return { transactions }; // Match expected API response structure
+      },
       enabled: !!id,
     });
   };

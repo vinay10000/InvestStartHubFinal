@@ -98,18 +98,20 @@ const InvestorDashboard = () => {
   // Transform API responses to match Firebase format
   const apiStartups = startupsData?.startups 
     ? startupsData.startups.map(startup => {
+        // Create a fully typed startup with appropriate field names
         const typedStartup: FirebaseStartup = {
-          id: startup.id.toString(),
+          id: startup.id?.toString() || "",
           name: startup.name,
           description: startup.description,
           category: startup.category,
-          investmentStage: startup.investmentStage,
-          investment_stage: startup.investment_stage,
-          founderId: startup.founderId || startup.founder_id,
-          founder_id: startup.founder_id || startup.founderId,
-          logoUrl: startup.logoUrl || startup.logo_url,
-          upiQrCode: startup.upiQrCode || startup.upi_qr_code,
-          ...startup
+          investment_stage: startup.investment_stage || startup.investmentStage,
+          founderId: startup.founderId || startup.founder_id || "",
+          funding_goal: startup.funding_goal || startup.fundingGoal,
+          logo_url: startup.logo_url || startup.logoUrl,
+          upi_qr_code: startup.upi_qr_code || startup.upiQrCode,
+          website_url: startup.website_url || startup.websiteUrl,
+          pitch: startup.pitch || "",
+          createdAt: startup.createdAt ? startup.createdAt.toString() : new Date().toISOString()
         };
         return typedStartup;
       })
@@ -117,15 +119,16 @@ const InvestorDashboard = () => {
     
   const apiTransactions = transactionsData?.transactions
     ? transactionsData.transactions.map(transaction => {
+        // Create a fully typed transaction with appropriate field names
         const typedTransaction: FirebaseTransaction = {
-          id: transaction.id.toString(),
+          id: transaction.id?.toString() || "",
           amount: transaction.amount,
           status: transaction.status,
-          startupId: transaction.startupId,
-          startup_id: transaction.startup_id,
-          investorId: transaction.investorId,
-          investor_id: transaction.investor_id,
-          ...transaction
+          startupId: transaction.startupId || "",
+          investorId: transaction.investorId || "",
+          paymentMethod: transaction.paymentMethod || "card",
+          transactionId: transaction.transactionId || null,
+          createdAt: transaction.createdAt ? transaction.createdAt.toString() : new Date().toISOString()
         };
         return typedTransaction;
       })
@@ -145,8 +148,8 @@ const InvestorDashboard = () => {
   const investedStartups = useMemo(() => {
     const startupIds: Record<string, boolean> = {};
     combinedTransactions.forEach(t => {
-      if (t.startupId || t.startup_id) {
-        const id = String(t.startupId || t.startup_id);
+      if (t.startupId) {
+        const id = String(t.startupId);
         startupIds[id] = true;
       }
     });
@@ -160,8 +163,8 @@ const InvestorDashboard = () => {
       startup.name.toLowerCase().includes(filter.toLowerCase()) || 
       startup.description.toLowerCase().includes(filter.toLowerCase());
     
-    // Handle different field names between Firebase and API
-    const investmentStage = startup.investmentStage || startup.investment_stage || '';
+    // Use only the Firebase field name for consistency
+    const investmentStage = startup.investment_stage || '';
     
     const matchesStage = 
       stage === "all" || 
