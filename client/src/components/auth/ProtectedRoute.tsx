@@ -23,11 +23,12 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         return;
       }
       
-      // Check if user has a wallet connected
+      // Check if user has a wallet connected or has connected previously
       const hasWallet = user.walletAddress && user.walletAddress !== '';
+      const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
       
-      // If no wallet is connected, force wallet connection
-      if (!hasWallet) {
+      // If no wallet is connected and not previously connected, force wallet connection
+      if (!hasWallet && !hasConnectedWallet) {
         console.log('ProtectedRoute: User has no wallet connected, showing wallet prompt');
         setShowWalletPrompt(true);
         return;
@@ -77,9 +78,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       }
     }
     
-    // Make sure user has a wallet connected
+    // Make sure user has a wallet connected or has connected previously
     const hasWallet = user.walletAddress && user.walletAddress !== '';
-    if (!hasWallet) {
+    const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
+    if (!hasWallet && !hasConnectedWallet) {
       console.log('ProtectedRoute: Wallet check failed, showing wallet prompt');
       return <WalletPrompt open={true} onOpenChange={(open) => setShowWalletPrompt(open)} />;
     }

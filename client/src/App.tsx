@@ -126,14 +126,16 @@ function GlobalWalletChecker() {
     
     // Check if user has wallet address
     const hasWallet = user.walletAddress && user.walletAddress !== '';
+    // Check if wallet was connected previously
+    const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
     
-    // Always show prompt for users without a wallet
+    // Show prompt for users without a wallet and haven't connected previously
     // This is a fallback in case they somehow bypass ProtectedRoute checks
-    if (!hasWallet) {
+    if (!hasWallet && !hasConnectedWallet) {
       console.log('GlobalWalletChecker: User has no wallet connected, showing wallet prompt');
       setShowWalletPrompt(true);
     } else {
-      // If they have a wallet, make sure prompt is hidden
+      // If they have a wallet or connected previously, make sure prompt is hidden
       setShowWalletPrompt(false);
     }
   }, [user]);

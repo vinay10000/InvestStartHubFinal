@@ -65,6 +65,20 @@ const WalletPrompt: React.FC<WalletPromptProps> = ({
     connectWallet(address)
       .then(() => {
         handleOpenChange(false);
+        
+        // Redirect to the appropriate dashboard based on user role
+        if (user) {
+          const userRole = user.role || localStorage.getItem('user_role') || 'investor';
+          
+          if (userRole === 'founder') {
+            navigate('/founder/dashboard');
+          } else {
+            navigate('/investor/dashboard');
+          }
+          
+          // Record in localStorage that we've shown the wallet prompt to avoid showing it again
+          localStorage.setItem('wallet_connected', 'true');
+        }
       })
       .catch((error) => {
         console.error("Error connecting wallet:", error);

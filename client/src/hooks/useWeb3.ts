@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 // Helper function to get network name from chain ID
 const getNetworkName = (chainId: number | null): string => {
   if (chainId === 1) return "Ethereum Mainnet";
+  if (chainId === 1337) return "Ganache Network";
   if (chainId === 11155111) return "Sepolia Testnet";
   if (chainId === 137) return "Polygon Mainnet";
   if (chainId === 80001) return "Mumbai Testnet";
