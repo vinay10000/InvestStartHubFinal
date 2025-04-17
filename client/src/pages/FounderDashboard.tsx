@@ -14,10 +14,21 @@ import DocumentUploadSection from "@/components/startups/DocumentUploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";
+import { 
+  FirebaseStartup, 
+  createStartup as firebaseCreateStartup, 
+  getStartupsByFounderId as firebaseGetStartupsByFounderId,
+  createDocument as firebaseCreateDocument
+} from "@/firebase/database";
 
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const userId = user?.id || "";
+  // Make sure userId is correctly extracted from the auth state
+  // If we don't have user.id, try to use user.uid which might be present in Firebase auth
+  const userId = user?.id || user?.uid || "";
+  
+  console.log("Current auth state:", { user, userId, authLoading });
+  
   const { useFounderStartups, useCreateStartup } = useStartups();
   const { getTransactionsByFounderId } = useTransactions();
   const documents = useDocuments();
@@ -45,26 +56,26 @@ const FounderDashboard = () => {
   // Wait for auth to resolve before making data queries
   const { data: startupsData, isLoading: startupsLoading } = useFounderStartups();
   
-  // Load startups from Supabase directly
+  // Load startups from Firebase Realtime Database
   useEffect(() => {
     const fetchStartups = async () => {
       if (userId) {
         try {
-          const { getStartupsByFounderId } = await import('@/services/supabase');
-          const founderStartups = await getStartupsByFounderId(userId.toString());
-          console.log("Fetched founder startups from Supabase:", founderStartups);
+          // Get startups from Firebase
+          const startups = await firebaseGetStartupsByFounderId(userId.toString());
+          console.log("Fetched founder startups from Firebase:", startups);
           
-          // Convert startups to the format expected by the UI
-          const formattedStartups = founderStartups.map(startup => {
-            return {
-              id: startup.id,
+          if (startups && startups.length > 0) {
+            // Format startups for UI consistency if needed
+            const formattedStartups = startups.map(startup => ({
+              id: startup.id || '',
               name: startup.name,
               description: startup.description,
               category: startup.category,
               investment_stage: startup.investment_stage,
               investmentStage: startup.investment_stage,
-              founder_id: startup.founder_id,
-              founderId: startup.founder_id,
+              founder_id: startup.founderId,
+              founderId: startup.founderId,
               logo_url: startup.logo_url,
               logoUrl: startup.logo_url,
               upi_qr_code: startup.upi_qr_code,
@@ -72,12 +83,14 @@ const FounderDashboard = () => {
               pitch: startup.pitch,
               funding_goal: startup.funding_goal,
               upi_id: startup.upi_id
-            } as FirebaseStartup;
-          });
-          
-          setMyStartups(formattedStartups);
+            } as FirebaseStartup));
+            
+            setMyStartups(formattedStartups);
+          } else {
+            console.log("No startups found for this user in Firebase");
+          }
         } catch (error) {
-          console.error("Error fetching startups from Supabase:", error);
+          console.error("Error fetching startups from Firebase:", error);
         }
       }
     };
@@ -98,9 +111,11 @@ const FounderDashboard = () => {
 
   const handleCreateStartup = async (startupData: any) => {
     try {
-      // Make sure all required fields are present and properly formatted
-      // Convert founderId to a proper number if it's not already
-      const userIdAsNumber = userId ? parseInt(userId.toString()) : 1;
+      // Check if we have a valid userId
+      if (!userId) {
+        console.error("Error: User ID is required to create a startup");
+        throw new Error("User ID is required to create a startup");
+      }
       
       // Handle UPI QR Code file upload if provided
       let upiQrCodeUrl = null;
@@ -108,70 +123,40 @@ const FounderDashboard = () => {
         try {
           // Import the imagekit service dynamically
           const { uploadUpiQRCode } = await import('@/services/imagekit');
-          upiQrCodeUrl = await uploadUpiQRCode(userIdAsNumber, startupData.upiQrCodeFile);
+          upiQrCodeUrl = await uploadUpiQRCode(userId, startupData.upiQrCodeFile);
         } catch (uploadError) {
           console.error("Error uploading UPI QR code:", uploadError);
           // Continue with creation even if the upload fails
         }
       }
       
-      const startupPayload = {
-        ...startupData,
-        founderId: userIdAsNumber, // Make sure this is a number
-        // Ensure these fields are present or set defaults
+      // Create the Firebase payload
+      const firebasePayload = {
+        name: startupData.name,
+        description: startupData.description,
+        pitch: startupData.pitch || "",
+        founderId: userId.toString(), // Store as string for consistency
+        investment_stage: startupData.investmentStage,
         category: startupData.category || null,
-        fundingGoal: startupData.fundingGoalEth || "1", // Use the ETH funding goal
-        fundingGoalEth: startupData.fundingGoalEth || "1", // Store as a separate field too
-        currentFunding: startupData.currentFunding || "0",
-        logoUrl: startupData.logoUrl || null,
-        websiteUrl: startupData.websiteUrl || null,
-        // Handle empty strings for optional fields
-        upiId: startupData.upiId || null,
-        upiQrCode: upiQrCodeUrl || startupData.upiQrCode || null,
+        funding_goal: startupData.fundingGoalEth || "1",
+        funding_goal_eth: startupData.fundingGoalEth || "1",
+        current_funding: startupData.currentFunding || "0",
+        logo_url: startupData.logoUrl || null,
+        website_url: startupData.websiteUrl || null,
+        upi_id: startupData.upiId || null,
+        upi_qr_code: upiQrCodeUrl || startupData.upiQrCode || null
       };
       
-      // Remove the file from the payload as we've extracted the URL
-      delete startupPayload.upiQrCodeFile;
-      delete startupPayload.pitchDeckFile;
-      delete startupPayload.financialReportFile;
-      delete startupPayload.investorAgreementFile;
+      console.log("Creating startup in Firebase with data:", firebasePayload);
       
-      console.log("Creating startup with data:", startupPayload);
-      
-      // Use Supabase for all users - this is our primary storage now
       try {
-        const { createStartup } = await import('@/services/supabase');
+        // Create startup in Firebase Realtime Database
+        const result = await firebaseCreateStartup(firebasePayload);
         
-        // Check if we have a valid userId
-        if (!userId) {
-          console.error("Error: User ID is required to create a startup");
-          throw new Error("User ID is required to create a startup");
-        }
-        
-        // Convert the payload to match Supabase format
-        const supabasePayload = {
-          name: startupPayload.name,
-          description: startupPayload.description,
-          pitch: startupPayload.pitch || "",
-          investment_stage: startupPayload.investmentStage,
-          category: startupPayload.category,
-          funding_goal: startupPayload.fundingGoal,
-          funding_goal_eth: startupPayload.fundingGoalEth,
-          current_funding: startupPayload.currentFunding || "0",
-          logo_url: startupPayload.logoUrl,
-          website_url: startupPayload.websiteUrl,
-          upi_id: startupPayload.upiId,
-          upi_qr_code: startupPayload.upiQrCode,
-          founder_id: userId.toString()
-        };
-        
-        console.log('Creating startup in Supabase with data:', supabasePayload);
-        const result = await createStartup(supabasePayload);
-        
-        if (result) {
-          console.log('Startup created in Supabase with ID:', result.id);
+        if (result && result.id) {
+          console.log('Startup created in Firebase with ID:', result.id);
           
-          // Convert to a format compatible with our UI components
+          // Format for UI consistency
           const typedStartupData: FirebaseStartup = {
             id: result.id,
             name: result.name,
@@ -179,12 +164,12 @@ const FounderDashboard = () => {
             category: result.category,
             investment_stage: result.investment_stage,
             investmentStage: result.investment_stage,
-            founder_id: result.founder_id,
-            founderId: result.founder_id,
-            logo_url: result.logo_url,
+            founderId: result.founderId,
+            founder_id: result.founderId,
             logoUrl: result.logo_url,
-            upi_qr_code: result.upi_qr_code,
+            logo_url: result.logo_url,
             upiQrCode: result.upi_qr_code,
+            upi_qr_code: result.upi_qr_code,
             pitch: result.pitch,
             funding_goal: result.funding_goal,
             upi_id: result.upi_id
@@ -195,12 +180,21 @@ const FounderDashboard = () => {
           console.log("Added new startup to local state:", typedStartupData);
           
           // Handle document uploads if any
-          await uploadStartupDocuments(result.id, startupData);
+          if (result.id) {
+            await uploadStartupDocuments(result.id, startupData);
+          }
+          
+          // Close the dialog
+          setIsCreateDialogOpen(false);
+          
+          // Show success message
+          alert(`Startup ${result.name} created successfully!`);
+          
+        } else {
+          throw new Error("Failed to create startup - no ID returned");
         }
-        
-        setIsCreateDialogOpen(false);
       } catch (error) {
-        console.error("Error creating startup in Supabase:", error);
+        console.error("Error creating startup in Firebase:", error);
         // Show a more user-friendly error using toast or alert
         if (error instanceof Error) {
           alert(`Failed to create startup: ${error.message}`);
@@ -227,13 +221,29 @@ const FounderDashboard = () => {
         try {
           console.log("Uploading pitch deck for startup:", startupId);
           
-          // Create document record using our hook function extracted at the top level
-          await uploadDocumentFile({
-            startupId,
-            documentType: 'pitch_deck',
-            file: startupData.pitchDeckFile,
-            name: startupData.pitchDeckFile.name
-          });
+          // First upload file to ImageKit
+          const { uploadDocumentToImageKit } = await import('@/services/imagekit');
+          const uploadResult = await uploadDocumentToImageKit(startupId, 'pitch_deck', startupData.pitchDeckFile);
+          
+          if (uploadResult && uploadResult.url) {
+            console.log("Pitch deck uploaded to ImageKit:", uploadResult.url);
+            
+            // Create document record in Firebase
+            const documentData = {
+              startupId: startupId,
+              type: 'pitch_deck',
+              name: startupData.pitchDeckFile.name,
+              fileUrl: uploadResult.url,
+              fileId: uploadResult.fileId,
+              fileName: uploadResult.name,
+              mimeType: startupData.pitchDeckFile.type,
+              fileSize: startupData.pitchDeckFile.size
+            };
+            
+            // Create document in Firebase
+            await firebaseCreateDocument(documentData);
+            console.log("Pitch deck document record created in Firebase");
+          }
           
           console.log("Pitch deck uploaded successfully");
         } catch (error) {
@@ -246,13 +256,29 @@ const FounderDashboard = () => {
         try {
           console.log("Uploading financial report for startup:", startupId);
           
-          // Create document record
-          await uploadDocumentFile({
-            startupId,
-            documentType: 'financial_report',
-            file: startupData.financialReportFile,
-            name: startupData.financialReportFile.name
-          });
+          // First upload file to ImageKit
+          const { uploadDocumentToImageKit } = await import('@/services/imagekit');
+          const uploadResult = await uploadDocumentToImageKit(startupId, 'financial_report', startupData.financialReportFile);
+          
+          if (uploadResult && uploadResult.url) {
+            console.log("Financial report uploaded to ImageKit:", uploadResult.url);
+            
+            // Create document record in Firebase
+            const documentData = {
+              startupId: startupId,
+              type: 'financial_report',
+              name: startupData.financialReportFile.name,
+              fileUrl: uploadResult.url,
+              fileId: uploadResult.fileId,
+              fileName: uploadResult.name,
+              mimeType: startupData.financialReportFile.type,
+              fileSize: startupData.financialReportFile.size
+            };
+            
+            // Create document in Firebase
+            await firebaseCreateDocument(documentData);
+            console.log("Financial report document record created in Firebase");
+          }
           
           console.log("Financial report uploaded successfully");
         } catch (error) {
@@ -265,13 +291,29 @@ const FounderDashboard = () => {
         try {
           console.log("Uploading investor agreement for startup:", startupId);
           
-          // Create document record
-          await uploadDocumentFile({
-            startupId,
-            documentType: 'investor_agreement',
-            file: startupData.investorAgreementFile,
-            name: startupData.investorAgreementFile.name
-          });
+          // First upload file to ImageKit
+          const { uploadDocumentToImageKit } = await import('@/services/imagekit');
+          const uploadResult = await uploadDocumentToImageKit(startupId, 'investor_agreement', startupData.investorAgreementFile);
+          
+          if (uploadResult && uploadResult.url) {
+            console.log("Investor agreement uploaded to ImageKit:", uploadResult.url);
+            
+            // Create document record in Firebase
+            const documentData = {
+              startupId: startupId,
+              type: 'investor_agreement',
+              name: startupData.investorAgreementFile.name,
+              fileUrl: uploadResult.url,
+              fileId: uploadResult.fileId,
+              fileName: uploadResult.name,
+              mimeType: startupData.investorAgreementFile.type,
+              fileSize: startupData.investorAgreementFile.size
+            };
+            
+            // Create document in Firebase
+            await firebaseCreateDocument(documentData);
+            console.log("Investor agreement document record created in Firebase");
+          }
           
           console.log("Investor agreement uploaded successfully");
         } catch (error) {
@@ -547,12 +589,26 @@ const FounderDashboard = () => {
                 <DocumentUploadSection 
                   startupId={String(selectedStartupId)}
                   onDocumentUpload={async (file, documentType, startupId) => {
-                    await uploadDocumentFile({
-                      startupId,
-                      documentType,
-                      file,
-                      name: file.name
-                    });
+                    // Upload file to ImageKit first
+                    const { uploadDocumentToImageKit } = await import('@/services/imagekit');
+                    const uploadResult = await uploadDocumentToImageKit(startupId, documentType, file);
+                    
+                    if (uploadResult && uploadResult.url) {
+                      // Create document record in Firebase
+                      const documentData = {
+                        startupId: startupId,
+                        type: documentType,
+                        name: file.name,
+                        fileUrl: uploadResult.url,
+                        fileId: uploadResult.fileId,
+                        fileName: uploadResult.name,
+                        mimeType: file.type,
+                        fileSize: file.size
+                      };
+                      
+                      // Create document in Firebase
+                      await firebaseCreateDocument(documentData);
+                    }
                   }}
                 />
               ) : (
