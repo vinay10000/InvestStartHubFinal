@@ -1,7 +1,7 @@
 import { getDatabase, ref, set, get, push, remove, update, query, orderByChild, equalTo } from "firebase/database";
-import { app, database } from "./firebase";
+import { database } from "./config";
 
-// We're using the database instance from firebase.ts for consistency
+// Using the database instance from config.ts for consistency
 
 // Startup related functions
 export interface FirebaseStartup {
