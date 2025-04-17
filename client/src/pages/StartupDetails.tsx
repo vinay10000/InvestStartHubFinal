@@ -154,9 +154,9 @@ const StartupDetails = () => {
     (user?.role === "founder" && !founderId)
   );
   
-  // For this implementation, we'll just show investor UI to anyone who isn't the founder
-  // This allows us to test the full functionality even if role detection has issues
-  const isInvestor = true;
+  // Only show investor UI to investors and not the founder of this startup
+  // This prevents founders from seeing invest/chat buttons on their own startups
+  const isInvestor = user?.role === "investor" || (user?.role === "founder" && !isFounder);
   
   // Debug user role
   console.log("User role check:", 

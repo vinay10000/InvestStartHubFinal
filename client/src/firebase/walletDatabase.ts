@@ -136,7 +136,7 @@ export const updateWalletAddress = async (
     
     // Update with the new address
     const now = Date.now();
-    const walletRef = ref(database, `${WALLETS_PATH}/${userId}`);
+    const walletRef = ref(db, `${WALLETS_PATH}/${userId}`);
     
     await set(walletRef, {
       ...(existingWallet || {}),
@@ -145,7 +145,7 @@ export const updateWalletAddress = async (
     });
     
     // Update the address index
-    const addressRef = ref(database, `wallet_addresses/${walletAddress.toLowerCase()}`);
+    const addressRef = ref(db, `wallet_addresses/${walletAddress.toLowerCase()}`);
     await set(addressRef, { userId, updatedAt: now });
     
     console.log(`[Wallet DB] Updated wallet address for user ${userId}: ${walletAddress}`);
@@ -166,12 +166,12 @@ export const deleteWallet = async (userId: string): Promise<void> => {
     
     // If there's an existing wallet address, remove it from the address index
     if (existingWallet && existingWallet.address) {
-      const addressRef = ref(database, `wallet_addresses/${existingWallet.address.toLowerCase()}`);
+      const addressRef = ref(db, `wallet_addresses/${existingWallet.address.toLowerCase()}`);
       await set(addressRef, null);
     }
     
     // Remove the wallet data
-    const walletRef = ref(database, `${WALLETS_PATH}/${userId}`);
+    const walletRef = ref(db, `${WALLETS_PATH}/${userId}`);
     await set(walletRef, null);
     
     console.log(`[Wallet DB] Deleted wallet for user ${userId}`);
