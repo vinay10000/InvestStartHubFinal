@@ -13,6 +13,7 @@ import { useContractInteraction } from "@/hooks/useContractInteraction";
 import { formatCurrency, truncateAddress } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
+import { useStartups } from "@/hooks/useStartups";
 
 // Enhanced validation schema with better number handling
 const formSchema = z.object({
@@ -75,6 +76,10 @@ const MetaMaskPayment = ({
   const { createTransaction } = useTransactions();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { useStartup } = useStartups();
+  
+  // Fetch the complete startup data to access founder details
+  const { data: startupData } = useStartup(startupId ? startupId.toString() : "");
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -172,7 +177,20 @@ const MetaMaskPayment = ({
       // Use fixed notation with appropriate decimal places (max 18 for Ethereum)
       const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
       
-      // Invest using the contract
+      // Get founder wallet address from startup data if available
+      const founderWalletAddress = startupData?.startup?.walletAddress || 
+                                   startupData?.walletAddress || 
+                                   startupData?.founderWalletAddress || 
+                                   startupData?.founder?.walletAddress;
+                                   
+      // Log the startup data and wallet address being used
+      console.log("[MetaMaskPayment] Startup data for investment:", {
+        startupId,
+        startupData,
+        founderWalletAddress
+      });
+      
+      // Invest using the contract with real startup ID
       const result = await investInStartup(startupId, cleanAmount);
       
       if (result) {
@@ -188,9 +206,10 @@ const MetaMaskPayment = ({
             transactionHash: result.transactionHash
           });
           
+          const userId = typeof user.id === 'number' ? user.id.toString() : user.id;
           await createTransaction.mutateAsync({
             startupId: startupIdForBackend,
-            investorId: user.id,
+            investorId: userId,
             amount: cleanAmount,
             paymentMethod: "metamask",
             transactionId: result.transactionHash,
