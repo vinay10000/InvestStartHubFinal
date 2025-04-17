@@ -2,7 +2,7 @@ import { ref, set, get, child, Database } from 'firebase/database';
 import { database } from './config';
 
 // Type assertion to ensure TypeScript recognizes database as Database type
-const db: Database = database as Database;
+const db = database as Database;
 
 // Interface for wallet data structure
 export interface WalletData {
@@ -94,6 +94,27 @@ export const getUserIdByWalletAddress = async (walletAddress: string): Promise<s
     return null;
   } catch (error) {
     console.error('[Wallet DB] Error getting user by wallet address:', error);
+    return null;
+  }
+};
+
+/**
+ * Get wallet data by wallet address - useful for finding founder wallet info
+ */
+export const getWalletByAddress = async (walletAddress: string): Promise<WalletData | null> => {
+  try {
+    // First get the user ID associated with this wallet address
+    const userId = await getUserIdByWalletAddress(walletAddress);
+    
+    if (!userId) {
+      console.log(`[Wallet DB] No user found for wallet address ${walletAddress}`);
+      return null;
+    }
+    
+    // Then get the wallet data for that user
+    return getWalletByUserId(userId);
+  } catch (error) {
+    console.error('[Wallet DB] Error getting wallet by address:', error);
     return null;
   }
 };

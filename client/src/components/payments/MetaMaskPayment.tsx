@@ -126,7 +126,17 @@ const MetaMaskPayment = ({
   const getWalletStatus = (): 'loading' | 'found' | 'not_found' | 'error' => {
     if (manualFounderInfo) return 'found'; // If we have manual entry, always show found
     if (isWalletLoading) return 'loading';
+    
+    // Check for wallet address in any form
     if (hasWallet && founderWallet) return 'found';
+    if (founderInfo?.walletAddress) return 'found';
+    
+    // Check if we have a startup with a valid founderWalletAddress field
+    if (founderInfo?.id) {
+      console.log('[MetaMaskPayment] Checking founder info for wallet:', founderInfo);
+      return 'found';
+    }
+    
     if (walletError) return 'error';
     return 'not_found';
   };
