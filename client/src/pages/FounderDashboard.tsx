@@ -49,10 +49,31 @@ const FounderDashboard = () => {
   }
   
   const [myStartups, setMyStartups] = useState<FirebaseStartup[]>([]); // Store startups in state
+  const [adaptedStartups, setAdaptedStartups] = useState<Startup[]>([]); // Converted startups for UI components
 
   // No longer using Supabase hooks for startups
   const [startupsLoading, setStartupsLoading] = useState(true);
   const [isCreatingStartup, setIsCreatingStartup] = useState(false);
+  
+  // Convert Firebase startups to the format expected by StartupCard
+  const adaptFirebaseStartupToUI = (firebaseStartup: FirebaseStartup): Startup => {
+    return {
+      id: parseInt(firebaseStartup.id) || 0, // Convert string ID to number
+      name: firebaseStartup.name,
+      description: firebaseStartup.description,
+      category: firebaseStartup.category || null,
+      investmentStage: firebaseStartup.investment_stage || "",
+      founderId: parseInt(String(firebaseStartup.founderId)) || 0,
+      createdAt: new Date(),
+      logoUrl: firebaseStartup.logo_url || null,
+      upiQrCode: firebaseStartup.upi_qr_code || null,
+      pitch: firebaseStartup.pitch || "",
+      fundingGoal: firebaseStartup.funding_goal || "0",
+      currentFunding: firebaseStartup.current_funding || "0",
+      websiteUrl: firebaseStartup.website_url || null,
+      upiId: firebaseStartup.upi_id || null
+    };
+  };
   
   // Load startups from Firebase Realtime Database
   useEffect(() => {
@@ -84,17 +105,26 @@ const FounderDashboard = () => {
             } as FirebaseStartup));
             
             setMyStartups(formattedStartups);
+            
+            // Convert to UI-ready format
+            const uiReadyStartups = formattedStartups.map(startup => adaptFirebaseStartupToUI(startup));
+            setAdaptedStartups(uiReadyStartups);
+            setStartupsLoading(false);
           } else {
             console.log("No startups found for this user in Firebase");
+            setStartupsLoading(false);
           }
         } catch (error) {
           console.error("Error fetching startups from Firebase:", error);
+          setStartupsLoading(false);
         }
       }
     };
     
     if (userId) {
       fetchStartups();
+    } else {
+      setStartupsLoading(false);
     }
   }, [userId]);
   
@@ -211,6 +241,11 @@ const FounderDashboard = () => {
           
           // Add to local state for immediate UI update
           setMyStartups(prev => [...prev, typedStartupData]);
+          
+          // Also add to the UI-ready state in adapted format
+          const adaptedStartup = adaptFirebaseStartupToUI(typedStartupData);
+          setAdaptedStartups(prev => [...prev, adaptedStartup]);
+          
           console.log("Added new startup to local state:", typedStartupData);
           
           // Handle document uploads if any
@@ -386,8 +421,7 @@ const FounderDashboard = () => {
   
   // No longer need to transform API startups as we're using Firebase directly
     
-  // Now we're only using Firebase data
-  const combinedStartups = myStartups;
+  // Now we're only using adapted Firebase data for UI components
   const transactions = firebaseTransactions;
 
   // Calculate metrics safely
@@ -422,7 +456,7 @@ const FounderDashboard = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Startups</p>
                 <h3 className="text-2xl font-bold">
-                  {startupsLoading && myStartups.length === 0 ? <Skeleton className="h-8 w-16" /> : combinedStartups.length}
+                  {startupsLoading && myStartups.length === 0 ? <Skeleton className="h-8 w-16" /> : adaptedStartups.length}
                 </h3>
               </div>
             </div>
@@ -531,7 +565,7 @@ const FounderDashboard = () => {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {combinedStartups.map((startup) => (
+              {adaptedStartups.map((startup) => (
                 <StartupCard key={startup.id} startup={startup} view="founder" />
               ))}
             </div>
@@ -574,7 +608,7 @@ const FounderDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {combinedStartups.map((startup) => (
+                    {adaptedStartups.map((startup) => (
                       <Card 
                         key={startup.id} 
                         className={`cursor-pointer transition-all ${selectedStartupId === startup.id ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
