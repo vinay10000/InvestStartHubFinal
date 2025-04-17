@@ -119,27 +119,53 @@ export const investInStartup = async (startupId: number, amount: string) => {
   try {
     const contract = await getInvestmentContract(true);
     
-    // Convert ETH amount to wei
-    const amountInWei = ethers.parseEther(amount);
+    // Ensure we have a clean amount string without scientific notation
+    // This prevents issues where 0.0001 becomes 1e-4 which parseEther can't handle
+    const cleanAmount = Number(amount).toString();
     
-    // Make the transaction
-    const tx = await contract.investInStartup(startupId, { value: amountInWei });
+    // Log the amount being used for debugging
+    console.log(`[Contract Interaction] Investing in startup ${startupId} with ${cleanAmount} ETH`);
     
-    // Wait for the transaction to be mined
-    const receipt = await tx.wait();
-    
-    // Return transaction details
-    return {
-      transactionHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-      status: receipt.status === 1 ? "success" : "failed"
-    };
+    try {
+      // Convert ETH amount to wei
+      const amountInWei = ethers.parseEther(cleanAmount);
+      console.log(`[Contract Interaction] Amount in Wei: ${amountInWei.toString()}`);
+      
+      // Make the transaction
+      console.log(`[Contract Interaction] Executing contract transaction...`);
+      const tx = await contract.investInStartup(startupId, { value: amountInWei });
+      
+      // Wait for the transaction to be mined
+      console.log(`[Contract Interaction] Waiting for transaction to be mined: ${tx.hash}`);
+      const receipt = await tx.wait();
+      
+      console.log(`[Contract Interaction] Transaction mined in block ${receipt.blockNumber}`);
+      
+      // Return transaction details
+      return {
+        transactionHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        status: receipt.status === 1 ? "success" : "failed"
+      };
+    } catch (parseError) {
+      console.error("[Contract Interaction] Error parsing or sending amount:", parseError);
+      throw new Error(`Invalid amount format: Please enter a valid ETH amount with no more than 18 decimal places.`);
+    }
   } catch (error: any) {
     console.error("Error investing in startup:", error);
     
     // Handle common errors
     if (error.code === "ACTION_REJECTED") {
       throw new Error("Transaction was rejected by the user");
+    } else if (error.message && error.message.includes("insufficient funds")) {
+      throw new Error("Insufficient funds in your wallet to complete this transaction");
+    } else if (error.message && error.message.includes("user rejected transaction")) {
+      throw new Error("Transaction was rejected in MetaMask");
+    } else if (error.message && error.message.includes("execution reverted")) {
+      // Extract the revert reason if available
+      const revertReasonMatch = error.message.match(/reason="([^"]+)"/);
+      const revertReason = revertReasonMatch ? revertReasonMatch[1] : "Transaction was reverted by the contract";
+      throw new Error(`Transaction failed: ${revertReason}`);
     }
     
     throw new Error(`Investment failed: ${error.message}`);

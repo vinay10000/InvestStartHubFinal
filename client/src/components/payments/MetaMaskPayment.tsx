@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,11 +14,25 @@ import { formatCurrency, truncateAddress } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
 
+// Enhanced validation schema with better number handling
 const formSchema = z.object({
   amount: z.string()
     .min(1, "Amount is required")
-    .refine(val => !isNaN(parseFloat(val)), "Amount must be a number")
-    .refine(val => parseFloat(val) > 0, "Amount must be greater than 0")
+    .refine(val => {
+      // First check if it's a valid number string
+      const parsed = Number(val);
+      return !isNaN(parsed);
+    }, "Amount must be a valid number")
+    .refine(val => {
+      const parsed = Number(val);
+      return parsed > 0;
+    }, "Amount must be greater than 0")
+    .refine(val => {
+      const parsed = Number(val);
+      // Check if the value has no more than 18 decimal places (Ethereum limit)
+      const decimalPart = val.toString().split('.')[1] || '';
+      return decimalPart.length <= 18;
+    }, "Amount cannot have more than 18 decimal places")
 });
 
 interface MetaMaskPaymentProps {
@@ -32,21 +46,44 @@ const MetaMaskPayment = ({
   startupName,
   onPaymentComplete 
 }: MetaMaskPaymentProps) => {
-  const { isInstalled, address, connect, isWalletConnected } = useWeb3();
+  const { isInstalled, address, connect, isWalletConnected, balance, chainId } = useWeb3();
   const { investInStartup } = useContractInteraction();
   const { createTransaction } = useTransactions();
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Log connection status for debugging
-  console.log("[MetaMaskPayment] Wallet connection status:", {
-    address,
-    isWalletConnected: isWalletConnected(),
-    hasUserWallet: user?.walletAddress ? true : false,
-    localStorage: localStorage.getItem('wallet_connected')
-  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [networkName, setNetworkName] = useState<string>("Unknown Network");
+  
+  // Check network on mount and update when chainId changes
+  useEffect(() => {
+    // Map chainId to network name based on numeric values
+    const chainIdNum = chainId ? Number(chainId) : null;
+    
+    if (chainIdNum === 1) {
+      setNetworkName("Ethereum Mainnet");
+    } else if (chainIdNum === 11155111) {
+      setNetworkName("Sepolia Testnet");
+    } else if (chainIdNum === 31337 || chainIdNum === 1337) {
+      setNetworkName("Local Development");
+    } else if (chainIdNum) {
+      setNetworkName(`Chain ID: ${chainIdNum}`);
+    } else {
+      setNetworkName("Unknown Network");
+    }
+    
+    // Log connection status for debugging
+    console.log("[MetaMaskPayment] Wallet connection status:", {
+      address,
+      chainId: chainIdNum,
+      networkName: networkName,
+      balance,
+      isWalletConnected: typeof isWalletConnected === 'function' ? isWalletConnected() : false,
+      hasUserWallet: user?.walletAddress ? true : false,
+      localStorage: localStorage.getItem('wallet_connected')
+    });
+  }, [chainId, address, balance, user, isWalletConnected]);
   
   // Form setup
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,6 +95,7 @@ const MetaMaskPayment = ({
   
   // Handle investment
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Ensure wallet is connected
     if (!address) {
       try {
         const connected = await connect();
@@ -82,17 +120,43 @@ const MetaMaskPayment = ({
     setIsProcessing(true);
     
     try {
-      // Ensure we have a valid amount that can be parsed
+      // Enhanced validation to ensure we have a valid amount
       const amountValue = values.amount.trim();
-      if (!amountValue || isNaN(Number(amountValue))) {
-        throw new Error("Please enter a valid investment amount");
+      
+      if (!amountValue) {
+        throw new Error("Investment amount is required");
       }
       
-      // Make sure amount is a proper string that can be parsed
-      console.log("Investment amount:", amountValue, "Type:", typeof amountValue);
+      // Additional validation
+      const numericAmount = Number(amountValue);
+      
+      if (isNaN(numericAmount)) {
+        throw new Error("Please enter a valid numeric amount");
+      }
+      
+      if (numericAmount <= 0) {
+        throw new Error("Amount must be greater than zero");
+      }
+      
+      // Check sufficient balance
+      const userBalance = parseFloat(balance || "0");
+      if (numericAmount > userBalance) {
+        throw new Error(`Insufficient balance. You have ${userBalance.toFixed(4)} ETH available.`);
+      }
+      
+      // Log for debugging
+      console.log("Investment details:", {
+        startupId,
+        amount: amountValue,
+        numericAmount,
+        userBalance
+      });
+      
+      // Convert to a clean string representation to prevent scientific notation issues
+      const cleanAmount = numericAmount.toString();
       
       // Invest using the contract
-      const result = await investInStartup(startupId, amountValue);
+      const result = await investInStartup(startupId, cleanAmount);
       
       if (result) {
         // Store transaction hash
@@ -103,7 +167,7 @@ const MetaMaskPayment = ({
           await createTransaction.mutateAsync({
             startupId,
             investorId: user.id,
-            amount: amountValue, // Use string directly as our schema expects
+            amount: cleanAmount,
             paymentMethod: "metamask",
             transactionId: result.transactionHash,
             status: "pending" // Will be verified by admin
@@ -113,20 +177,30 @@ const MetaMaskPayment = ({
         // Notify user
         toast({
           title: "Investment Successful",
-          description: `You have successfully invested ${amountValue} ETH in ${startupName}`,
+          description: `You have successfully invested ${cleanAmount} ETH in ${startupName}`,
         });
         
         // Call the callback if provided
         if (onPaymentComplete) {
-          onPaymentComplete(result.transactionHash, amountValue);
+          onPaymentComplete(result.transactionHash, cleanAmount);
         }
       }
     } catch (error: any) {
       console.error("Investment error:", error);
       
+      // Extract the core error message from Ethereum provider errors
+      let errorMessage = error.message || "Failed to process your investment";
+      
+      // Handle common MetaMask errors
+      if (errorMessage.includes("user rejected") || errorMessage.includes("ACTION_REJECTED")) {
+        errorMessage = "Transaction was rejected in MetaMask";
+      } else if (errorMessage.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds in your wallet to complete this transaction";
+      }
+      
       toast({
         title: "Investment Failed",
-        description: error.message || "Failed to process your investment. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -196,12 +270,16 @@ const MetaMaskPayment = ({
           
           <div className="text-center">
             <a 
-              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              href={chainId === 11155111 
+                ? `https://sepolia.etherscan.io/tx/${txHash}`
+                : chainId === 1 
+                  ? `https://etherscan.io/tx/${txHash}`
+                  : `#`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              <span>View Transaction on Etherscan</span>
+              <span>View Transaction on {chainId === 11155111 ? "Sepolia " : ""}Etherscan</span>
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
@@ -232,6 +310,24 @@ const MetaMaskPayment = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Network info section */}
+        {address && (
+          <div className="mb-4 text-sm">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-muted-foreground">Connected:</span>
+              <span className="font-medium">{truncateAddress(address)}</span>
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-muted-foreground">Network:</span>
+              <span className="font-medium">{networkName}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Balance:</span>
+              <span className="font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
+            </div>
+          </div>
+        )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -244,19 +340,20 @@ const MetaMaskPayment = ({
                     <Input 
                       {...field} 
                       type="number"
-                      step="0.01"
-                      min="0.01"
+                      step="0.0001"
+                      min="0.0001"
                       placeholder="0.00"
                       disabled={isProcessing}
+                      // Prevent scientific notation for very small numbers
+                      onChange={(e) => {
+                        // Format the number to prevent scientific notation
+                        const value = e.target.value;
+                        field.onChange(value);
+                      }}
                     />
                   </FormControl>
-                  <FormDescription className="flex justify-between">
-                    <span>Enter the amount you want to invest</span>
-                    {address && (
-                      <span className="text-xs text-muted-foreground">
-                        Connected: {truncateAddress(address)}
-                      </span>
-                    )}
+                  <FormDescription>
+                    Enter the amount you want to invest in ETH
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
