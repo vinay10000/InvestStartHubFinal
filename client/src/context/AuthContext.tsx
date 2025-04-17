@@ -406,12 +406,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Update user wallet in Firebase Realtime Database
+      console.log("[AuthContext] Updating user profile with wallet address:", walletAddress);
       await updateUser(currentUser.uid, { walletAddress });
       
       // Also save to our dedicated wallet database for cross-referencing
       const { saveWalletAddress } = await import("@/firebase/walletDatabase");
       
       try {
+        console.log("[AuthContext] Saving wallet address to dedicated wallet database");
+        
         // Store wallet address associated with both numeric ID and UID
         await saveWalletAddress(
           currentUser.uid, 
@@ -422,6 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // If we have a numeric user ID, also store with that to ensure lookup works
         if (user.id && user.id.toString() !== currentUser.uid) {
+          console.log("[AuthContext] Also storing wallet with numeric ID:", user.id.toString());
           await saveWalletAddress(
             user.id.toString(), 
             walletAddress, 

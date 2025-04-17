@@ -124,18 +124,22 @@ const MetaMaskPayment = ({
   
   // Derive wallet status from the hook's state
   const getWalletStatus = (): 'loading' | 'found' | 'not_found' | 'error' => {
-    if (manualFounderInfo) return 'found'; // If we have manual entry, always show found
+    if (manualFounderInfo?.walletAddress) return 'found'; // If we have manual entry with wallet, always show found
     if (isWalletLoading) return 'loading';
     
     // Check for wallet address in any form
     if (hasWallet && founderWallet) return 'found';
     if (founderInfo?.walletAddress) return 'found';
     
-    // Check if we have a startup with a valid founderWalletAddress field
-    if (founderInfo?.id) {
-      console.log('[MetaMaskPayment] Checking founder info for wallet:', founderInfo);
-      return 'found';
-    }
+    // Detailed logging of wallet checks
+    console.log('[MetaMaskPayment] Wallet check details:', {
+      manualFounderInfo,
+      hasWallet,
+      founderWallet, 
+      founderInfo,
+      isWalletLoading,
+      walletError
+    });
     
     if (walletError) return 'error';
     return 'not_found';
@@ -510,6 +514,27 @@ const MetaMaskPayment = ({
                   id: "manual",
                   walletAddress: walletAddress,
                   name: "Manual Payment"
+                });
+                
+                // Also save this wallet to the database for future use
+                // using promise-based approach to avoid async/await syntax errors
+                const walletPromise = import('@/firebase/walletDatabase');
+                walletPromise.then(walletDb => {
+                  // Use our startup ID directly 
+                  if (startupId && walletDb.saveWalletAddress) {
+                    walletDb.saveWalletAddress(
+                      startupId.toString(), 
+                      walletAddress, 
+                      "Founder", 
+                      "founder"
+                    ).then(() => {
+                      console.log("[MetaMaskPayment] Saved manually entered wallet address to database for founder:", startupId);
+                    }).catch(err => {
+                      console.error("[MetaMaskPayment] Error saving wallet address:", err);
+                    });
+                  }
+                }).catch(error => {
+                  console.error("[MetaMaskPayment] Error importing wallet database:", error);
                 });
               }
             }}

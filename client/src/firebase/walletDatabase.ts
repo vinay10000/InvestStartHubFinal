@@ -1,9 +1,12 @@
-import { ref, set, get, child, Database, getDatabase } from 'firebase/database';
+import { ref, set, get, child, Database, getDatabase, onValue } from 'firebase/database';
 import { database } from './config';
 
 // We now have properly typed database imports from config.ts
 // For compatibility with existing code, cast to Database type
 const db: Database = database as Database;
+
+// Add this line for debugging
+console.log("[Wallet DB] Database initialization status:", !!db);
 
 // Interface for wallet data structure
 export interface WalletData {

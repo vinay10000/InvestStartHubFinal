@@ -93,8 +93,28 @@ const FounderDashboard = () => {
     const fetchStartups = async () => {
       if (userId) {
         try {
+          console.log("Fetching startups for userId:", userId);
+          
           // Get startups from Firebase
-          const startups = await firebaseGetStartupsByFounderId(userId.toString());
+          // Try both UID and ID to ensure maximum compatibility
+          let startups = await firebaseGetStartupsByFounderId(userId.toString());
+          
+          // If we have a user.uid that's different from userId (which might be user.id), try that too
+          if (user?.uid && user.uid !== userId.toString()) {
+            console.log("Also trying to fetch startups with UID:", user.uid);
+            const uidStartups = await firebaseGetStartupsByFounderId(user.uid);
+            
+            // Merge the results (avoid duplicates by id)
+            if (uidStartups && uidStartups.length > 0) {
+              const existingIds = new Set(startups.map(s => s.id));
+              uidStartups.forEach(startup => {
+                if (!existingIds.has(startup.id)) {
+                  startups.push(startup);
+                }
+              });
+            }
+          }
+          
           console.log("Fetched founder startups from Firebase:", startups);
           
           if (startups && startups.length > 0) {
@@ -139,7 +159,7 @@ const FounderDashboard = () => {
     } else {
       setStartupsLoading(false);
     }
-  }, [userId]);
+  }, [userId, user]);
   
   // Firebase transactions
   const [firebaseTransactions, setFirebaseTransactions] = useState<any[]>([]);
