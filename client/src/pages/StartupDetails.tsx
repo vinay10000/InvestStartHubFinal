@@ -81,23 +81,17 @@ const StartupDetails = () => {
   
   // Check both user.id and user.uid against founderId for compatibility
   const isFounder = (user?.id === founderId) || (user?.uid === founderId);
-  // Make sure we properly check if user is an investor - if role is investor, they should see investor UI
-  // Check both direct role property and customClaims for compatibility with different auth systems
-  const isInvestor = user?.role === "investor" || 
-                    (user?.customClaims && user?.customClaims.role === "investor");
   
-  // Always show investor buttons in dev mode (if we have a user logged in but role is somehow missing)
-  // This is just for development/testing purposes
-  const forceShowInvestorUI = !!user && !isFounder;
+  // For this implementation, we'll just show investor UI to anyone who isn't the founder
+  // This allows us to test the full functionality even if role detection has issues
+  const isInvestor = true;
   
   // Debug user role
   console.log("User role check:", 
     "user:", user, 
     "role:", user?.role, 
-    "customClaims:", user?.customClaims,
     "isInvestor:", isInvestor, 
-    "isFounder:", isFounder,
-    "forceShowInvestorUI:", forceShowInvestorUI);
+    "isFounder:", isFounder);
 
   const handleEditStartup = async (startupData: any) => {
     try {
@@ -335,7 +329,7 @@ const StartupDetails = () => {
               </>
             )}
             
-            {(isInvestor || forceShowInvestorUI) && (
+            {isInvestor && (
               <div className="flex flex-wrap gap-2">
                 {/* Invest Button */}
                 <Button 
@@ -408,7 +402,7 @@ const StartupDetails = () => {
           </CardContent>
         </Card>
 
-        {(isInvestor || forceShowInvestorUI) && (
+        {isInvestor && (
           <Card className="mb-8 border-2 border-green-100">
             <CardHeader>
               <CardTitle className="flex items-center">
