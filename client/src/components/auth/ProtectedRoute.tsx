@@ -34,10 +34,9 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         return;
       }
       
-      // Get role from user object or localStorage
-      const userRole = user.role || 
-                       localStorage.getItem('user_role') || 
-                       'investor'; // Default role
+      // First check localStorage, then user object, then default to investor
+      const storedRole = localStorage.getItem('user_role');
+      const userRole = storedRole || user.role || 'investor'; // Prioritize localStorage
       
       console.log('ProtectedRoute: User authenticated with role:', userRole);
       
@@ -68,9 +67,9 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   if (user) {
     // For Firebase auth, extract role and check
     if (requiredRole) {
-      const userRole = user.role || 
-                      localStorage.getItem('user_role') || 
-                      'investor'; // Default role
+      // First check localStorage, then user object, then default to investor
+      const storedRole = localStorage.getItem('user_role');
+      const userRole = storedRole || user.role || 'investor'; // Prioritize localStorage
       
       if (userRole.toLowerCase() !== requiredRole.toLowerCase()) {
         console.log(`ProtectedRoute: Not rendering - role mismatch. User has ${userRole}, but ${requiredRole} is required`);

@@ -311,6 +311,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear user state immediately
       setUser(null);
       
+      // Clear localStorage values related to authentication
+      localStorage.removeItem('wallet_connected');
+      localStorage.removeItem('user_role');
+      console.log("AuthContext: Cleared wallet_connected and user_role from localStorage during logout");
+      
       toast({
         title: "Signed out successfully",
       });
@@ -353,6 +358,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedData = { ...userData };
       if (updatedData.walletAddress === null) {
         updatedData.walletAddress = '';
+      }
+      
+      // Update role in localStorage if it's being changed
+      if (updatedData.role) {
+        localStorage.setItem('user_role', updatedData.role);
+        console.log("AuthContext: Updated user_role in localStorage:", updatedData.role);
       }
       
       // Update user in Firebase Realtime Database

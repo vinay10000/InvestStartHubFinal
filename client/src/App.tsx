@@ -27,16 +27,17 @@ function AutoRedirect() {
 
   useEffect(() => {
     if (!loading && user) {
-      // Check for role in user object and fallback to localStorage
-      const userRole = user.role || localStorage.getItem('user_role') || 'investor';
+      // First check localStorage, then fallback to user object, then default to investor
+      const storedRole = localStorage.getItem('user_role');
+      const userRole = storedRole || user.role || 'investor';
       
-      console.log("AutoRedirect - User authenticated with role:", userRole);
+      console.log("AutoRedirect - User authenticated with role:", userRole, 
+                  "stored role:", storedRole, 
+                  "user object role:", user.role);
       
-      // Ensure role is stored in localStorage (helpful for components that use it)
-      if (userRole && !localStorage.getItem('user_role')) {
-        localStorage.setItem('user_role', userRole);
-        console.log("AutoRedirect - Setting missing role in localStorage:", userRole);
-      }
+      // Always ensure role is stored in localStorage for consistency
+      localStorage.setItem('user_role', userRole);
+      console.log("AutoRedirect - Ensuring role is in localStorage:", userRole);
       
       if (userRole === 'founder') {
         console.log("Auto-redirecting to founder dashboard");
