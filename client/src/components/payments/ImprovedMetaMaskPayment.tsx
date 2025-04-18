@@ -41,6 +41,11 @@ const ImprovedMetaMaskPayment = ({
   // Get the current user's wallet - ensure userId is a string or undefined
   const { walletAddress, isLoading: isUserWalletLoading } = useWallet(user?.id?.toString());
   
+  // Also check sessionStorage which is updated by ProtectedRoute
+  const sessionWalletAddress = sessionStorage.getItem('wallet_address');
+  // Use either the hook-provided wallet or the one from sessionStorage
+  const effectiveWalletAddress = walletAddress || sessionWalletAddress;
+  
   // State to track if we need to prompt for MetaMask connection
   const [needsMetaMaskConnection, setNeedsMetaMaskConnection] = useState(false);
   
@@ -90,7 +95,7 @@ const ImprovedMetaMaskPayment = ({
   useEffect(() => {
     const attemptAutoConnect = async () => {
       // Skip if we have no wallet in database or MetaMask is not installed
-      if (!walletAddress || !isInstalled) {
+      if (!effectiveWalletAddress || !isInstalled) {
         setNeedsMetaMaskConnection(false);
         return;
       }
@@ -102,7 +107,7 @@ const ImprovedMetaMaskPayment = ({
         return;
       }
       
-      console.log("Wallet found in database but not connected in browser:", walletAddress);
+      console.log("Wallet found in database but not connected in browser:", effectiveWalletAddress);
       
       try {
         // Check silently first if MetaMask is unlocked and has accounts
@@ -128,10 +133,10 @@ const ImprovedMetaMaskPayment = ({
             setNeedsMetaMaskConnection(false);
             
             // Check if account matches the database
-            if (address && address.toLowerCase() !== walletAddress.toLowerCase()) {
+            if (address && effectiveWalletAddress && address.toLowerCase() !== effectiveWalletAddress.toLowerCase()) {
               console.warn("Connected account doesn't match database wallet", {
                 connectedAccount: address,
-                databaseWallet: walletAddress
+                databaseWallet: effectiveWalletAddress
               });
               
               toast({
@@ -157,7 +162,7 @@ const ImprovedMetaMaskPayment = ({
     
     // Run the auto-connect attempt
     attemptAutoConnect();
-  }, [walletAddress, isWalletConnected, connect, isInstalled, address, toast]);
+  }, [effectiveWalletAddress, isWalletConnected, connect, isInstalled, address, toast]);
   
   // Handle investment process
   const handleInvest = async () => {

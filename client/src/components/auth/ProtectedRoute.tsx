@@ -112,12 +112,25 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     
     // No longer forcing wallet connection in protected routes
     // We'll check wallet connection status in specific components as needed
-    const hasWallet = user.walletAddress && user.walletAddress !== '';
-    const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
     
-    if (!hasWallet && !hasConnectedWallet) {
-      console.log('ProtectedRoute: User has no wallet connected, but continuing without forcing connection');
-      // No longer showing wallet prompt here
+    // Only log a debug message if we're in a path that might need a wallet
+    if (window.location.pathname.includes('startup/') && user) {
+      const hasWallet = user.walletAddress && user.walletAddress !== '';
+      const hasConnectedWallet = localStorage.getItem('wallet_connected') === 'true';
+      
+      // Store the wallet connection status in sessionStorage
+      // This allows payment pages to know if a wallet exists in the database
+      if (hasWallet && user.walletAddress) {
+        sessionStorage.setItem('db_wallet_found', 'true');
+        sessionStorage.setItem('wallet_address', user.walletAddress as string);
+      }
+      
+      // Debug log
+      console.log('Wallet Status in ProtectedRoute:', {
+        hasWalletInDatabase: hasWallet,
+        hasConnectedWalletInStorage: hasConnectedWallet,
+        walletAddress: user.walletAddress || 'none'
+      });
     }
     
     // Use React.lazy for dynamic imports in Vite
