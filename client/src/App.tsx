@@ -21,6 +21,7 @@ import WalletSetup from "@/pages/WalletSetup";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
+import { addSampleWalletsToFirebase, checkWalletsInFirebase } from "@/firebase/sampleWallets";
 
 // AutoRedirect component to handle automatic redirection after login
 function AutoRedirect() {
@@ -172,6 +173,43 @@ function GlobalWalletChecker() {
   return null;
 }
 
+// Wallet database initialization component
+function WalletDatabaseInitializer() {
+  const [initialized, setInitialized] = useState(false);
+  
+  useEffect(() => {
+    const initializeWallets = async () => {
+      try {
+        // Check if wallets already exist in Firebase
+        const walletsExist = await checkWalletsInFirebase();
+        
+        if (!walletsExist) {
+          console.log("No wallet addresses found in Firebase, adding sample data");
+          // Add sample wallet addresses to Firebase
+          const success = await addSampleWalletsToFirebase();
+          if (success) {
+            console.log("Successfully added sample wallet addresses to Firebase");
+          } else {
+            console.error("Failed to add sample wallet addresses to Firebase");
+          }
+        } else {
+          console.log("Wallet addresses already exist in Firebase");
+        }
+        
+        setInitialized(true);
+      } catch (error) {
+        console.error("Error initializing wallet database:", error);
+        setInitialized(true); // Set initialized to true even if error to prevent re-attempts
+      }
+    };
+    
+    // Initialize wallet database
+    initializeWallets();
+  }, []);
+  
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -183,6 +221,7 @@ function App() {
           </main>
           <Footer />
           <GlobalWalletChecker />
+          <WalletDatabaseInitializer />
         </div>
         <Toaster />
       </AuthProvider>

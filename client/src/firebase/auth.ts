@@ -29,7 +29,8 @@ export const signUpWithEmail = async (
   email: string, 
   password: string, 
   username: string, 
-  role: "founder" | "investor"
+  role: "founder" | "investor",
+  walletAddress?: string
 ): Promise<UserCredential> => {
   try {
     console.log(`⭐ IMPORTANT: Creating new user account for ${email} with ROLE "${role.toUpperCase()}"`);
@@ -57,9 +58,14 @@ export const signUpWithEmail = async (
       username,
       email,
       role: normalizedRole, // Use normalized role here
-      walletAddress: "",
+      walletAddress: walletAddress || "",
       profilePicture,
     });
+    
+    if (walletAddress) {
+      console.log("User created with wallet address:", walletAddress);
+      localStorage.setItem('wallet_connected', 'true');
+    }
     
     console.log("User created successfully in Firebase:", user.uid, "with role:", normalizedRole);
     

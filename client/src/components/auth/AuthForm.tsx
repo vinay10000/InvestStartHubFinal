@@ -18,6 +18,7 @@ const signInSchema = z.object({
 const signUpSchema = z.object({
   username: z.string().min(1, "Username is required"),
   email: z.string().email("Please enter a valid email address"),
+  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid Ethereum wallet address").optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Confirm password is required"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -30,7 +31,7 @@ type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 interface AuthFormProps {
   type: "signin" | "signup";
-  onSubmit: (email: string, password: string, username: string) => Promise<void>;
+  onSubmit: (email: string, password: string, username: string, walletAddress?: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -44,7 +45,7 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: type === "signin" 
       ? { username: "", password: "" }
-      : { username: "", email: "", password: "", confirmPassword: "" },
+      : { username: "", email: "", walletAddress: "", password: "", confirmPassword: "" },
   });
 
   const handleSubmit = async (data: SignInFormValues | SignUpFormValues) => {
@@ -52,8 +53,8 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
       const { username, password } = data as SignInFormValues;
       await onSubmit("", password, username); // Email is not used for sign in
     } else {
-      const { email, password, username } = data as SignUpFormValues;
-      await onSubmit(email, password, username);
+      const { email, password, username, walletAddress } = data as SignUpFormValues;
+      await onSubmit(email, password, username, walletAddress);
     }
   };
 
@@ -80,24 +81,45 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
         />
 
         {type === "signup" && (
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="Enter your email" 
-                    {...field} 
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="Enter your email" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="walletAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Wallet Address</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="text" 
+                      placeholder="Enter your Ethereum wallet address (0x...)" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
         )}
 
         <FormField

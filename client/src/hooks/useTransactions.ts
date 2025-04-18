@@ -30,7 +30,8 @@ export const useTransactions = () => {
           return { transactions };
         },
         enabled: !!investorId,
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
+        refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
       });
     }
     
@@ -38,7 +39,8 @@ export const useTransactions = () => {
     return useQuery<{ transactions: Transaction[] }>({
       queryKey: ["/api/investments", { investorId }],
       enabled: !!investorId,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
     });
   };
 
@@ -57,7 +59,8 @@ export const useTransactions = () => {
           return { transactions };
         },
         enabled: !!founderId,
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
+        refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
       });
     }
     
@@ -65,7 +68,8 @@ export const useTransactions = () => {
     return useQuery<{ transactions: Transaction[] }>({
       queryKey: ["/api/investments", { founderId }],
       enabled: !!founderId,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
     });
   };
 

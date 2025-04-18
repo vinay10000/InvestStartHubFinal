@@ -5,9 +5,11 @@ import express, { Request, Response } from 'express';
 import { 
   insertUserSchema, insertStartupSchema, insertDocumentSchema, 
   insertTransactionSchema, insertChatSchema, insertMessageSchema,
-  User 
+  User, Transaction
 } from '@shared/schema';
 import { z } from 'zod';
+import { WebSocketServer } from 'ws';
+import { WebSocket } from 'ws';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes

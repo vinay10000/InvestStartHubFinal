@@ -21,7 +21,7 @@ import { getUserByUid, updateUser } from "@/firebase/database";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string, role: "founder" | "investor") => Promise<void>;
+  signUp: (email: string, password: string, username: string, role: "founder" | "investor", walletAddress?: string) => Promise<void>;
   signIn: (username: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -187,21 +187,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   // Sign up with email and password
-  const signUp = async (email: string, password: string, username: string, role: "founder" | "investor") => {
+  const signUp = async (email: string, password: string, username: string, role: "founder" | "investor", walletAddress?: string) => {
     try {
       setLoading(true);
-      console.log("Starting signup process in AuthContext:", { email, username, role });
+      console.log("Starting signup process in AuthContext:", { email, username, role, walletAddress });
       
-      // Using the refactored Firebase auth function
-      const result = await firebaseSignUpWithEmail(email, password, username, role);
+      // Using the refactored Firebase auth function with wallet address
+      const result = await firebaseSignUpWithEmail(email, password, username, role, walletAddress);
       console.log("Signup successful, Firebase user created:", result.user.uid);
       
       // Force synchronization after signup
       await synchronizeUserData(result.user);
       
+      const toastDescription = walletAddress 
+        ? "Account created successfully with wallet address." 
+        : "You are now signed in. Please connect your wallet to continue.";
+      
       toast({
         title: "Account created successfully",
-        description: "You are now signed in. Please connect your wallet to continue.",
+        description: toastDescription,
       });
     } catch (error: any) {
       console.error("Error in signUp:", error);

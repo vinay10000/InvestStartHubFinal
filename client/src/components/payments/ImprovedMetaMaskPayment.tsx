@@ -39,9 +39,25 @@ const ImprovedMetaMaskPayment = ({
   const { toast } = useToast();
   const { useStartup } = useStartups();
   
-  // Get founder's wallet information
+  // Get founder's wallet information from multiple sources
   const { data: startupData } = useStartup(startupId.toString());
+  
+  // Try from the useWallet hook first
   const { walletAddress: founderWalletAddress } = useWallet(startupData?.founderId);
+  
+  // Also check if the startup data has a direct wallet address field (handle various field names)
+  const directFounderWallet = startupData?.founderWalletAddress || 
+                             (startupData as any)?.founderWalletAddress || 
+                             (startupData as any)?.walletAddress;
+                             
+  // For wallet discovery logging only
+  console.log("Wallet Discovery - Founder wallet sources:", {
+    startupId,
+    startupFounderId: startupData?.founderId,
+    founderWalletAddress,
+    directFounderWallet,
+    possibleFounderWallet: founderWalletAddress || directFounderWallet || null
+  });
   
   // Get the current user's wallet - ensure userId is a string or undefined
   const { walletAddress, isLoading: isUserWalletLoading } = useWallet(user?.id?.toString());
@@ -72,12 +88,9 @@ const ImprovedMetaMaskPayment = ({
   const [amount, setAmount] = useState<string>("0.1"); // Default investment amount
   const [transactionProgress, setTransactionProgress] = useState<number>(0);
   
-  // State for manual wallet address entry
-  const [manualWalletAddress, setManualWalletAddress] = useState<string>("");
-  const [useManualAddress, setUseManualAddress] = useState<boolean>(false);
+  // We no longer need manual wallet input since we collect it during signup
   const [manualFounderWallet, setManualFounderWallet] = useState<string | null>(null);
   const [manualFounderInfo, setManualFounderInfo] = useState<any | null>(null);
-  const [showManualWalletInput, setShowManualWalletInput] = useState<boolean>(false);
   
   // Helper function to get network name from chain ID
   const getNetworkName = (chainIdStr: string | null): string => {
@@ -198,11 +211,19 @@ const ImprovedMetaMaskPayment = ({
       return;
     }
 
+    // Get the most reliable founder wallet address - using the one from earlier in the component
+    
+    console.log("Investment - using founder wallet:", effectiveFounderWallet, {
+      founderWalletAddress,
+      directFounderWallet,
+      manualFounderWallet
+    });
+    
     // Check if founder wallet is available
     if (!effectiveFounderWallet) {
       toast({
         title: "Founder Wallet Not Found",
-        description: "The startup founder has not connected their wallet yet",
+        description: "The startup founder hasn't connected their wallet yet. Please try again later when the founder has setup their wallet in their profile.",
         variant: "destructive"
       });
       return;
@@ -574,7 +595,8 @@ const ImprovedMetaMaskPayment = ({
   }
   
   // Use the wallet info passed from props or provided by useFounderWallet hook
-  const effectiveFounderWallet = founderWalletAddress || manualFounderWallet;
+  // Combine all possible wallet sources
+  const effectiveFounderWallet = founderWalletAddress || directFounderWallet || manualFounderWallet;
   const effectiveFounderInfo = {
     name: startupData?.name || "Founder",
     walletAddress: effectiveFounderWallet
@@ -586,29 +608,7 @@ const ImprovedMetaMaskPayment = ({
     return /^0x[a-fA-F0-9]{40}$/.test(address);
   };
   
-  // Handle manual wallet entry
-  const handleManualWalletSubmit = () => {
-    if (manualWalletAddress && isValidEthAddress(manualWalletAddress)) {
-      setManualFounderWallet(manualWalletAddress);
-      setManualFounderInfo({
-        id: "manual",
-        name: "Manual Entry",
-        walletAddress: manualWalletAddress
-      });
-      setShowManualWalletInput(false);
-      setManualWalletAddress("");
-      toast({
-        title: "Wallet Address Added",
-        description: "You can now proceed with the payment using the manually entered wallet address.",
-      });
-    } else if (manualWalletAddress) {
-      toast({
-        title: "Invalid Wallet Address",
-        description: "Please enter a valid Ethereum wallet address starting with 0x",
-        variant: "destructive"
-      });
-    }
-  };
+  // We no longer need manual wallet entry since we collect wallet addresses during signup
   
   // Render no founder wallet warning
   if (!effectiveHasWallet) {
@@ -629,50 +629,9 @@ const ImprovedMetaMaskPayment = ({
             <AlertTitle>Founder Wallet Not Found</AlertTitle>
             <AlertDescription>
               The startup founder hasn't connected their wallet yet.
-              Please try again later when the founder has setup their wallet.
+              Please try again later when the founder has setup their wallet in their profile.
             </AlertDescription>
           </Alert>
-          
-          {!showManualWalletInput ? (
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => setShowManualWalletInput(true)}
-            >
-              Enter wallet address manually
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <UILabel htmlFor="manualWallet">Founder's Wallet Address</UILabel>
-                <div className="flex gap-2">
-                  <Input
-                    id="manualWallet"
-                    placeholder="0x..."
-                    value={manualWalletAddress}
-                    onChange={(e) => setManualWalletAddress(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={handleManualWalletSubmit}
-                    disabled={!manualWalletAddress || !isValidEthAddress(manualWalletAddress)}
-                  >
-                    Add
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Enter a valid Ethereum wallet address starting with 0x
-                </p>
-              </div>
-              <Button 
-                variant="ghost" 
-                className="w-full"
-                onClick={() => setShowManualWalletInput(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     );

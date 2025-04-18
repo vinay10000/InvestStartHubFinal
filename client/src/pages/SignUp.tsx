@@ -19,7 +19,7 @@ const SignUp = () => {
   const defaultRole = searchParams.get('role') === 'investor' ? 'investor' : 'founder';
   const [selectedRole, setSelectedRole] = useState<"founder" | "investor">(defaultRole as "founder" | "investor");
 
-  const handleSignUp = async (email: string, password: string, username: string) => {
+  const handleSignUp = async (email: string, password: string, username: string, walletAddress?: string) => {
     try {
       setIsLoading(true);
       
@@ -35,7 +35,10 @@ const SignUp = () => {
       console.log("User role set to:", targetRole);
       
       // Sign up with Firebase using the main auth context
-      await signUp(email, password, username, targetRole);
+      if (walletAddress) {
+        console.log("Including wallet address in signup:", walletAddress);
+      }
+      await signUp(email, password, username, targetRole, walletAddress);
       console.log("Signup successful");
       
       // Get the current Firebase user

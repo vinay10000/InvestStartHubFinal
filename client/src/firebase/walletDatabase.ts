@@ -321,3 +321,123 @@ export const saveWalletToStartup = async (
     return false;
   }
 };
+
+/**
+ * Saves a wallet address to user's Firebase account
+ */
+export const saveWalletAddress = async (
+  firebaseUid: string,
+  walletAddress: string,
+  username: string = '',
+  role: string = ''
+): Promise<boolean> => {
+  try {
+    console.log(`[Wallet DB] Saving wallet ${walletAddress} to Firebase user ${firebaseUid}`);
+    
+    // Save to Firebase user data
+    const userRef = ref(database, `users/${firebaseUid}`);
+    
+    await update(userRef, {
+      walletAddress: walletAddress.toLowerCase(),
+      walletUpdatedAt: Date.now(),
+      username: username || '',
+      role: role || ''
+    });
+    
+    console.log(`[Wallet DB] Successfully saved wallet to Firebase user ${firebaseUid}`);
+    return true;
+  } catch (error) {
+    console.error(`[Wallet DB] Error saving wallet to Firebase user:`, error);
+    return false;
+  }
+};
+
+/**
+ * Migrates a wallet address from numeric ID to Firebase UID
+ */
+export const migrateWalletToFirebaseUid = async (
+  numericId: string | number,
+  firebaseUid: string,
+  walletAddress?: string
+): Promise<boolean> => {
+  try {
+    console.log(`[Wallet DB] Migrating wallet from numeric ID ${numericId} to Firebase UID ${firebaseUid}`);
+    
+    // If wallet address is provided directly, use it instead of looking up
+    if (walletAddress) {
+      console.log(`[Wallet DB] Using provided wallet address: ${walletAddress}`);
+      return await saveWalletAddress(firebaseUid, walletAddress);
+    }
+    
+    // Get the wallet for the numeric ID
+    const numId = typeof numericId === 'string' ? parseInt(numericId, 10) : numericId;
+    const wallet = await getUserWallet(numId);
+    
+    if (!wallet) {
+      console.log(`[Wallet DB] No wallet found for numeric ID ${numericId}`);
+      return false;
+    }
+    
+    // Save the wallet to the Firebase user
+    const success = await saveWalletAddress(firebaseUid, wallet.address);
+    
+    return success;
+  } catch (error) {
+    console.error(`[Wallet DB] Error migrating wallet:`, error);
+    return false;
+  }
+};
+
+/**
+ * Deletes a wallet address from a user's account
+ */
+export const deleteWallet = async (
+  firebaseUid: string | number
+): Promise<boolean> => {
+  try {
+    const uid = firebaseUid.toString();
+    console.log(`[Wallet DB] Deleting wallet for user ${uid}`);
+    
+    // Get the user data to check if they have a wallet
+    const userRef = ref(database, `users/${uid}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      
+      if (userData.walletAddress) {
+        // Remove the wallet address reference
+        await update(userRef, {
+          walletAddress: null
+        });
+        
+        console.log(`[Wallet DB] Successfully deleted wallet for user ${uid}`);
+        return true;
+      } else {
+        console.log(`[Wallet DB] No wallet found for user ${uid}`);
+        return false;
+      }
+    }
+    
+    // Try numeric ID format as fallback
+    try {
+      const numericId = typeof firebaseUid === 'string' ? parseInt(firebaseUid, 10) : firebaseUid;
+      if (!isNaN(numericId)) {
+        const wallet = await getUserWallet(numericId);
+        if (wallet) {
+          const walletRef = ref(database, `wallets/${wallet.address.toLowerCase()}`);
+          await remove(walletRef);
+          console.log(`[Wallet DB] Successfully removed wallet by numeric ID ${numericId}`);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.log(`[Wallet DB] Error trying numeric ID fallback:`, e);
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`[Wallet DB] Error deleting wallet:`, error);
+    return false;
+  }
+};
