@@ -344,8 +344,9 @@ const ImprovedMetaMaskPayment = ({
     );
   }
   
-  // Check if user has a wallet connected in the database
+  // If the user has no wallet info at all, show the wallet setup UI
   if (!effectiveWalletAddress && user) {
+    console.log("No wallet information found at all, showing connect wallet UI");
     // Attempting to auto-connect wallet if it's available through MetaMask
     return (
       <Card>
@@ -415,6 +416,76 @@ const ImprovedMetaMaskPayment = ({
             }}
           >
             Go to Wallet Setup
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // If we have a wallet in the database or session but it's not connected in the browser yet
+  if (effectiveWalletAddress && !address && !isWalletConnected()) {
+    console.log("Wallet found in database/session but not connected in browser");
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Connect Your Wallet
+          </CardTitle>
+          <CardDescription>
+            Your wallet is already registered but needs to be connected
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 border rounded-lg bg-blue-50">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Wallet Connected to Your Account</span>
+              <span className="text-sm text-green-600">✓ Verified</span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm">Address</span>
+              <span className="text-sm font-mono">{effectiveWalletAddress ? truncateAddress(effectiveWalletAddress) : 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-sm">Status</span>
+              <span className="text-sm">Permanent</span>
+            </div>
+          </div>
+          
+          <Button 
+            variant="default" 
+            className="w-full"
+            onClick={async () => {
+              try {
+                console.log("Attempting to connect MetaMask with existing wallet...");
+                const connected = await connect();
+                
+                if (connected) {
+                  console.log("Successfully connected MetaMask with existing wallet!");
+                  toast({
+                    title: "MetaMask Connected",
+                    description: "Your wallet is now ready to make transactions",
+                  });
+                  // Force a refresh of the component
+                  setTimeout(() => window.location.reload(), 1000);
+                } else {
+                  toast({
+                    title: "Connection Failed",
+                    description: "Please ensure MetaMask is installed and unlocked",
+                    variant: "destructive"
+                  });
+                }
+              } catch (error) {
+                console.error("Error connecting MetaMask:", error);
+                toast({
+                  title: "Connection Error",
+                  description: "Could not connect to MetaMask. Please try again.",
+                  variant: "destructive"
+                });
+              }
+            }}
+          >
+            Continue
           </Button>
         </CardContent>
       </Card>
