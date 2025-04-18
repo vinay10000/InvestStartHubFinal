@@ -9,10 +9,15 @@ const WalletSetup: React.FC = () => {
   const [, navigate] = useLocation();
   const router = useRouter();
   
-  // Get the intended destination from URL query params
+  // Get the intended destination from URL query params or localStorage
   const params = new URLSearchParams(window.location.search);
-  const redirectUrl = params.get('redirect') || 
-    (user?.role === 'founder' ? '/dashboard/founder' : '/dashboard/investor');
+  const urlRedirect = params.get('redirect');
+  const storedRedirect = localStorage.getItem('wallet_redirect');
+  
+  // Use URL redirect param, then localStorage, then fallback to role-based dashboard
+  const redirectUrl = urlRedirect || 
+    storedRedirect || 
+    (user?.role === 'founder' ? '/founder/dashboard' : '/investor/dashboard');
   
   useEffect(() => {
     // Initialize the wallet database

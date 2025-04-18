@@ -258,7 +258,13 @@ const ImprovedMetaMaskPayment = ({
           <Button 
             variant="default" 
             className="w-full"
-            onClick={() => window.location.href = "/wallet-setup"}
+            onClick={() => {
+              // Store current URL to redirect back after wallet setup
+              const currentPath = window.location.pathname;
+              const currentSearch = window.location.search;
+              localStorage.setItem('wallet_redirect', currentPath + currentSearch);
+              window.location.href = "/wallet-setup?redirect=" + encodeURIComponent(currentPath + currentSearch);
+            }}
           >
             Go to Wallet Setup
           </Button>
@@ -332,7 +338,7 @@ const ImprovedMetaMaskPayment = ({
             </div>
           </div>
           
-          <Alert variant="warning">
+          <Alert className="bg-yellow-50 border-yellow-300">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Browser Extension Not Connected</AlertTitle>
             <AlertDescription>

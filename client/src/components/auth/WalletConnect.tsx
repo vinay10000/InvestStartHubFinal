@@ -183,6 +183,10 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
   
   const handleRedirect = () => {
     if (redirectPath) {
+      // Clear the stored redirect URL from localStorage
+      localStorage.removeItem('wallet_redirect');
+      
+      // Navigate to the redirect path
       navigate(redirectPath);
     }
   };
