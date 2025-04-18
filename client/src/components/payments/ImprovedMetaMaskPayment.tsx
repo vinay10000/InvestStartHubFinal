@@ -46,6 +46,16 @@ const ImprovedMetaMaskPayment = ({
   // Use either the hook-provided wallet or the one from sessionStorage
   const effectiveWalletAddress = walletAddress || sessionWalletAddress;
   
+  // Debug logs to understand wallet discovery
+  console.log("Wallet Discovery in ImprovedMetaMaskPayment:", {
+    hookProvidedWallet: walletAddress,
+    sessionStorageWallet: sessionWalletAddress,
+    effectiveWalletAddress,
+    isMetaMaskInstalled: isInstalled,
+    isMetaMaskConnected: isWalletConnected(),
+    currentMetaMaskAddress: address
+  });
+  
   // State to track if we need to prompt for MetaMask connection
   const [needsMetaMaskConnection, setNeedsMetaMaskConnection] = useState(false);
   
@@ -169,9 +179,9 @@ const ImprovedMetaMaskPayment = ({
     // Check if we need to connect MetaMask or we can proceed directly
     if (!address) {
       try {
-        // First check if the user already has a wallet in database
-        if (walletAddress) {
-          console.log("User has a wallet in database:", walletAddress);
+        // First check if the user already has a wallet in database or in session
+        if (effectiveWalletAddress) {
+          console.log("User has a wallet available:", effectiveWalletAddress);
           
           // Try to auto-connect with wallet in database
           console.log("Auto-connecting MetaMask...");
@@ -335,7 +345,7 @@ const ImprovedMetaMaskPayment = ({
   }
   
   // Check if user has a wallet connected in the database
-  if (!walletAddress && user) {
+  if (!effectiveWalletAddress && user) {
     // Attempting to auto-connect wallet if it's available through MetaMask
     return (
       <Card>
@@ -468,7 +478,7 @@ const ImprovedMetaMaskPayment = ({
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-sm">Address</span>
-              <span className="text-sm font-mono">{walletAddress ? truncateAddress(walletAddress) : 'N/A'}</span>
+              <span className="text-sm font-mono">{effectiveWalletAddress ? truncateAddress(effectiveWalletAddress) : 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center mt-1">
               <span className="text-sm">Status</span>
