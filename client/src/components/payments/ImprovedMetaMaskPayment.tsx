@@ -120,7 +120,7 @@ const ImprovedMetaMaskPayment = ({
     }
     
     // Check if founder wallet is available
-    if (!founderWallet) {
+    if (!effectiveFounderWallet) {
       toast({
         title: "Founder Wallet Not Found",
         description: "The startup founder has not connected their wallet yet",
@@ -140,7 +140,10 @@ const ImprovedMetaMaskPayment = ({
       setTransactionProgress(30);
       
       // Process the transaction using direct ETH transfer
-      const result = await sendDirectETH(founderWallet, cleanAmount);
+      if (!effectiveFounderWallet) {
+        throw new Error("Founder wallet address is missing");
+      }
+      const result = await sendDirectETH(effectiveFounderWallet, cleanAmount);
       
       // Transaction sent
       setTransactionProgress(70);
@@ -257,8 +260,24 @@ const ImprovedMetaMaskPayment = ({
     );
   }
   
-  // Render no founder wallet warning
-  if (!hasWallet) {
+  // State for manual wallet address entry
+  const [manualWalletAddress, setManualWalletAddress] = useState<string>("");
+  const [useManualAddress, setUseManualAddress] = useState<boolean>(false);
+  const [manualFounderWallet, setManualFounderWallet] = useState<string | null>(null);
+  const [manualFounderInfo, setManualFounderInfo] = useState<any | null>(null);
+  
+  // If we have manually set wallet info, use it
+  const effectiveFounderWallet = manualFounderWallet || founderWallet;
+  const effectiveFounderInfo = manualFounderInfo || founderInfo;
+  const effectiveHasWallet = !!effectiveFounderWallet;
+  
+  // Function to validate Ethereum address
+  const isValidEthAddress = (address: string): boolean => {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+  
+  // Render no founder wallet warning with option to manually enter wallet
+  if (!effectiveHasWallet && !useManualAddress) {
     return (
       <Card>
         <CardHeader>
@@ -270,15 +289,80 @@ const ImprovedMetaMaskPayment = ({
             Use cryptocurrency to invest in this startup
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Founder Wallet Not Found</AlertTitle>
             <AlertDescription>
               The startup founder hasn't connected their wallet yet. 
-              Please try another payment method or contact the founder.
+              You can manually enter the founder's wallet address if you have it.
             </AlertDescription>
           </Alert>
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => setUseManualAddress(true)}
+          >
+            Enter Wallet Manually
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Show manual wallet entry form
+  if (!effectiveHasWallet && useManualAddress) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Enter Founder Wallet
+          </CardTitle>
+          <CardDescription>
+            Please enter the startup founder's wallet address
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="manual-wallet">Ethereum Wallet Address</Label>
+            <input
+              id="manual-wallet"
+              type="text"
+              placeholder="0x..."
+              value={manualWalletAddress}
+              onChange={(e) => setManualWalletAddress(e.target.value)}
+              className="w-full p-2 border rounded-md"
+            />
+            {manualWalletAddress && !isValidEthAddress(manualWalletAddress) && (
+              <p className="text-sm text-red-500">Please enter a valid Ethereum address (0x...)</p>
+            )}
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => setUseManualAddress(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              className="flex-1"
+              disabled={!manualWalletAddress || !isValidEthAddress(manualWalletAddress)}
+              onClick={() => {
+                // Set the wallet address manually for this session
+                setManualFounderWallet(manualWalletAddress);
+                setManualFounderInfo({
+                  id: startupId.toString(),
+                  name: startupName,
+                  walletAddress: manualWalletAddress
+                });
+                setUseManualAddress(false);
+              }}
+            >
+              Use This Address
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -354,12 +438,12 @@ const ImprovedMetaMaskPayment = ({
         <div className="p-3 border rounded-lg bg-slate-50">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">Recipient</span>
-            <span className="text-sm">{founderInfo?.name || startupName}</span>
+            <span className="text-sm">{effectiveFounderInfo?.name || startupName}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm">Wallet</span>
             <span className="text-sm font-mono truncate max-w-[180px]">
-              {truncateAddress(founderWallet || "")}
+              {truncateAddress(effectiveFounderWallet || "")}
             </span>
           </div>
         </div>
