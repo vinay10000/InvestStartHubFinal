@@ -198,6 +198,60 @@ export const listenToChainChanges = (callback: (chainId: string) => void): () =>
 };
 
 /**
+ * Send ETH directly to a recipient address
+ */
+export const sendETH = async (
+  recipientAddress: string, 
+  amount: string
+): Promise<{ transactionHash: string } | null> => {
+  if (!isMetaMaskInstalled()) return null;
+  
+  try {
+    console.log(`[sendETH] Sending ${amount} ETH to ${recipientAddress}`);
+    
+    // Convert from ETH to wei
+    const amountInWei = ethers.parseEther(amount);
+    
+    // Get the provider and signer
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const fromAddress = await signer.getAddress();
+    
+    console.log(`[sendETH] From address: ${fromAddress}`);
+    console.log(`[sendETH] Amount in wei: ${amountInWei.toString()}`);
+    
+    // Prepare transaction parameters
+    const tx = {
+      from: fromAddress,
+      to: recipientAddress,
+      value: amountInWei,
+      // Optional parameters:
+      // nonce: await provider.getTransactionCount(fromAddress, "latest"),
+      // gasLimit: ethers.BigNumber.from(21000),
+      // gasPrice: await provider.getGasPrice(),
+    };
+    
+    // Send the transaction
+    console.log(`[sendETH] Sending transaction:`, tx);
+    const transaction = await signer.sendTransaction(tx);
+    
+    // Wait for transaction to be mined
+    console.log(`[sendETH] Transaction sent, hash: ${transaction.hash}`);
+    console.log(`[sendETH] Waiting for transaction to be mined...`);
+    
+    const receipt = await transaction.wait();
+    console.log(`[sendETH] Transaction confirmed in block ${receipt?.blockNumber}`);
+    
+    return {
+      transactionHash: transaction.hash
+    };
+  } catch (error) {
+    console.error("[sendETH] Error sending ETH:", error);
+    throw error;
+  }
+};
+
+/**
  * Custom hook to use Web3
  */
 export const useWeb3 = () => {

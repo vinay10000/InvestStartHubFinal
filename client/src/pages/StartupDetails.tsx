@@ -21,6 +21,7 @@ import StartupForm from "@/components/startups/StartupForm";
 import { FirebaseStartup, FirebaseDocument } from "@/firebase/database";
 import { Document } from "@/services/documentService";
 import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayment";
+import SimpleMetaMaskPayment from "@/components/payments/SimpleMetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
 import { getUserWallet } from "@/firebase/walletDatabase";
 

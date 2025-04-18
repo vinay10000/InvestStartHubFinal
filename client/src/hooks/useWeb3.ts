@@ -329,6 +329,16 @@ export const useWeb3 = () => {
     return Boolean(address);
   }, [address]);
 
+  // Send ETH directly to another address
+  const sendDirectETH = async (recipientAddress: string, amount: string) => {
+    try {
+      return await sendETH(recipientAddress, amount);
+    } catch (error) {
+      console.error("Error in sendDirectETH:", error);
+      throw error;
+    }
+  };
+
   return {
     isInstalled,
     isLoading,
@@ -339,6 +349,7 @@ export const useWeb3 = () => {
     connect,
     changeNetwork,
     refreshBalance,
-    isWalletConnected
+    isWalletConnected,
+    sendDirectETH
   };
 };
