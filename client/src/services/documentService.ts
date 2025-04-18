@@ -66,8 +66,9 @@ export const deleteDocument = async (documentId: string | number) => {
  * Downloads a document by URL
  * @param url - The document URL to download
  * @param filename - The suggested filename for the download
+ * @returns Promise that resolves when download is initiated
  */
-export const downloadDocument = (url: string, filename: string) => {
+export const downloadDocument = async (url: string, filename: string): Promise<boolean> => {
   try {
     console.log("Attempting to download document:", url, filename);
     
@@ -77,17 +78,55 @@ export const downloadDocument = (url: string, filename: string) => {
       throw new Error("Invalid document URL");
     }
     
-    // Create an invisible anchor element
+    // For ImageKit URLs, we can use direct download
+    if (url.includes('imagekit.io') || url.includes('ik.imagekit.io')) {
+      // For PDFs and large files, we'll try to fetch first to ensure proper content disposition
+      if (url.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('/documents/')) {
+        try {
+          // Get file content as blob
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+            },
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          // Create a blob from the response
+          const blob = await response.blob();
+          
+          // Create object URL for download
+          const objectUrl = window.URL.createObjectURL(blob);
+          
+          // Download via anchor
+          const a = document.createElement('a');
+          a.href = objectUrl;
+          a.download = filename || 'document';
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(objectUrl);
+          }, 100);
+          
+          return true;
+        } catch (fetchError) {
+          console.warn("Fetch approach failed, falling back to direct download:", fetchError);
+          // Continue to fallback implementation
+        }
+      }
+    }
+    
+    // Standard download implementation
     const a = document.createElement('a');
     a.href = url;
     a.download = filename || 'document';
     a.target = '_blank'; // Open in new tab if download doesn't work
-    
-    // Add error handler
-    a.onerror = (err) => {
-      console.error("Error during document download:", err);
-      throw new Error("Failed to download document");
-    };
     
     // Append and trigger click
     document.body.appendChild(a);
@@ -109,11 +148,12 @@ export const downloadDocument = (url: string, filename: string) => {
     // Fallback - try to open in new tab
     try {
       window.open(url, '_blank');
+      // Return true since we at least managed to open the document
+      return true;
     } catch (err) {
       console.error("Fallback also failed:", err);
+      throw new Error("Failed to download or open document");
     }
-    
-    throw error;
   }
 };
 

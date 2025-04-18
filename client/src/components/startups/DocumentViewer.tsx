@@ -116,15 +116,16 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
     }
   };
 
-  const handleDownload = (document: Document) => {
+  const handleDownload = async (document: Document) => {
     setLoadingDocument(document.id.toString());
     
     try {
-      downloadDocument(document.fileUrl, document.fileName || 'document');
+      await downloadDocument(document.fileUrl, document.fileName || document.name || 'document');
     } catch (error) {
       console.error('Error downloading document:', error);
     } finally {
-      setTimeout(() => setLoadingDocument(null), 1000);
+      // Keep loading state for at least 500ms to show feedback to user
+      setTimeout(() => setLoadingDocument(null), 500);
     }
   };
 
@@ -182,10 +183,6 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
                     {document.mimeType.split('/')[1]?.toUpperCase() || document.mimeType}
                   </Badge>
                 )}
-                {/* Debug info for document URL */}
-                <span className="text-xs text-gray-400 mt-1 truncate max-w-[200px]">
-                  {document.fileUrl ? (document.fileUrl.length > 25 ? document.fileUrl.substring(0, 25) + '...' : document.fileUrl) : 'No URL'}
-                </span>
               </div>
             </TableCell>
             <TableCell className="hidden md:table-cell">
