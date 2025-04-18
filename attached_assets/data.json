@@ -1,0 +1,774 @@
+{
+  "chats": {
+    "-OO2W_EWPd1AEbn9hHl9": {
+      "createdAt": "2025-04-17T11:33:26.289Z",
+      "founderId": "1",
+      "founderUnread": 0,
+      "investorId": "2",
+      "investorUnread": 0,
+      "lastMessage": "",
+      "startupId": "1",
+      "timestamp": 1744889606288
+    },
+    "-OO2yUwDAKOmiS0D7s12": {
+      "createdAt": "2025-04-17T13:39:46.699Z",
+      "founderId": "3689",
+      "founderUnread": 0,
+      "investorId": "2237",
+      "investorUnread": 0,
+      "lastMessage": "",
+      "startupId": "5262",
+      "timestamp": 1744897186698
+    }
+  },
+  "documents": {
+    "-OO1YSza0X4FRMFF0dwj": {
+      "createdAt": "2025-04-17T07:02:03.792Z",
+      "fileId": "pitch_deck_1744873323716.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/pitch_deck_1744873323716.pdf",
+      "id": "-OO1YSza0X4FRMFF0dwj",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO1YSszmiikapY8nDBD",
+      "type": "pitch_deck"
+    },
+    "-OO1YT46S3jeuye7goKE": {
+      "createdAt": "2025-04-17T07:02:04.145Z",
+      "fileId": "financial_report_1744873324086.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/financial_report_1744873324086.pdf",
+      "id": "-OO1YT46S3jeuye7goKE",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO1YSszmiikapY8nDBD",
+      "type": "financial_report"
+    },
+    "-OO1YT9Y6QtBn2OZcLPT": {
+      "createdAt": "2025-04-17T07:02:04.493Z",
+      "fileId": "investor_agreement_1744873324429.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/investor_agreement_1744873324429.pdf",
+      "id": "-OO1YT9Y6QtBn2OZcLPT",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO1YSszmiikapY8nDBD",
+      "type": "investor_agreement"
+    },
+    "-OO2IcHvLc72XWnDBwxj": {
+      "createdAt": "2025-04-17T10:32:28.802Z",
+      "fileId": "pitch_deck_1744885948448.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/pitch_deck_1744885948448.pdf",
+      "id": "-OO2IcHvLc72XWnDBwxj",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO2Ic7dvfu3FP9W-TSE",
+      "type": "pitch_deck"
+    },
+    "-OO2IcR9XkZzz6S0GJpk": {
+      "createdAt": "2025-04-17T10:32:29.393Z",
+      "fileId": "financial_report_1744885949105.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/financial_report_1744885949105.pdf",
+      "id": "-OO2IcR9XkZzz6S0GJpk",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO2Ic7dvfu3FP9W-TSE",
+      "type": "financial_report"
+    },
+    "-OO2Ic_CHRKjR8DubleJ": {
+      "createdAt": "2025-04-17T10:32:29.972Z",
+      "fileId": "investor_agreement_1744885949696.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/investor_agreement_1744885949696.pdf",
+      "id": "-OO2Ic_CHRKjR8DubleJ",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO2Ic7dvfu3FP9W-TSE",
+      "type": "investor_agreement"
+    },
+    "-OO2Q__nlmsxTfPFirT_": {
+      "createdAt": "2025-04-17T11:07:14.866Z",
+      "fileId": "pitch_deck_1744888034820.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/pitch_deck_1744888034820.pdf",
+      "id": "-OO2Q__nlmsxTfPFirT_",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO2Q_VDFBu46kZIumna",
+      "type": "pitch_deck"
+    },
+    "-OO2Q_f5uPSd2lsiw_DT": {
+      "createdAt": "2025-04-17T11:07:15.205Z",
+      "fileId": "financial_report_1744888035160.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/financial_report_1744888035160.pdf",
+      "id": "-OO2Q_f5uPSd2lsiw_DT",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO2Q_VDFBu46kZIumna",
+      "type": "financial_report"
+    },
+    "-OO2Q_kO-4JpasYh27-a": {
+      "createdAt": "2025-04-17T11:07:15.544Z",
+      "fileId": "investor_agreement_1744888035497.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/investor_agreement_1744888035497.pdf",
+      "id": "-OO2Q_kO-4JpasYh27-a",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO2Q_VDFBu46kZIumna",
+      "type": "investor_agreement"
+    },
+    "-OO3QgUuQZoDnPvL5-PQ": {
+      "createdAt": "2025-04-17T15:47:20.645Z",
+      "fileId": "pitch_deck_1744904840570.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/pitch_deck_1744904840570.pdf",
+      "id": "-OO3QgUuQZoDnPvL5-PQ",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO3QgOok6sXzmTM5_aR",
+      "type": "pitch_deck"
+    },
+    "-OO3Qg_TXEuIA4ejkuV6": {
+      "createdAt": "2025-04-17T15:47:21.001Z",
+      "fileId": "financial_report_1744904840946.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/financial_report_1744904840946.pdf",
+      "id": "-OO3Qg_TXEuIA4ejkuV6",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO3QgOok6sXzmTM5_aR",
+      "type": "financial_report"
+    },
+    "-OO6HWhWbEyVEZ1sIulx": {
+      "createdAt": "2025-04-18T05:06:09.446Z",
+      "fileId": "pitch_deck_1744952769397.pdf",
+      "fileName": "dd12-13_0.pdf",
+      "fileSize": 13264,
+      "fileUrl": "/uploads/pitch_deck_1744952769397.pdf",
+      "id": "-OO6HWhWbEyVEZ1sIulx",
+      "mimeType": "application/pdf",
+      "name": "dd12-13_0.pdf",
+      "startupId": "-OO6HWbkjC2-Ld0YQNy_",
+      "type": "pitch_deck"
+    },
+    "-OO6HWmy1xubvQgcpsXy": {
+      "createdAt": "2025-04-18T05:06:09.795Z",
+      "fileId": "financial_report_1744952769749.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/financial_report_1744952769749.pdf",
+      "id": "-OO6HWmy1xubvQgcpsXy",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO6HWbkjC2-Ld0YQNy_",
+      "type": "financial_report"
+    },
+    "-OO6TIKoBP68-d3247HA": {
+      "createdAt": "2025-04-18T05:57:36.283Z",
+      "fileId": "pitch_deck_1744955856093.pdf",
+      "fileName": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "fileSize": 6702,
+      "fileUrl": "/uploads/pitch_deck_1744955856093.pdf",
+      "id": "-OO6TIKoBP68-d3247HA",
+      "mimeType": "application/pdf",
+      "name": "Industrial_Automation_Answers_Part4_Clean.pdf",
+      "startupId": "-OO6TICuFu9XxEhK82GF",
+      "type": "pitch_deck"
+    }
+  },
+  "startups": {
+    "-OO1YSszmiikapY8nDBD": {
+      "createdAt": "2025-04-17T07:02:03.369Z",
+      "current_funding": "0",
+      "description": "NeuraNest AINeuraNest AINeuraNest AINeuraNest AINeuraNest AINeuraNest AI",
+      "founderId": "5SddFKVv8ydDMPl4sSnrgPazt3c2",
+      "funding_goal": "100",
+      "funding_goal_eth": "100",
+      "id": "-OO1YSszmiikapY8nDBD",
+      "investment_stage": "pre-seed",
+      "name": "NeuraNest AI",
+      "pitch": "NeuraNest AINeuraNest AINeuraNest AINeuraNest AINeuraNest AINeuraNest AINeuraNest AI",
+      "upi_id": "kiz@ixl",
+      "upi_qr_code": {
+        "fileId": "a6154bdf-2f65-41a2-b3e6-9dfeb39aab01-download-(1).png",
+        "fileName": "a6154bdf-2f65-41a2-b3e6-9dfeb39aab01-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/a6154bdf-2f65-41a2-b3e6-9dfeb39aab01-download-(1).png"
+      }
+    },
+    "-OO2Ic7dvfu3FP9W-TSE": {
+      "createdAt": "2025-04-17T10:32:28.144Z",
+      "current_funding": "0",
+      "description": "Chuck Enterprises Chuck Enterprises Chuck Enterprises Chuck Enterprises",
+      "founderId": "p4ZJSPSVacZNFRU1gpLNBuJ6MP43",
+      "funding_goal": "100",
+      "funding_goal_eth": "100",
+      "id": "-OO2Ic7dvfu3FP9W-TSE",
+      "investment_stage": "pre-seed",
+      "name": "Chuck Enterprises",
+      "pitch": "Chuck Enterprises Chuck Enterprises Chuck Enterprises Chuck Enterprises",
+      "upi_id": "chuck@ixl",
+      "upi_qr_code": {
+        "fileId": "e8e4858d-f8a5-4727-afd0-055f1ec56fa8-download-(1).png",
+        "fileName": "e8e4858d-f8a5-4727-afd0-055f1ec56fa8-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/e8e4858d-f8a5-4727-afd0-055f1ec56fa8-download-(1).png"
+      }
+    },
+    "-OO2Q_VDFBu46kZIumna": {
+      "createdAt": "2025-04-17T11:07:14.509Z",
+      "current_funding": "0",
+      "description": "Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations",
+      "founderId": "pTvcMD9S4iWaIfrMjuX0HkTjB4v1",
+      "funding_goal": "80",
+      "funding_goal_eth": "80",
+      "id": "-OO2Q_VDFBu46kZIumna",
+      "investment_stage": "pre-seed",
+      "name": "Ferb Foundations",
+      "pitch": "Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations Ferb Foundations",
+      "upi_id": "ferb@ixl",
+      "upi_qr_code": {
+        "fileId": "8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png",
+        "fileName": "8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/8888a40a-b17a-4efd-bf0a-7c4a090a04e0-download-(1).png"
+      }
+    },
+    "-OO2pzh1Xm2U6WF8vrC7": {
+      "createdAt": "2025-04-17T13:02:37.514Z",
+      "current_funding": "0",
+      "description": "VCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECH",
+      "founderId": "lfSTRhldxkhW76DFEOs0PJnnFat1",
+      "funding_goal": "120",
+      "funding_goal_eth": "120",
+      "id": "-OO2pzh1Xm2U6WF8vrC7",
+      "investment_stage": "pre-seed",
+      "name": "VCB TECH",
+      "pitch": "VCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECHVCB TECH",
+      "upi_id": "vcb@ixl"
+    },
+    "-OO2urXRmXmMJzpawNgZ": {
+      "createdAt": "2025-04-17T13:23:54.782Z",
+      "current_funding": "0",
+      "description": "AI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORP",
+      "founderId": "LvOOMpBRwRfypK5cxjhv8rNGXJT2",
+      "funding_goal": "80",
+      "funding_goal_eth": "80",
+      "id": "-OO2urXRmXmMJzpawNgZ",
+      "investment_stage": "pre-seed",
+      "name": "AI CORP",
+      "pitch": "AI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORPAI CORP"
+    },
+    "-OO35ZefnW8zyBAQ5vS5": {
+      "createdAt": "2025-04-17T14:15:03.576Z",
+      "current_funding": "0",
+      "description": "YUX TECHNOLOGIES YUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIES",
+      "founderId": "EfZRpN9i7JM93zDF66Ad6O26owj2",
+      "funding_goal": "49",
+      "funding_goal_eth": "49",
+      "id": "-OO35ZefnW8zyBAQ5vS5",
+      "investment_stage": "pre-seed",
+      "name": "YUX TECHNOLOGIES",
+      "pitch": "YUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIESYUX TECHNOLOGIESV",
+      "upi_id": "yux@ibl",
+      "upi_qr_code": {
+        "fileId": "ced0178b-7ad2-416c-8572-8e3b624a1fc9-download-(1).png",
+        "fileName": "ced0178b-7ad2-416c-8572-8e3b624a1fc9-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/ced0178b-7ad2-416c-8572-8e3b624a1fc9-download-(1).png"
+      }
+    },
+    "-OO38bBpGb9HG2lJ1TCz": {
+      "createdAt": "2025-04-17T14:28:20.370Z",
+      "current_funding": "0",
+      "description": "DSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONS",
+      "founderId": "LbulIrVNNBVcWB06xTZ4QDnJVGN2",
+      "funding_goal": "79",
+      "funding_goal_eth": "79",
+      "id": "-OO38bBpGb9HG2lJ1TCz",
+      "investment_stage": "pre-seed",
+      "name": "DSF FOUNDATIONS",
+      "pitch": "DSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONSDSF FOUNDATIONS",
+      "upi_id": "dsf@axl",
+      "upi_qr_code": {
+        "fileId": "5b2eb615-cb02-4345-b873-32f56d93da37-download-(1).png",
+        "fileName": "5b2eb615-cb02-4345-b873-32f56d93da37-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/5b2eb615-cb02-4345-b873-32f56d93da37-download-(1).png"
+      }
+    },
+    "-OO3CLQe9x0XGWoh7Z8S": {
+      "createdAt": "2025-04-17T14:44:40.277Z",
+      "current_funding": "0",
+      "description": "XQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUP",
+      "founderId": "aO9kfJXjwLVJBUgHZHu7F3vBNyn1",
+      "funding_goal": "300",
+      "funding_goal_eth": "300",
+      "id": "-OO3CLQe9x0XGWoh7Z8S",
+      "investment_stage": "pre-seed",
+      "name": "XQC STARTUP",
+      "pitch": "XQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUPXQC STARTUP",
+      "upi_id": "xqc@ixl",
+      "upi_qr_code": {
+        "fileId": "6164b8ce-0725-454a-ad8e-ad26b15f40c1-download-(1).png",
+        "fileName": "6164b8ce-0725-454a-ad8e-ad26b15f40c1-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/6164b8ce-0725-454a-ad8e-ad26b15f40c1-download-(1).png"
+      }
+    },
+    "-OO3FqUkzZ4nDXBVLY43": {
+      "createdAt": "2025-04-17T14:59:58.025Z",
+      "current_funding": "0",
+      "description": "RRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONS",
+      "founderId": "eatosxrbfuc2IBMO0YPFRjsvghj1",
+      "funding_goal": "120",
+      "funding_goal_eth": "120",
+      "id": "-OO3FqUkzZ4nDXBVLY43",
+      "investment_stage": "pre-seed",
+      "name": "RRC FOUNDATIONS",
+      "pitch": "RRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONSRRC FOUNDATIONS"
+    },
+    "-OO3Ja4sDg5-dWWVnDgU": {
+      "createdAt": "2025-04-17T15:16:19.409Z",
+      "current_funding": "0",
+      "description": "SOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONS",
+      "founderId": "8YVNZVc571WDCLFFal3o3x4voXF2",
+      "funding_goal": "200",
+      "funding_goal_eth": "200",
+      "id": "-OO3Ja4sDg5-dWWVnDgU",
+      "investment_stage": "pre-seed",
+      "name": "SOUL FOUNDATIONS",
+      "pitch": "SOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONSSOUL FOUNDATIONS"
+    },
+    "-OO3QgOok6sXzmTM5_aR": {
+      "createdAt": "2025-04-17T15:47:20.255Z",
+      "current_funding": "0",
+      "description": "HGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONS",
+      "founderId": "jhmhWzr68WQVowhfNT14PRATbGr1",
+      "funding_goal": "230",
+      "funding_goal_eth": "230",
+      "id": "-OO3QgOok6sXzmTM5_aR",
+      "investment_stage": "pre-seed",
+      "name": "HGF FOUNDATIONS",
+      "pitch": "HGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSHGF FOUNDATIONSV"
+    },
+    "-OO6HWbkjC2-Ld0YQNy_": {
+      "createdAt": "2025-04-18T05:06:09.077Z",
+      "current_funding": "0",
+      "description": "RRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONS",
+      "founderId": "AcmVZHepVrYusxReJZdilI3UFrl2",
+      "funding_goal": "300",
+      "funding_goal_eth": "300",
+      "id": "-OO6HWbkjC2-Ld0YQNy_",
+      "investment_stage": "series b",
+      "name": "RRT FOUNDATIONS",
+      "pitch": "RRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONSRRT FOUNDATIONS",
+      "upi_id": "rrt@ixl",
+      "upi_qr_code": {
+        "fileId": "8cd9c5db-6e80-4d0d-94ee-b2be141209c8-download-(1).png",
+        "fileName": "8cd9c5db-6e80-4d0d-94ee-b2be141209c8-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/8cd9c5db-6e80-4d0d-94ee-b2be141209c8-download-(1).png"
+      }
+    },
+    "-OO6TICuFu9XxEhK82GF": {
+      "createdAt": "2025-04-18T05:57:35.777Z",
+      "current_funding": "0",
+      "description": "DEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISES",
+      "founderId": "ytGxaYewHuTIBOdtnXPYoaGuXxH2",
+      "funding_goal": "100",
+      "funding_goal_eth": "100",
+      "id": "-OO6TICuFu9XxEhK82GF",
+      "investment_stage": "pre-seed",
+      "name": "DEC ENTERPRISES",
+      "pitch": "DEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISESDEC ENTERPRISES",
+      "upi_qr_code": {
+        "fileId": "762c2559-c1f5-4b97-90ce-e6d305d3e76c-download-(1).png",
+        "fileName": "762c2559-c1f5-4b97-90ce-e6d305d3e76c-download-(1).png",
+        "fileSize": 5053,
+        "mimeType": "image/png",
+        "url": "/uploads/762c2559-c1f5-4b97-90ce-e6d305d3e76c-download-(1).png"
+      }
+    }
+  },
+  "users": {
+    "3KeHRAnc8eUgmRj4mKxWEStAY3G3": {
+      "createdAt": "2025-04-17T09:46:17.946Z",
+      "email": "theus@mail.com",
+      "id": "3KeHRAnc8eUgmRj4mKxWEStAY3G3",
+      "profilePicture": "https://ui-avatars.com/api/?name=TU&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "3KeHRAnc8eUgmRj4mKxWEStAY3G3",
+      "username": "the us",
+      "walletAddress": ""
+    },
+    "3QbN91BQ53cce7Tc8IgFsdaqGd62": {
+      "createdAt": "2025-04-17T08:12:14.419Z",
+      "email": "dcxz@gmail.com",
+      "id": "3QbN91BQ53cce7Tc8IgFsdaqGd62",
+      "lastActive": "2025-04-17T08:18:06.316Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=D&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "3QbN91BQ53cce7Tc8IgFsdaqGd62",
+      "username": "dcxz",
+      "walletAddress": ""
+    },
+    "4ZhCI1DTBePPQIRCFrsmLOJuY4T2": {
+      "createdAt": "2025-04-17T08:00:46.541Z",
+      "email": "vinz@gmail.com",
+      "id": "4ZhCI1DTBePPQIRCFrsmLOJuY4T2",
+      "lastActive": "2025-04-17T08:11:46.433Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=V&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "4ZhCI1DTBePPQIRCFrsmLOJuY4T2",
+      "username": "vinz",
+      "walletAddress": ""
+    },
+    "5SddFKVv8ydDMPl4sSnrgPazt3c2": {
+      "createdAt": "2025-04-17T07:01:06.101Z",
+      "email": "kidz@gmail.com",
+      "id": "5SddFKVv8ydDMPl4sSnrgPazt3c2",
+      "lastActive": "2025-04-17T07:05:36.154Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=K&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "5SddFKVv8ydDMPl4sSnrgPazt3c2",
+      "username": "kidz",
+      "walletAddress": ""
+    },
+    "8YVNZVc571WDCLFFal3o3x4voXF2": {
+      "createdAt": "2025-04-17T15:15:49.770Z",
+      "email": "ewew@mail.com",
+      "id": "8YVNZVc571WDCLFFal3o3x4voXF2",
+      "lastActive": "2025-04-17T15:44:59.381Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=E&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "8YVNZVc571WDCLFFal3o3x4voXF2",
+      "username": "ewew",
+      "walletAddress": ""
+    },
+    "AcmVZHepVrYusxReJZdilI3UFrl2": {
+      "createdAt": "2025-04-18T05:05:15.141Z",
+      "email": "rrt@mail.com",
+      "id": "AcmVZHepVrYusxReJZdilI3UFrl2",
+      "lastActive": "2025-04-18T05:19:08.973Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=R&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "AcmVZHepVrYusxReJZdilI3UFrl2",
+      "username": "rrt",
+      "walletAddress": ""
+    },
+    "EfZRpN9i7JM93zDF66Ad6O26owj2": {
+      "createdAt": "2025-04-17T14:13:59.232Z",
+      "email": "yux@mail.com",
+      "id": "EfZRpN9i7JM93zDF66Ad6O26owj2",
+      "lastActive": "2025-04-17T14:26:16.982Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=Y&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "EfZRpN9i7JM93zDF66Ad6O26owj2",
+      "username": "yux",
+      "walletAddress": ""
+    },
+    "KgxxAMdMTDSILL3UEzkIh9MNK9F3": {
+      "createdAt": "2025-04-17T09:33:48.807Z",
+      "email": "cvc@mail.com",
+      "id": "KgxxAMdMTDSILL3UEzkIh9MNK9F3",
+      "lastActive": "2025-04-17T09:45:43.157Z",
+      "profilePicture": "",
+      "role": "investor",
+      "uid": "KgxxAMdMTDSILL3UEzkIh9MNK9F3",
+      "username": "cvc",
+      "walletAddress": ""
+    },
+    "LbulIrVNNBVcWB06xTZ4QDnJVGN2": {
+      "createdAt": "2025-04-17T14:26:41.872Z",
+      "email": "dsf@mail.com",
+      "id": "LbulIrVNNBVcWB06xTZ4QDnJVGN2",
+      "lastActive": "2025-04-17T14:28:50.711Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=D&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "LbulIrVNNBVcWB06xTZ4QDnJVGN2",
+      "username": "dsf",
+      "walletAddress": ""
+    },
+    "LvOOMpBRwRfypK5cxjhv8rNGXJT2": {
+      "createdAt": "2025-04-17T13:22:39.603Z",
+      "email": "finz@mail.com",
+      "id": "LvOOMpBRwRfypK5cxjhv8rNGXJT2",
+      "lastActive": "2025-04-17T13:24:11.275Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=F&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "LvOOMpBRwRfypK5cxjhv8rNGXJT2",
+      "username": "finz",
+      "walletAddress": ""
+    },
+    "MuVOGBJxgodrhuxgnicg76O4jlZ2": {
+      "createdAt": "2025-04-17T11:33:05.845Z",
+      "email": "zqsee@mail.com",
+      "id": "MuVOGBJxgodrhuxgnicg76O4jlZ2",
+      "profilePicture": "https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "MuVOGBJxgodrhuxgnicg76O4jlZ2",
+      "username": "zqsee",
+      "walletAddress": ""
+    },
+    "OBqxGWDaKnbq1Cq18nbmocSXX2g2": {
+      "createdAt": "2025-04-17T14:15:33.518Z",
+      "email": "gus@mail.com",
+      "id": "OBqxGWDaKnbq1Cq18nbmocSXX2g2",
+      "lastActive": "2025-04-17T14:25:52.308Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=G&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "OBqxGWDaKnbq1Cq18nbmocSXX2g2",
+      "username": "gus",
+      "walletAddress": ""
+    },
+    "QyubptBhMNSW7tiM6Ccuijikszi2": {
+      "createdAt": "2025-04-17T10:29:37.687Z",
+      "email": "chunk@mail.com",
+      "id": "QyubptBhMNSW7tiM6Ccuijikszi2",
+      "lastActive": "2025-04-17T13:22:09.605Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "QyubptBhMNSW7tiM6Ccuijikszi2",
+      "username": "chunk",
+      "walletAddress": ""
+    },
+    "TL9Mp9TdKfbPKdAIgV5cFsWCPGi2": {
+      "createdAt": "2025-04-18T05:58:23.719Z",
+      "email": "cve@mail.com",
+      "id": "TL9Mp9TdKfbPKdAIgV5cFsWCPGi2",
+      "profilePicture": "https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "TL9Mp9TdKfbPKdAIgV5cFsWCPGi2",
+      "username": "cve",
+      "walletAddress": "0xcebdee1bb25c2832fe5b531aa54a485a286bac3b"
+    },
+    "aCidZOkPx9dxQWKMfezNqa0P47x1": {
+      "createdAt": "2025-04-17T09:06:23.390Z",
+      "email": "spider@gmail.com",
+      "id": "aCidZOkPx9dxQWKMfezNqa0P47x1",
+      "profilePicture": "",
+      "role": "investor",
+      "uid": "aCidZOkPx9dxQWKMfezNqa0P47x1",
+      "username": "spider",
+      "walletAddress": ""
+    },
+    "aO9kfJXjwLVJBUgHZHu7F3vBNyn1": {
+      "createdAt": "2025-04-17T14:43:49.151Z",
+      "email": "fkc@mail.com",
+      "id": "aO9kfJXjwLVJBUgHZHu7F3vBNyn1",
+      "lastActive": "2025-04-17T15:07:04.802Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=F&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "aO9kfJXjwLVJBUgHZHu7F3vBNyn1",
+      "username": "fkc",
+      "walletAddress": ""
+    },
+    "eatosxrbfuc2IBMO0YPFRjsvghj1": {
+      "createdAt": "2025-04-17T14:59:20.975Z",
+      "email": "rrc@mail.com",
+      "id": "eatosxrbfuc2IBMO0YPFRjsvghj1",
+      "lastActive": "2025-04-17T15:00:43.168Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=R&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "eatosxrbfuc2IBMO0YPFRjsvghj1",
+      "username": "rrc",
+      "walletAddress": ""
+    },
+    "jhmhWzr68WQVowhfNT14PRATbGr1": {
+      "createdAt": "2025-04-17T15:46:38.570Z",
+      "email": "hgf@mail.com",
+      "id": "jhmhWzr68WQVowhfNT14PRATbGr1",
+      "lastActive": "2025-04-17T15:56:49.699Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=H&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "jhmhWzr68WQVowhfNT14PRATbGr1",
+      "username": "hgf",
+      "walletAddress": ""
+    },
+    "lBM0HoazSYSRycWmjsYejDCPEJT2": {
+      "createdAt": "2025-04-17T06:28:28.824Z",
+      "email": "axel@gmail.com",
+      "id": "lBM0HoazSYSRycWmjsYejDCPEJT2",
+      "lastActive": "2025-04-17T06:35:59.901Z",
+      "profilePicture": "",
+      "role": "investor",
+      "uid": "lBM0HoazSYSRycWmjsYejDCPEJT2",
+      "username": "axel",
+      "walletAddress": ""
+    },
+    "lfSTRhldxkhW76DFEOs0PJnnFat1": {
+      "createdAt": "2025-04-17T13:01:57.796Z",
+      "email": "vcb@mail.com",
+      "id": "lfSTRhldxkhW76DFEOs0PJnnFat1",
+      "lastActive": "2025-04-17T13:02:58.589Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=V&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "lfSTRhldxkhW76DFEOs0PJnnFat1",
+      "username": "vcb",
+      "walletAddress": ""
+    },
+    "nwai7aG8WkgaGVBfGU61nJ4VdWA2": {
+      "createdAt": "2025-04-17T08:18:44.209Z",
+      "email": "ezy@gmail.com",
+      "id": "nwai7aG8WkgaGVBfGU61nJ4VdWA2",
+      "lastActive": "2025-04-17T09:05:54.930Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=E&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "nwai7aG8WkgaGVBfGU61nJ4VdWA2",
+      "username": "ezy",
+      "walletAddress": ""
+    },
+    "oNTAiA5mkOdwJpWV6EfrAFOYhF03": {
+      "createdAt": "2025-04-17T13:24:38.716Z",
+      "email": "tenz@mail.com",
+      "id": "oNTAiA5mkOdwJpWV6EfrAFOYhF03",
+      "lastActive": "2025-04-18T05:54:28.504Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=T&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "oNTAiA5mkOdwJpWV6EfrAFOYhF03",
+      "username": "tenz",
+      "walletAddress": ""
+    },
+    "p4ZJSPSVacZNFRU1gpLNBuJ6MP43": {
+      "createdAt": "2025-04-17T10:31:11.117Z",
+      "email": "chuck@mail.com",
+      "id": "p4ZJSPSVacZNFRU1gpLNBuJ6MP43",
+      "lastActive": "2025-04-17T10:32:38.440Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=C&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "p4ZJSPSVacZNFRU1gpLNBuJ6MP43",
+      "username": "chuck",
+      "walletAddress": ""
+    },
+    "pTvcMD9S4iWaIfrMjuX0HkTjB4v1": {
+      "createdAt": "2025-04-17T11:05:23.870Z",
+      "email": "ferb@mail.com",
+      "id": "pTvcMD9S4iWaIfrMjuX0HkTjB4v1",
+      "lastActive": "2025-04-17T11:08:54.212Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=F&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "pTvcMD9S4iWaIfrMjuX0HkTjB4v1",
+      "username": "ferb",
+      "walletAddress": ""
+    },
+    "qdZ9x8VYQjYGzg7b8OmpnROBdM73": {
+      "createdAt": "2025-04-17T15:07:22.435Z",
+      "email": "thr@mail.com",
+      "id": "qdZ9x8VYQjYGzg7b8OmpnROBdM73",
+      "profilePicture": "https://ui-avatars.com/api/?name=T&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "qdZ9x8VYQjYGzg7b8OmpnROBdM73",
+      "username": "thr",
+      "walletAddress": ""
+    },
+    "uSTZ5JSvaZOxvHlYaef6EOWBTHv2": {
+      "createdAt": "2025-04-17T06:14:07.926Z",
+      "email": "john@gmail.com",
+      "id": "uSTZ5JSvaZOxvHlYaef6EOWBTHv2",
+      "profilePicture": "https://ui-avatars.com/api/?name=john&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "uSTZ5JSvaZOxvHlYaef6EOWBTHv2",
+      "username": "john",
+      "walletAddress": ""
+    },
+    "uoPGFcBxXudeSE3hXlNyJwDQZQc2": {
+      "createdAt": "2025-04-17T07:05:57.844Z",
+      "email": "rebl@gmail.com",
+      "id": "uoPGFcBxXudeSE3hXlNyJwDQZQc2",
+      "lastActive": "2025-04-17T07:06:32.082Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=R&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "uoPGFcBxXudeSE3hXlNyJwDQZQc2",
+      "username": "rebl",
+      "walletAddress": ""
+    },
+    "xz7wb6blKBeCGYQxeEIbn3TTzPN2": {
+      "createdAt": "2025-04-17T09:57:41.394Z",
+      "email": "zxq@gmail.com",
+      "id": "xz7wb6blKBeCGYQxeEIbn3TTzPN2",
+      "profilePicture": "https://ui-avatars.com/api/?name=Z&background=random&color=fff&size=256",
+      "role": "investor",
+      "uid": "xz7wb6blKBeCGYQxeEIbn3TTzPN2",
+      "username": "zxq",
+      "walletAddress": ""
+    },
+    "ytGxaYewHuTIBOdtnXPYoaGuXxH2": {
+      "createdAt": "2025-04-18T05:54:52.161Z",
+      "email": "dec@mail.com",
+      "id": "ytGxaYewHuTIBOdtnXPYoaGuXxH2",
+      "lastActive": "2025-04-18T05:58:01.846Z",
+      "profilePicture": "https://ui-avatars.com/api/?name=D&background=random&color=fff&size=256",
+      "role": "founder",
+      "uid": "ytGxaYewHuTIBOdtnXPYoaGuXxH2",
+      "username": "dec",
+      "walletAddress": "0x4b1438378513f622309c45d23108a9ebce16a27b"
+    }
+  },
+  "wallet_addresses": {
+    "0x0829d4f67b907fcd40a1fbe80dc7281545f052f8": {
+      "updatedAt": 1744955842451,
+      "userId": "ytGxaYewHuTIBOdtnXPYoaGuXxH2"
+    },
+    "0x4b1438378513f622309c45d23108a9ebce16a27b": {
+      "updatedAt": 1744955852056,
+      "userId": "ytGxaYewHuTIBOdtnXPYoaGuXxH2"
+    },
+    "0x99977a38f791f5b057813618f5435aa5ccac37cc": {
+      "updatedAt": 1744902641299,
+      "userId": "92"
+    },
+    "0xcebdee1bb25c2832fe5b531aa54a485a286bac3b": {
+      "updatedAt": 1744955955800,
+      "userId": "TL9Mp9TdKfbPKdAIgV5cFsWCPGi2"
+    }
+  },
+  "wallets": {
+    "92": {
+      "address": "0x99977a38f791f5b057813618f5435aA5CCaC37Cc",
+      "createdAt": 1744902641299,
+      "role": "founder",
+      "updatedAt": 1744902641299,
+      "userId": "92",
+      "userName": "Founder"
+    },
+    "TL9Mp9TdKfbPKdAIgV5cFsWCPGi2": {
+      "address": "0xcebdee1bb25c2832fe5b531aa54a485a286bac3b",
+      "createdAt": 1744955955800,
+      "role": "investor",
+      "updatedAt": 1744955955800,
+      "userId": "TL9Mp9TdKfbPKdAIgV5cFsWCPGi2",
+      "userName": "cve"
+    },
+    "ytGxaYewHuTIBOdtnXPYoaGuXxH2": {
+      "address": "0x4b1438378513f622309c45d23108a9ebce16a27b",
+      "createdAt": 1744955852056,
+      "role": "founder",
+      "updatedAt": 1744955852056,
+      "userId": "ytGxaYewHuTIBOdtnXPYoaGuXxH2",
+      "userName": "dec"
+    }
+  }
+}

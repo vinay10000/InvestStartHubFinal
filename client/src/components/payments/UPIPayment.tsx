@@ -185,7 +185,7 @@ const UPIPayment = ({
   
   // Render payment form
   return (
-    <Card>
+    <Card className="max-w-[550px] mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <QrCode className="h-5 w-5" />
@@ -195,53 +195,54 @@ const UPIPayment = ({
           Use UPI to invest in {startupName}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* UPI QR Code */}
-        {upiQrCode && (
-          <div className="flex flex-col items-center justify-center">
-            <div className="border p-2 rounded-lg mb-2">
-              <img 
-                src={typeof upiQrCode === 'string' ? upiQrCode : (upiQrCode.url || '')} 
-                alt="UPI QR Code" 
-                className="w-full max-w-[200px] h-auto"
-                onError={(e) => {
-                  console.error("Failed to load UPI QR code image");
-                  const target = e.target as HTMLImageElement;
-                  target.onerror = null; // Prevent infinite error loop
-                  target.src = "https://via.placeholder.com/200x200?text=QR+Code+Not+Available";
-                }}
-              />
+      <CardContent className="space-y-6 overflow-y-auto max-h-[70vh]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* UPI QR Code - Left Column */}
+          {upiQrCode && (
+            <div className="flex flex-col items-center justify-center">
+              <div className="border p-2 rounded-lg mb-2">
+                <img 
+                  src={typeof upiQrCode === 'string' ? upiQrCode : (upiQrCode.url || '')} 
+                  alt="UPI QR Code" 
+                  className="w-full max-w-[150px] h-auto"
+                  onError={(e) => {
+                    console.error("Failed to load UPI QR code image");
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite error loop
+                    target.src = "https://via.placeholder.com/150x150?text=QR+Code+Not+Available";
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Scan this QR code with any UPI app to pay
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Scan this QR code with any UPI app to pay
-            </p>
-            <p className="text-xs text-muted-foreground text-center mt-1">
-              QR Code Ready
-            </p>
+          )}
+          
+          {/* UPI ID - Right Column */}
+          <div className="flex flex-col justify-center">
+            {upiId && (
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="mr-2 overflow-hidden">
+                  <p className="text-sm font-medium">UPI ID</p>
+                  <p className="text-sm font-mono truncate">{upiId}</p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => copyToClipboard(upiId, "UPI ID")}
+                  className="h-8 px-2 flex-shrink-0"
+                >
+                  {copiedText === "UPI ID" ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-        
-        {/* UPI ID */}
-        {upiId && (
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div>
-              <p className="text-sm font-medium">UPI ID</p>
-              <p className="text-sm font-mono">{upiId}</p>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => copyToClipboard(upiId, "UPI ID")}
-              className="h-8 px-2"
-            >
-              {copiedText === "UPI ID" ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        )}
+        </div>
         
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -272,7 +273,7 @@ const UPIPayment = ({
                       disabled={isProcessing}
                     />
                   </FormControl>
-                  <FormDescription>
+                  <FormDescription className="text-xs">
                     Enter the exact amount you transferred
                   </FormDescription>
                   <FormMessage />
@@ -285,7 +286,7 @@ const UPIPayment = ({
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name (as it appears in your UPI app)</FormLabel>
+                  <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input 
                       {...field} 
@@ -293,8 +294,8 @@ const UPIPayment = ({
                       disabled={isProcessing}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Enter your full name as registered in your UPI payment app
+                  <FormDescription className="text-xs">
+                    As registered in your UPI payment app
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -314,8 +315,8 @@ const UPIPayment = ({
                       disabled={isProcessing}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Enter the reference ID from your UPI payment receipt
+                  <FormDescription className="text-xs">
+                    From your UPI payment receipt
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
