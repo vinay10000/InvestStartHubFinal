@@ -1,88 +1,167 @@
 import { Link } from "wouter";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, ChevronDown, Wallet, BarChart, Shield } from "lucide-react";
 
 const Hero = () => {
   return (
-    <div className="relative overflow-hidden bg-black text-white">
-      {/* Background gradient and noise effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-950/80 via-slate-900 to-black"></div>
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ0MCIgaGVpZ2h0PSI3NjgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGZpbHRlciBpZD0ibm9pc2UiPjxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjY1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ibWF0cml4IiB2YWx1ZXM9IjAuMyAwLjMgMC4zIDAgMCAwLjMgMC4zIDAuMyAwIDAgMC4zIDAuMyAwLjMgMCAwIDAgMCAwIDEgMCIvPjwvZmlsdGVyPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-50"></div>
+    <div className="relative overflow-hidden bg-white">
+      {/* Background with shapes */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white z-0"></div>
+      <div className="absolute inset-0 opacity-20 z-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgTCAwIDQwIiBmaWxsPSJub25lIiBzdHJva2U9IiNkZGRkZGQiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')]"></div>
+      </div>
       
-      {/* Glowing orbs */}
-      <div className="absolute top-1/4 -left-20 w-72 h-72 bg-blue-500 rounded-full filter blur-[128px] opacity-20"></div>
-      <div className="absolute bottom-1/3 right-10 w-80 h-80 bg-purple-500 rounded-full filter blur-[128px] opacity-20"></div>
+      {/* Colorful blurred shapes */}
+      <div className="absolute top-40 -left-10 w-80 h-80 bg-gradient-to-br from-blue-500/30 to-purple-500/20 rounded-full filter blur-[80px] opacity-40 animate-blob"></div>
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-bl from-cyan-400/30 to-indigo-400/20 rounded-full filter blur-[100px] opacity-30 animate-blob animation-delay-2000"></div>
+      <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-gradient-to-tr from-emerald-400/20 to-teal-300/30 rounded-full filter blur-[80px] opacity-30 animate-blob animation-delay-4000"></div>
       
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 min-h-[80vh] items-center py-16 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto lg:mx-0 space-y-8">
-            {/* Tech badge */}
-            <div className="inline-flex items-center rounded-full border border-indigo-600/30 bg-indigo-600/10 px-4 py-1 text-sm text-indigo-300 backdrop-blur-md">
-              <Sparkles className="h-4 w-4 mr-2" />
-              <span>Blockchain Powered Investment Platform</span>
-            </div>
-            
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              <span className="block">Connect Startups with</span>{" "}
-              <span className="bg-gradient-to-r from-indigo-400 via-cyan-400 to-sky-500 text-transparent bg-clip-text">Investors Securely</span>
-            </h1>
-            
-            <p className="text-lg text-slate-300 max-w-xl">
-              A decentralized platform that brings transparency and trust to startup investments. Connect your wallet, showcase your startup, or discover the next big innovation.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/signup?role=founder">
-                <span className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-900/30 backdrop-blur-sm cursor-pointer transition-all duration-200 hover:shadow-lg">
-                  For Startups
-                  <ArrowRight className="ml-2 h-4 w-4" />
+      {/* Sticky navigation - glassmorphism effect */}
+      <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-slate-200/50 shadow-sm transition-all duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <span className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white">
+                    SC
+                  </div>
+                  StartupConnect
                 </span>
-              </Link>
-              
-              <Link href="/signup?role=investor">
-                <span className="inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-md text-white bg-transparent hover:bg-white/10 border border-white/20 backdrop-blur-sm cursor-pointer transition-colors duration-200">
-                  For Investors
-                </span>
-              </Link>
+              </div>
             </div>
-            
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-sky-400 to-indigo-400 text-transparent bg-clip-text">500+</div>
-                <div className="text-sm text-slate-400 mt-1">Startups</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-sky-400 to-indigo-400 text-transparent bg-clip-text">₹25M+</div>
-                <div className="text-sm text-slate-400 mt-1">Invested</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-sky-400 to-indigo-400 text-transparent bg-clip-text">1000+</div>
-                <div className="text-sm text-slate-400 mt-1">Investors</div>
+            <div className="hidden md:block">
+              <div className="ml-10 flex items-center space-x-8">
+                <a href="#features" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">Features</a>
+                <a href="#how-it-works" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">How it Works</a>
+                <a href="#startups" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">Startups</a>
+                <Link href="/login">
+                  <button className="text-indigo-600 border border-indigo-600/30 px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-50 transition-colors">
+                    Sign In
+                  </button>
+                </Link>
+                <Link href="/signup">
+                  <button className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 shadow-sm shadow-indigo-600/20 transition-all hover:shadow-md">
+                    Get Started
+                  </button>
+                </Link>
               </div>
             </div>
           </div>
-          
-          {/* Image with glassmorphism card */}
-          <div className="relative lg:block">
-            <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 rounded-2xl filter blur-3xl opacity-30"></div>
-            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl shadow-black/20">
-              <img
-                className="w-full h-full object-cover"
-                src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80"
-                alt="Startup team collaborating"
-              />
-              {/* Overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        </div>
+      </nav>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-12 min-h-[90vh] items-center py-12 md:py-20">
+          {/* Left content */}
+          <div className="space-y-8 max-w-xl">
+            {/* Tech badge */}
+            <div className="inline-flex items-center rounded-full border border-indigo-600/20 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-600 transition-all animate-fadeIn">
+              <Sparkles className="h-4 w-4 mr-2 text-indigo-500" />
+              <span>Blockchain Powered Investment Platform</span>
+            </div>
+            
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-gray-900 animate-fadeIn">
+              <span className="block">Connect Startups with</span>
+              <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 text-transparent bg-clip-text">Investors Securely</span>
+            </h1>
+            
+            <p className="text-lg text-gray-600 max-w-xl animate-fadeIn animation-delay-200">
+              A modern platform bringing transparency and trust to startup investments. Connect your wallet, showcase your startup, or discover the next big innovation with our secure blockchain technology.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 animate-fadeIn animation-delay-400">
+              <Link href="/signup?role=founder">
+                <button className="inline-flex items-center justify-center px-6 py-4 text-base font-medium rounded-full text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md shadow-indigo-600/25 backdrop-blur-sm cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105">
+                  For Startups
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </button>
+              </Link>
               
-              {/* Floating glassmorphism card */}
-              <div className="absolute bottom-6 left-6 right-6 p-6 rounded-xl bg-white/10 border border-white/10 backdrop-blur-lg">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">SC</div>
-                  <div>
-                    <h3 className="text-white font-semibold">StartupConnect</h3>
-                    <p className="text-sm text-slate-300">Connect, invest, and grow with innovative startups all around the world.</p>
+              <Link href="/signup?role=investor">
+                <button className="inline-flex items-center justify-center px-6 py-4 text-base font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 shadow-sm backdrop-blur-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:border-indigo-200">
+                  For Investors
+                </button>
+              </Link>
+            </div>
+            
+            {/* Stats with modern animated cards */}
+            <div className="grid grid-cols-3 gap-4 pt-6 animate-fadeIn animation-delay-600">
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-100 transition-all duration-200">
+                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 text-transparent bg-clip-text">500+</div>
+                <div className="text-sm text-gray-500 mt-1">Startups</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-100 transition-all duration-200">
+                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 text-transparent bg-clip-text">₹25M+</div>
+                <div className="text-sm text-gray-500 mt-1">Invested</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-100 transition-all duration-200">
+                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 text-transparent bg-clip-text">1000+</div>
+                <div className="text-sm text-gray-500 mt-1">Investors</div>
+              </div>
+            </div>
+            
+            {/* Scroll indicator */}
+            <div className="pt-8 hidden md:flex justify-center animate-bounce">
+              <a href="#features" className="flex flex-col items-center text-gray-400 hover:text-indigo-600 transition-colors">
+                <span className="text-sm mb-1">Scroll to learn more</span>
+                <ChevronDown className="h-5 w-5" />
+              </a>
+            </div>
+          </div>
+          
+          {/* Right content: 3D Illustration with cards */}
+          <div className="relative lg:block animate-fadeIn animation-delay-800 mt-8 lg:mt-0">
+            {/* Main elevated card with shadow */}
+            <div className="relative z-20 bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-100 transition-all transform lg:translate-y-6 lg:translate-x-6">
+              <div className="aspect-w-4 aspect-h-3">
+                <img
+                  className="w-full h-full object-cover"
+                  src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1740&q=80"
+                  alt="Tech startup team collaborating"
+                />
+              </div>
+              <div className="p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-2">Startup Success Stories</h3>
+                <p className="text-gray-600 text-sm">See how companies like yours have grown with secure blockchain investments.</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex -space-x-2">
+                    <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm">JD</div>
+                    <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm">SR</div>
+                    <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm">AT</div>
                   </div>
+                  <span className="text-sm text-indigo-600 font-medium">View Stories</span>
                 </div>
+              </div>
+            </div>
+            
+            {/* Feature cards in absolute position */}
+            <div className="absolute top-4 -right-2 md:-right-6 z-10 w-48 max-w-full">
+              <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center mb-3">
+                  <Wallet className="h-5 w-5 text-indigo-600 mr-2" />
+                  <h4 className="text-sm font-semibold text-gray-900">Wallet Integration</h4>
+                </div>
+                <p className="text-xs text-gray-600">Seamlessly connect your MetaMask wallet for secure transactions</p>
+              </div>
+            </div>
+            
+            <div className="absolute -bottom-2 md:-bottom-6 left-4 md:left-0 z-10 w-52 max-w-full">
+              <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center mb-3">
+                  <BarChart className="h-5 w-5 text-indigo-600 mr-2" />
+                  <h4 className="text-sm font-semibold text-gray-900">Investment Analytics</h4>
+                </div>
+                <p className="text-xs text-gray-600">Track performance with real-time analytics dashboard</p>
+              </div>
+            </div>
+            
+            <div className="absolute top-1/2 transform -translate-y-1/2 -left-2 md:-left-6 z-10 w-48 max-w-full">
+              <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center mb-3">
+                  <Shield className="h-5 w-5 text-indigo-600 mr-2" />
+                  <h4 className="text-sm font-semibold text-gray-900">Secure Platform</h4>
+                </div>
+                <p className="text-xs text-gray-600">Blockchain verification for complete transparency</p>
               </div>
             </div>
           </div>
