@@ -86,30 +86,70 @@ const ImprovedMetaMaskPayment = ({
     setNetworkName(getNetworkName(chainId));
   }, [chainId]);
   
-  // Check if we need to connect MetaMask when the component loads
+  // Auto-connect MetaMask when the component loads if user has a wallet
   useEffect(() => {
-    // If wallet is in database but not connected in browser, mark as needing connection
-    if (walletAddress && !isWalletConnected()) {
-      console.log("Wallet found in database but not connected in browser:", walletAddress);
-      setNeedsMetaMaskConnection(true);
-    } else {
-      setNeedsMetaMaskConnection(false);
-    }
-  }, [walletAddress, isWalletConnected]);
+    const attemptAutoConnect = async () => {
+      // If wallet is in database but not connected in browser
+      if (walletAddress && !isWalletConnected()) {
+        console.log("Wallet found in database but not connected in browser:", walletAddress);
+        
+        try {
+          // Attempt to auto-connect with MetaMask
+          console.log("Attempting to auto-connect MetaMask...");
+          const connected = await connect();
+          
+          if (connected) {
+            console.log("Auto-connection successful!");
+            setNeedsMetaMaskConnection(false);
+          } else {
+            console.log("Auto-connection failed, showing connection prompt");
+            setNeedsMetaMaskConnection(true);
+          }
+        } catch (error) {
+          console.error("Error during auto-connect attempt:", error);
+          setNeedsMetaMaskConnection(true);
+        }
+      } else {
+        setNeedsMetaMaskConnection(false);
+      }
+    };
+    
+    // Run the auto-connect attempt
+    attemptAutoConnect();
+  }, [walletAddress, isWalletConnected, connect]);
   
   // Handle investment process
   const handleInvest = async () => {
-    // Ensure wallet is connected
+    // Check if we need to connect MetaMask or we can proceed directly
     if (!address) {
       try {
-        const connected = await connect();
-        if (!connected) {
-          toast({
-            title: "Wallet Connection Required",
-            description: "Please connect your MetaMask wallet to proceed with the investment",
-            variant: "destructive"
-          });
-          return;
+        // First check if the user already has a wallet in database
+        if (walletAddress) {
+          console.log("User has a wallet in database:", walletAddress);
+          
+          // Try to auto-connect with wallet in database
+          console.log("Auto-connecting MetaMask...");
+          const connected = await connect();
+          
+          if (!connected) {
+            toast({
+              title: "Wallet Connection Required",
+              description: "Please connect your MetaMask browser extension to proceed with the investment",
+              variant: "destructive"
+            });
+            return;
+          }
+        } else {
+          // No wallet in database, regular connect flow
+          const connected = await connect();
+          if (!connected) {
+            toast({
+              title: "Wallet Connection Required",
+              description: "Please connect your MetaMask wallet to proceed with the investment",
+              variant: "destructive"
+            });
+            return;
+          }
         }
       } catch (error: any) {
         toast({
@@ -344,7 +384,7 @@ const ImprovedMetaMaskPayment = ({
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-sm">Address</span>
-              <span className="text-sm font-mono">{truncateAddress(walletAddress)}</span>
+              <span className="text-sm font-mono">{walletAddress ? truncateAddress(walletAddress) : 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center mt-1">
               <span className="text-sm">Status</span>
@@ -424,7 +464,7 @@ const ImprovedMetaMaskPayment = ({
         <CardContent className="space-y-4">
           <div className="p-4 border rounded-lg bg-green-50 text-green-800">
             <p className="text-sm mb-2">
-              Transaction Hash: <span className="font-mono">{truncateAddress(txHash)}</span>
+              Transaction Hash: <span className="font-mono">{txHash ? truncateAddress(txHash) : ''}</span>
             </p>
             <p className="text-sm">
               Your transaction will be verified on the blockchain. This process may take a few minutes.
