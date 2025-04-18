@@ -47,16 +47,17 @@ export function useDocuments() {
       }
       
       // 1. Upload file to ImageKit
-      const parsedStartupId = typeof startupId === 'string' ? parseInt(startupId) : startupId;
+      // Pass the startup ID as-is without trying to parse it as a number
+      // This handles both numeric IDs and Firebase string IDs
       const uploadResult = await imagekit.uploadStartupDocument(
-        parsedStartupId,
+        startupId,
         documentType,
         file
       );
       
       // 2. Create document record in Supabase
       const document = await documentService.createDocument({
-        startupId: parsedStartupId,
+        startupId: startupId,
         type: documentType,
         name: name || file.name,
         fileUrl: uploadResult.url,
