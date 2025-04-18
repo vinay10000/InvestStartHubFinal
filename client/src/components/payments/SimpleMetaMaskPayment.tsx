@@ -67,18 +67,7 @@ export const SimpleMetaMaskPayment = ({
   // Transaction handler
   const handleInvest = async () => {
     try {
-      // Ensure MetaMask is connected
-      if (!address) {
-        const connected = await connect();
-        if (!connected) {
-          toast({
-            title: "Wallet Connection Required",
-            description: "Please connect MetaMask to proceed with the investment",
-            variant: "destructive"
-          });
-          return;
-        }
-      }
+      // Skip wallet connection checking - proceed directly with transaction
       
       // Validate amount
       if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -393,7 +382,7 @@ export const SimpleMetaMaskPayment = ({
       <CardFooter>
         <Button 
           className="w-full" 
-          disabled={isProcessing || !isWalletConnected() || !address}
+          disabled={isProcessing}
           onClick={handleInvest}
         >
           {isProcessing ? (
