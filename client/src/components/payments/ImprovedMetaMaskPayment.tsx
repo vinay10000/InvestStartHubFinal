@@ -89,34 +89,75 @@ const ImprovedMetaMaskPayment = ({
   // Auto-connect MetaMask when the component loads if user has a wallet
   useEffect(() => {
     const attemptAutoConnect = async () => {
-      // If wallet is in database but not connected in browser
-      if (walletAddress && !isWalletConnected()) {
-        console.log("Wallet found in database but not connected in browser:", walletAddress);
-        
+      // Skip if we have no wallet in database or MetaMask is not installed
+      if (!walletAddress || !isInstalled) {
+        setNeedsMetaMaskConnection(false);
+        return;
+      }
+
+      // Check if we're already connected
+      if (isWalletConnected() && address) {
+        console.log("MetaMask already connected:", address);
+        setNeedsMetaMaskConnection(false);
+        return;
+      }
+      
+      console.log("Wallet found in database but not connected in browser:", walletAddress);
+      
+      try {
+        // Check silently first if MetaMask is unlocked and has accounts
+        let accounts = [];
         try {
+          if (window.ethereum) {
+            accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          }
+        } catch (err) {
+          console.log("Error checking unlocked accounts:", err);
+        }
+        
+        // If accounts already available, we're good (the connect function will use them)
+        if (accounts && accounts.length > 0) {
+          console.log("MetaMask is unlocked with accounts:", accounts);
+          
           // Attempt to auto-connect with MetaMask
-          console.log("Attempting to auto-connect MetaMask...");
+          console.log("Attempting to auto-connect to unlocked MetaMask...");
           const connected = await connect();
           
           if (connected) {
             console.log("Auto-connection successful!");
             setNeedsMetaMaskConnection(false);
+            
+            // Check if account matches the database
+            if (address && address.toLowerCase() !== walletAddress.toLowerCase()) {
+              console.warn("Connected account doesn't match database wallet", {
+                connectedAccount: address,
+                databaseWallet: walletAddress
+              });
+              
+              toast({
+                title: "Wallet Account Mismatch",
+                description: "The connected MetaMask account is different from your registered wallet. Please switch to the correct account.",
+                variant: "destructive"
+              });
+            }
           } else {
-            console.log("Auto-connection failed, showing connection prompt");
+            console.log("Auto-connection failed despite unlocked accounts, showing connection prompt");
             setNeedsMetaMaskConnection(true);
           }
-        } catch (error) {
-          console.error("Error during auto-connect attempt:", error);
+        } else {
+          // No unlocked accounts, we'll need to prompt the user
+          console.log("MetaMask is installed but locked or no accounts, showing connection prompt");
           setNeedsMetaMaskConnection(true);
         }
-      } else {
-        setNeedsMetaMaskConnection(false);
+      } catch (error) {
+        console.error("Error during auto-connect attempt:", error);
+        setNeedsMetaMaskConnection(true);
       }
     };
     
     // Run the auto-connect attempt
     attemptAutoConnect();
-  }, [walletAddress, isWalletConnected, connect]);
+  }, [walletAddress, isWalletConnected, connect, isInstalled, address, toast]);
   
   // Handle investment process
   const handleInvest = async () => {
@@ -290,6 +331,7 @@ const ImprovedMetaMaskPayment = ({
   
   // Check if user has a wallet connected in the database
   if (!walletAddress && user) {
+    // Attempting to auto-connect wallet if it's available through MetaMask
     return (
       <Card>
         <CardHeader>
@@ -309,6 +351,43 @@ const ImprovedMetaMaskPayment = ({
               To invest in a startup, you need to connect an Ethereum wallet. This is required for secure cryptocurrency transactions.
             </AlertDescription>
           </Alert>
+          
+          {/* Add a button to try connecting MetaMask directly */}
+          <Button 
+            variant="outline" 
+            className="w-full mb-2"
+            onClick={async () => {
+              try {
+                // Attempt to connect MetaMask directly
+                console.log("Attempting to connect MetaMask directly");
+                const connected = await connect();
+                
+                if (connected) {
+                  console.log("Successfully connected MetaMask");
+                  toast({
+                    title: "Wallet Connected",
+                    description: "Your MetaMask wallet has been connected successfully",
+                  });
+                } else {
+                  toast({
+                    title: "Connection Failed",
+                    description: "Please install MetaMask or allow the connection request",
+                    variant: "destructive"
+                  });
+                }
+              } catch (error) {
+                console.error("Error connecting MetaMask directly:", error);
+                toast({
+                  title: "Connection Error",
+                  description: "Could not connect to MetaMask. Please try setup page instead.",
+                  variant: "destructive"
+                });
+              }
+            }}
+          >
+            Connect MetaMask Directly
+          </Button>
+          
           <Button 
             variant="default" 
             className="w-full"
@@ -402,7 +481,33 @@ const ImprovedMetaMaskPayment = ({
           
           <Button 
             className="w-full" 
-            onClick={() => connect()}
+            onClick={async () => {
+              try {
+                console.log("Trying to connect MetaMask extension...");
+                const connected = await connect();
+                
+                if (connected) {
+                  console.log("Successfully connected MetaMask extension!");
+                  toast({
+                    title: "MetaMask Connected",
+                    description: "Your wallet is now ready to make transactions"
+                  });
+                } else {
+                  toast({
+                    title: "Connection Failed",
+                    description: "Please ensure MetaMask is installed and unlocked",
+                    variant: "destructive"
+                  });
+                }
+              } catch (error) {
+                console.error("Error connecting MetaMask:", error);
+                toast({
+                  title: "Connection Error",
+                  description: "Could not connect to MetaMask. Please try again.",
+                  variant: "destructive"
+                });
+              }
+            }}
           >
             Connect MetaMask Browser Extension
           </Button>
