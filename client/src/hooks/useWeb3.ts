@@ -10,6 +10,8 @@ import {
   listenToChainChanges
 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
+import { saveWalletAddress } from '@/firebase/walletDatabase';
+import { useAuth } from '@/hooks/useAuth';
 
 // Helper function to get network name from chain ID
 const getNetworkName = (chainId: number | null): string => {
@@ -96,17 +98,50 @@ export const useWeb3 = () => {
   useEffect(() => {
     if (!isInstalled) return;
     
-    const accountsChanged = (accounts: string[]) => {
+    const accountsChanged = async (accounts: string[]) => {
       if (accounts.length === 0) {
         // User disconnected
         setAddress(null);
         setBalance(null);
       } else {
-        setAddress(accounts[0]);
+        const newAddress = accounts[0];
+        setAddress(newAddress);
+        
         // Update balance for new account
-        getWalletBalance(accounts[0])
+        getWalletBalance(newAddress)
           .then((newBalance: string) => setBalance(newBalance))
           .catch((error: Error) => console.error('Error getting balance:', error));
+        
+        // When account changes, also save the new wallet address to Firebase
+        try {
+          // Get the current user from Firebase Auth
+          const { auth } = await import("@/firebase/config");
+          if (auth.currentUser) {
+            const userId = auth.currentUser.uid;
+            console.log("[useWeb3] Account changed, saving new wallet address to Firebase for user:", userId);
+            
+            // Get user role from localStorage if available
+            const userRole = localStorage.getItem('user_role') || 'investor';
+            
+            // Save wallet to Firebase wallet database
+            await saveWalletAddress(
+              userId,
+              newAddress,
+              auth.currentUser.displayName || auth.currentUser.email || 'User',
+              userRole
+            );
+            
+            console.log("[useWeb3] Successfully saved changed wallet to Firebase wallet database");
+            
+            // Also update the user profile in Firebase
+            const { updateUser } = await import("@/firebase/database");
+            await updateUser(userId, { walletAddress: newAddress });
+            console.log("[useWeb3] Also updated user profile with new wallet address");
+          }
+        } catch (saveError) {
+          console.error("[useWeb3] Error saving changed wallet to Firebase:", saveError);
+          // Continue even if Firebase save fails
+        }
       }
     };
     
@@ -174,6 +209,39 @@ export const useWeb3 = () => {
         // Get balance
         const balanceValue = await getWalletBalance(connectedAddress);
         setBalance(balanceValue);
+        
+        // Try to get user information to save to Firebase
+        try {
+          // Get the current user from Firebase Auth
+          const { auth } = await import("@/firebase/config");
+          if (auth.currentUser) {
+            const userId = auth.currentUser.uid;
+            console.log("[useWeb3] Saving wallet address to Firebase for user:", userId);
+            
+            // Get user role from localStorage if available
+            const userRole = localStorage.getItem('user_role') || 'investor';
+            
+            // Save wallet to Firebase wallet database
+            await saveWalletAddress(
+              userId,
+              connectedAddress,
+              auth.currentUser.displayName || auth.currentUser.email || 'User',
+              userRole
+            );
+            
+            console.log("[useWeb3] Successfully saved wallet to Firebase wallet database");
+            
+            // Also update the user profile in Firebase
+            const { updateUser } = await import("@/firebase/database");
+            await updateUser(userId, { walletAddress: connectedAddress });
+            console.log("[useWeb3] Also updated user profile with wallet address");
+          } else {
+            console.log("[useWeb3] No authenticated user found for wallet saving");
+          }
+        } catch (saveError) {
+          console.error("[useWeb3] Error saving wallet to Firebase:", saveError);
+          // Continue even if Firebase save fails - the wallet is still connected locally
+        }
         
         toast({
           title: 'Wallet Connected',
