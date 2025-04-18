@@ -7,7 +7,8 @@ import {
   getChainId,
   switchNetwork,
   listenToAccountChanges,
-  listenToChainChanges
+  listenToChainChanges,
+  sendETH
 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
 // Firebase wallet functions will be imported dynamically to avoid circular dependencies

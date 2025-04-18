@@ -569,7 +569,7 @@ const StartupDetails = () => {
                       </TabsList>
                       
                       <TabsContent value="metamask">
-                        <ImprovedMetaMaskPayment 
+                        <SimpleMetaMaskPayment 
                           startupId={getNumericStartupId(startup.id)}
                           startupName={startup.name}
                           onPaymentComplete={() => setIsInvestDialogOpen(false)}

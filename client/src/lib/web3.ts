@@ -306,11 +306,11 @@ export const useWeb3 = () => {
                 const userRole = localStorage.getItem('user_role') || 'investor';
                 
                 // Save to dedicated wallet database
-                await saveWalletAddress(
-                  userId,
+                await addWalletAddress(
                   userAddress,
+                  parseInt(userId) || 999,
                   auth.currentUser.displayName || auth.currentUser.email || 'User',
-                  userRole
+                  false
                 );
                 
                 // Also update the user profile
