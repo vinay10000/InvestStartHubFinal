@@ -243,26 +243,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document routes
   app.post('/api/startups/:id/documents', async (req: Request, res: Response) => {
     try {
-      const startupId = parseInt(req.params.id);
+      // Handle both numeric IDs and Firebase string IDs
+      const startupIdParam = req.params.id;
+      // Use the ID as is without trying to parse it - storage layer will handle it
+      const startupId = startupIdParam;
+      
+      console.log(`Creating document for startup ID: ${startupId} (type: ${typeof startupId})`);
+      
       const documentData = { ...req.body, startupId };
       const validatedData = insertDocumentSchema.parse(documentData);
       const document = await storage.createDocument(validatedData);
       res.status(201).json({ document });
     } catch (error) {
+      console.error('Error creating document:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: 'Invalid document data', errors: error.errors });
       }
-      res.status(500).json({ message: 'Failed to create document' });
+      res.status(500).json({ message: 'Failed to create document', error: error instanceof Error ? error.message : String(error) });
     }
   });
 
   app.get('/api/startups/:id/documents', async (req: Request, res: Response) => {
     try {
-      const startupId = parseInt(req.params.id);
+      // Handle both numeric IDs and Firebase string IDs
+      const startupIdParam = req.params.id;
+      // Use the ID as is without trying to parse it - storage layer will handle it
+      const startupId = startupIdParam;
+      
+      console.log(`Getting documents for startup ID: ${startupId} (type: ${typeof startupId})`);
+      
       const documents = await storage.getDocumentsByStartupId(startupId);
       res.status(200).json({ documents });
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch documents' });
+      console.error('Error fetching documents:', error);
+      res.status(500).json({ message: 'Failed to fetch documents', error: error instanceof Error ? error.message : String(error) });
     }
   });
 

@@ -24,8 +24,8 @@ export interface IStorage {
   updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined>;
   
   // Document operations
-  getDocument(id: number): Promise<Document | undefined>;
-  getDocumentsByStartupId(startupId: number): Promise<Document[]>;
+  getDocument(id: number | string): Promise<Document | undefined>;
+  getDocumentsByStartupId(startupId: number | string): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
   
   // Transaction operations
@@ -172,19 +172,36 @@ export class MemStorage implements IStorage {
   }
 
   // Document operations
-  async getDocument(id: number): Promise<Document | undefined> {
-    return this.documents.get(id);
+  async getDocument(id: number | string): Promise<Document | undefined> {
+    // Convert string numeric ID to number if needed
+    const numericId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id;
+    return typeof numericId === 'number' ? this.documents.get(numericId) : undefined;
   }
 
-  async getDocumentsByStartupId(startupId: number): Promise<Document[]> {
+  async getDocumentsByStartupId(startupId: number | string): Promise<Document[]> {
+    console.log(`Getting documents for startup ID: ${startupId} (type: ${typeof startupId})`);
+    
+    // Handle both Firebase string IDs and numeric IDs
     return Array.from(this.documents.values()).filter(
-      (document) => document.startupId === startupId,
+      (document) => {
+        // For numeric startupId, directly compare
+        if (typeof startupId === 'number') {
+          return document.startupId === startupId;
+        }
+        
+        // For string startupId, compare as strings
+        return String(document.startupId) === startupId;
+      }
     );
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const id = this.documentCurrentId++;
     const createdAt = new Date();
+    
+    console.log(`Creating document with startupId: ${insertDocument.startupId} (type: ${typeof insertDocument.startupId})`);
+    
+    // Create the document with the original startupId type (string or number)
     const document: Document = { ...insertDocument, id, createdAt };
     this.documents.set(id, document);
     return document;

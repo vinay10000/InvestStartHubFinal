@@ -38,7 +38,7 @@ export const startups = pgTable("startups", {
 // Document table for startup documents
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
-  startupId: integer("startup_id").notNull(),
+  startupId: text("startup_id").notNull(), // Changed to text for Firebase compatibility
   name: text("name").notNull(),
   type: text("type").notNull(), // "pitch_deck", "financial_report", "investor_agreement", "risk_disclosure"
   fileUrl: text("file_url").notNull(),
