@@ -319,8 +319,8 @@ const ImprovedMetaMaskPayment = ({
         <CardContent className="space-y-4">
           <div className="p-3 border rounded-lg bg-blue-50">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Wallet Connected</span>
-              <span className="text-sm">Your wallet is already connected to your account</span>
+              <span className="text-sm font-medium">Wallet Connected to Your Account</span>
+              <span className="text-sm text-green-600">✓ Verified</span>
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-sm">Address</span>
@@ -332,11 +332,19 @@ const ImprovedMetaMaskPayment = ({
             </div>
           </div>
           
+          <Alert variant="warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Browser Extension Not Connected</AlertTitle>
+            <AlertDescription>
+              Your wallet is registered in the platform but you need to connect the MetaMask browser extension to proceed with the investment.
+            </AlertDescription>
+          </Alert>
+          
           <Button 
             className="w-full" 
             onClick={() => connect()}
           >
-            Connect MetaMask Wallet
+            Connect MetaMask Browser Extension
           </Button>
         </CardContent>
       </Card>

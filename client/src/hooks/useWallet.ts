@@ -99,7 +99,7 @@ export const useWallet = (userId?: string | null) => {
       // Update local state
       const newWalletData: WalletData = {
         address,
-        userId: parseInt(targetUserId) || 999,
+        userId: parseUserId(targetUserId) || 999,
         username: user?.username || 'Anonymous',
         isPermanent: false,
         timestamp: Date.now()
@@ -148,13 +148,13 @@ export const useWallet = (userId?: string | null) => {
       // First remove the old wallet
       if (walletAddress) {
         // We need to remove the old wallet address first
-        await removeWalletAddress(walletAddress, parseInt(targetUserId) || 999);
+        await removeWalletAddress(walletAddress, parseUserId(targetUserId) || 999);
       }
       
       // Add the new wallet address
       await addWalletAddress(
         address,
-        parseInt(targetUserId) || 999,
+        parseUserId(targetUserId) || 999,
         user?.username || 'Anonymous',
         false // Not permanent by default
       );
@@ -162,7 +162,7 @@ export const useWallet = (userId?: string | null) => {
       // Update local state
       const updatedWalletData: WalletData = {
         address,
-        userId: parseInt(targetUserId) || 999, 
+        userId: parseUserId(targetUserId) || 999, 
         username: user?.username || 'Anonymous',
         isPermanent: false,
         timestamp: Date.now()
@@ -204,11 +204,11 @@ export const useWallet = (userId?: string | null) => {
     
     try {
       // Get the wallet address for the user
-      const wallet = await getUserWallet(parseInt(targetUserId) || 999);
+      const wallet = await getUserWallet(parseUserId(targetUserId) || 999);
       
       // Remove the wallet from the database
       if (wallet && wallet.address) {
-        await removeWalletAddress(wallet.address, parseInt(targetUserId) || 999);
+        await removeWalletAddress(wallet.address, parseUserId(targetUserId) || 999);
       }
       
       // Clear local state
