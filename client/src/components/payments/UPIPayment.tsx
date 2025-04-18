@@ -26,7 +26,7 @@ const formSchema = z.object({
 });
 
 interface UPIPaymentProps {
-  startupId: number;
+  startupId: string;
   startupName: string;
   upiId?: string;
   upiQrCode?: string | { url: string; fileId?: string; fileName?: string; fileSize?: number; mimeType?: string };
@@ -74,11 +74,11 @@ const UPIPayment = ({
       // Record transaction in our backend with additional details
       await createTransaction.mutateAsync({
         startupId,
-        investorId: user.id,
+        investorId: user.id.toString(),
         amount: values.amount, // Use string directly as our schema expects
         paymentMethod: "upi",
         transactionId: values.referenceId,
-        status: "pending", // Will be verified by admin
+        status: "pending" // Will be verified by admin
       });
       
       // Notify user

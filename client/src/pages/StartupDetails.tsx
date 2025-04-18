@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useStartups } from "@/hooks/useStartups";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,8 +20,9 @@ import DocumentViewer from "@/components/startups/DocumentViewer";
 import StartupForm from "@/components/startups/StartupForm";
 import { FirebaseStartup, FirebaseDocument } from "@/firebase/database";
 import { Document } from "@/services/documentService";
-import MetaMaskPayment from "@/components/payments/MetaMaskPayment";
+import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
+import { getWalletByUserId } from "@/firebase/walletDatabase";
 
 // Helper function to convert any startup ID to a valid numeric ID for blockchain
 function getNumericStartupId(id: any): number {
@@ -551,7 +552,7 @@ const StartupDetails = () => {
                       </TabsList>
                       
                       <TabsContent value="metamask">
-                        <MetaMaskPayment 
+                        <ImprovedMetaMaskPayment 
                           startupId={getNumericStartupId(startup.id)}
                           startupName={startup.name}
                           onPaymentComplete={() => setIsInvestDialogOpen(false)}
@@ -560,7 +561,7 @@ const StartupDetails = () => {
                       
                       <TabsContent value="upi">
                         <UPIPayment 
-                          startupId={Number(startup.id)}
+                          startupId={Number(startup.id).toString()}
                           startupName={startup.name}
                           upiId={upiId || ""}
                           upiQrCode={upiQrCode || ""}
