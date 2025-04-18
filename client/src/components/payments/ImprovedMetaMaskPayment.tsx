@@ -41,6 +41,9 @@ const ImprovedMetaMaskPayment = ({
   // Get the current user's wallet - ensure userId is a string or undefined
   const { walletAddress, isLoading: isUserWalletLoading } = useWallet(user?.id?.toString());
   
+  // State to track if we need to prompt for MetaMask connection
+  const [needsMetaMaskConnection, setNeedsMetaMaskConnection] = useState(false);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [networkName, setNetworkName] = useState<string>("Unknown Network");
@@ -82,6 +85,17 @@ const ImprovedMetaMaskPayment = ({
   useEffect(() => {
     setNetworkName(getNetworkName(chainId));
   }, [chainId]);
+  
+  // Check if we need to connect MetaMask when the component loads
+  useEffect(() => {
+    // If wallet is in database but not connected in browser, mark as needing connection
+    if (walletAddress && !isWalletConnected()) {
+      console.log("Wallet found in database but not connected in browser:", walletAddress);
+      setNeedsMetaMaskConnection(true);
+    } else {
+      setNeedsMetaMaskConnection(false);
+    }
+  }, [walletAddress, isWalletConnected]);
   
   // Handle investment process
   const handleInvest = async () => {
@@ -309,8 +323,8 @@ const ImprovedMetaMaskPayment = ({
     );
   }
   
-  // If the MetaMask wallet is not connected, prompt the user to connect
-  if (!isWalletConnected && walletAddress) {
+  // If the MetaMask wallet is not connected but we have a wallet in database, prompt to connect
+  if (needsMetaMaskConnection) {
     return (
       <Card>
         <CardHeader>

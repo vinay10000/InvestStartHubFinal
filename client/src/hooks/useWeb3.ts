@@ -322,9 +322,11 @@ export const useWeb3 = () => {
     }
   }, [address]);
   
-  // Helper method to check if wallet is connected
+  // Helper method to check if wallet is connected - ONLY checks MetaMask browser connection,
+  // not database status. This is important to separate database record from active browser connection
   const isWalletConnected = useCallback(() => {
-    return Boolean(address) || localStorage.getItem('wallet_connected') === 'true';
+    // Only consider wallet connected if we actually have an address from MetaMask
+    return Boolean(address);
   }, [address]);
 
   return {
