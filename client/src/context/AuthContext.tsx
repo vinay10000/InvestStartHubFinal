@@ -395,7 +395,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("User not authenticated");
       }
       
-      console.log("Connecting wallet:", walletAddress);
+      console.log("[AuthContext] Connecting wallet:", walletAddress);
       
       // Get the current auth user
       const { auth } = await import("@/firebase/config");
@@ -410,12 +410,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updateUser(currentUser.uid, { walletAddress });
       
       // Also save to our dedicated wallet database for cross-referencing
-      const { saveWalletAddress } = await import("@/firebase/walletDatabase");
+      const { saveWalletAddress, migrateWalletToFirebaseUid } = await import("@/firebase/walletDatabase");
       
       try {
         console.log("[AuthContext] Saving wallet address to dedicated wallet database");
         
-        // Store wallet address associated with both numeric ID and UID
+        // Store wallet address associated with Firebase UID
         await saveWalletAddress(
           currentUser.uid, 
           walletAddress, 
@@ -423,15 +423,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user.role || ''
         );
         
-        // If we have a numeric user ID, also store with that to ensure lookup works
+        // If we have a numeric user ID, also migrate from that to Firebase UID
         if (user.id && user.id.toString() !== currentUser.uid) {
-          console.log("[AuthContext] Also storing wallet with numeric ID:", user.id.toString());
-          await saveWalletAddress(
+          console.log("[AuthContext] Also migrating from numeric ID to Firebase UID:", 
+            { numericId: user.id.toString(), firebaseUid: currentUser.uid });
+          
+          await migrateWalletToFirebaseUid(
             user.id.toString(), 
-            walletAddress, 
-            user.username || '', 
-            user.role || ''
+            currentUser.uid,
+            walletAddress
           );
+        }
+        
+        // Also look for any old numeric IDs and migrate them
+        // This ensures backward compatibility with wallets saved with old ID formats
+        const commonNumericIds = ["1", "2", "3", "4", "5", "10"];
+        for (const numericId of commonNumericIds) {
+          try {
+            // Try to migrate any existing wallets with these IDs to the Firebase UID
+            await migrateWalletToFirebaseUid(
+              numericId,
+              currentUser.uid,
+              walletAddress
+            );
+          } catch (migrationError) {
+            // Silently ignore migration errors - it's just a helpful extra step
+            console.log(`[AuthContext] Migration attempt from ID ${numericId} didn't apply:`, 
+              migrationError instanceof Error ? migrationError.message : 'Unknown error');
+          }
         }
         
         console.log("[AuthContext] Wallet saved to both user profile and wallet database");

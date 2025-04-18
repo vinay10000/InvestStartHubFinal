@@ -233,6 +233,42 @@ export const useWeb3 = () => {
             // Get chain ID
             const network = await provider.getNetwork();
             setChainId(Number(network.chainId));
+            
+            // Mark as connected in localStorage
+            localStorage.setItem('wallet_connected', 'true');
+            
+            // Also save wallet address to Firebase on initial load
+            try {
+              // Import Firebase modules dynamically to avoid circular dependencies
+              const { auth } = await import("../firebase/config");
+              const { saveWalletAddress } = await import("../firebase/walletDatabase");
+              const { updateUser } = await import("../firebase/database");
+              
+              if (auth.currentUser) {
+                const userId = auth.currentUser.uid;
+                console.log("[useWeb3] Initial load - Saving wallet address to Firebase for user:", userId);
+                
+                // Get user role from localStorage if available
+                const userRole = localStorage.getItem('user_role') || 'investor';
+                
+                // Save to dedicated wallet database
+                await saveWalletAddress(
+                  userId,
+                  userAddress,
+                  auth.currentUser.displayName || auth.currentUser.email || 'User',
+                  userRole
+                );
+                
+                // Also update the user profile
+                await updateUser(userId, { walletAddress: userAddress });
+                console.log("[useWeb3] Initial load - Successfully saved wallet address to Firebase");
+              } else {
+                console.log("[useWeb3] Initial load - No authenticated user found for wallet saving");
+              }
+            } catch (saveError) {
+              console.error("[useWeb3] Initial load - Error saving wallet to Firebase:", saveError);
+              // Continue even if Firebase save fails
+            }
           }
         }
       }
@@ -250,11 +286,52 @@ export const useWeb3 = () => {
         // Disconnected
         setAddress(null);
         setBalance("0");
+        localStorage.removeItem('wallet_connected');
+        console.log("[useWeb3] All accounts disconnected, removing wallet connection from localStorage");
       } else {
         // Connected or changed account
-        setAddress(accounts[0]);
-        const userBalance = await getWalletBalance(accounts[0]);
+        const newAddress = accounts[0];
+        setAddress(newAddress);
+        
+        // Update balance
+        const userBalance = await getWalletBalance(newAddress);
         setBalance(userBalance);
+        
+        // Mark as connected in localStorage
+        localStorage.setItem('wallet_connected', 'true');
+        
+        // Save wallet address to Firebase when account changes
+        try {
+          // Import Firebase modules dynamically to avoid circular dependencies
+          const { auth } = await import("../firebase/config");
+          const { saveWalletAddress } = await import("../firebase/walletDatabase");
+          const { updateUser } = await import("../firebase/database");
+          
+          if (auth.currentUser) {
+            const userId = auth.currentUser.uid;
+            console.log("[useWeb3] Account changed, saving new wallet address to Firebase for user:", userId);
+            
+            // Get user role from localStorage if available
+            const userRole = localStorage.getItem('user_role') || 'investor';
+            
+            // Save to dedicated wallet database
+            await saveWalletAddress(
+              userId,
+              newAddress,
+              auth.currentUser.displayName || auth.currentUser.email || 'User',
+              userRole
+            );
+            
+            // Also update the user profile
+            await updateUser(userId, { walletAddress: newAddress });
+            console.log("[useWeb3] Successfully saved new wallet address to Firebase");
+          } else {
+            console.log("[useWeb3] No authenticated user found for wallet saving on account change");
+          }
+        } catch (saveError) {
+          console.error("[useWeb3] Error saving wallet to Firebase on account change:", saveError);
+          // Continue even if Firebase save fails
+        }
       }
     };
     
@@ -276,11 +353,13 @@ export const useWeb3 = () => {
     if (!isMetaMaskInstalled()) return false;
     
     setIsConnecting(true);
+    console.log("[useWeb3] Connecting wallet...");
     
     try {
       const connectedAddress = await connectWallet();
       
       if (connectedAddress) {
+        console.log("[useWeb3] Successfully connected wallet:", connectedAddress);
         setAddress(connectedAddress);
         
         // Mark wallet as connected in localStorage
@@ -294,9 +373,43 @@ export const useWeb3 = () => {
         const userChainId = await getChainId();
         setChainId(userChainId);
         
+        // Save wallet address to Firebase
+        try {
+          // Import Firebase modules dynamically to avoid circular dependencies
+          const { auth } = await import("../firebase/config");
+          const { saveWalletAddress } = await import("../firebase/walletDatabase");
+          const { updateUser } = await import("../firebase/database");
+          
+          if (auth.currentUser) {
+            const userId = auth.currentUser.uid;
+            console.log("[useWeb3] Saving wallet address to Firebase for user:", userId);
+            
+            // Get user role from localStorage if available
+            const userRole = localStorage.getItem('user_role') || 'investor';
+            
+            // Save to dedicated wallet database
+            await saveWalletAddress(
+              userId,
+              connectedAddress,
+              auth.currentUser.displayName || auth.currentUser.email || 'User',
+              userRole
+            );
+            
+            // Also update the user profile
+            await updateUser(userId, { walletAddress: connectedAddress });
+            console.log("[useWeb3] Successfully saved wallet address to Firebase");
+          } else {
+            console.log("[useWeb3] No authenticated user found for wallet saving");
+          }
+        } catch (saveError) {
+          console.error("[useWeb3] Error saving wallet to Firebase:", saveError);
+          // Continue even if Firebase save fails
+        }
+        
         return true;
       }
       
+      console.log("[useWeb3] Failed to connect wallet");
       return false;
     } catch (error) {
       console.error("Error connecting wallet:", error);
