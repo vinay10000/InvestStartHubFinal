@@ -195,29 +195,45 @@ const StartupDetails = () => {
       return;
     }
     
-    // For MetaMask payments, check if wallet is connected
-    if (paymentMethod === "metamask" && !hasWalletConnected) {
+    // For MetaMask payments, check if wallet is connected in any form (browser or database)
+    if (paymentMethod === "metamask") {
       // Log the current state for debugging
-      console.log("Wallet not connected for MetaMask payment. Current state:", {
+      console.log("MetaMask payment - Current wallet state:", {
         paymentMethod,
         hasWalletConnected,
-        walletAddress: user?.walletAddress,
+        userWalletAddress: user?.walletAddress,
+        metamaskAddress,
+        isWalletConnectedMethod: isWalletConnected(),
         localStorageWallet: localStorage.getItem('wallet_connected')
       });
       
-      // Redirect to wallet connection page with return URL
-      const returnUrl = `/startup/${id}`;
-      setLocation(`/wallet-connect?returnUrl=${encodeURIComponent(returnUrl)}`);
+      // If user has a wallet in database but not connected in browser, we can proceed
+      // The ImprovedMetaMaskPayment component will handle auto-connecting
+      if (user?.walletAddress) {
+        console.log("User has wallet in database, proceeding to payment dialog");
+        setIsInvestDialogOpen(true);
+        return;
+      }
       
-      // Show a toast notification
-      toast({
-        title: "Wallet Required",
-        description: "You need to connect a wallet to invest in this startup",
-        duration: 5000,
-      });
-    } else {
-      // Either using UPI or has wallet connected for MetaMask - open dialog
-      console.log("Opening investment dialog - wallet is connected or using UPI");
+      // If wallet is not connected at all (not in database and not in browser), redirect to connect
+      if (!hasWalletConnected) {
+        console.log("No wallet connected in any form, redirecting to wallet connection");
+        
+        // Redirect to wallet connection page with return URL
+        const returnUrl = `/startup/${id}`;
+        setLocation(`/wallet-connect?returnUrl=${encodeURIComponent(returnUrl)}`);
+        
+        // Show a toast notification
+        toast({
+          title: "Wallet Required",
+          description: "You need to connect a wallet to invest in this startup",
+          duration: 5000,
+        });
+        return;
+      }
+      
+      // If we get here, we have a wallet connected in some form, open dialog
+      console.log("Opening investment dialog - wallet is connected");
       setIsInvestDialogOpen(true);
     }
   };
