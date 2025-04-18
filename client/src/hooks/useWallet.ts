@@ -2,12 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { 
-  saveWalletAddress, 
-  getWalletByUserId, 
-  updateWalletAddress, 
-  deleteWallet,
-  getWalletFromFallback,
-  saveWalletToFallback,
+  addWalletAddress, 
+  getUserWallet, 
+  removeWalletAddress, 
+  makeWalletPermanent,
   WalletData
 } from '@/firebase/walletDatabase';
 
@@ -38,39 +36,24 @@ export const useWallet = (userId?: string | null) => {
       
       try {
         // Try to get wallet from the database
-        const wallet = await getWalletByUserId(targetUserId);
+        const wallet = await getUserWallet(parseInt(targetUserId));
         
         if (wallet) {
           console.log(`[useWallet] Found wallet for user ${targetUserId}:`, wallet);
           setWalletData(wallet);
           setWalletAddress(wallet.address);
-          
-          // Store in fallback for redundancy
-          saveWalletToFallback(targetUserId, wallet);
         } else {
-          // Check fallback storage if database fails
-          console.log(`[useWallet] No wallet found in database for ${targetUserId}, checking fallback`);
-          const fallbackWallet = getWalletFromFallback(targetUserId);
-          
-          if (fallbackWallet) {
-            console.log(`[useWallet] Using fallback wallet data for ${targetUserId}`);
-            setWalletData(fallbackWallet);
-            setWalletAddress(fallbackWallet.address);
-          } else {
-            setWalletData(null);
-            setWalletAddress(null);
-          }
+          console.log(`[useWallet] No wallet found in database for ${targetUserId}`);
+          setWalletData(null);
+          setWalletAddress(null);
         }
       } catch (err) {
         console.error('[useWallet] Error loading wallet:', err);
         setError('Failed to load wallet data');
         
-        // Try fallback as a last resort
-        const fallbackWallet = getWalletFromFallback(targetUserId);
-        if (fallbackWallet) {
-          setWalletData(fallbackWallet);
-          setWalletAddress(fallbackWallet.address);
-        }
+        // No fallback needed, just reset the state
+        setWalletData(null);
+        setWalletAddress(null);
       } finally {
         setIsLoading(false);
       }
@@ -95,28 +78,24 @@ export const useWallet = (userId?: string | null) => {
     
     try {
       // Save wallet address to the database
-      await saveWalletAddress(
-        targetUserId,
+      await addWalletAddress(
         address,
-        user?.username || undefined,
-        user?.role || undefined
+        parseInt(targetUserId) || 999,
+        user?.username || 'Anonymous',
+        false // Not permanent by default
       );
       
       // Update local state
       const newWalletData: WalletData = {
         address,
-        userId: targetUserId,
-        userName: user?.username,
-        role: user?.role,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
+        userId: parseInt(targetUserId) || 999,
+        username: user?.username || 'Anonymous',
+        isPermanent: false,
+        timestamp: Date.now()
       };
       
       setWalletData(newWalletData);
       setWalletAddress(address);
-      
-      // Store in fallback for redundancy
-      saveWalletToFallback(targetUserId, newWalletData);
       
       toast({
         title: 'Wallet Connected',
@@ -155,35 +134,31 @@ export const useWallet = (userId?: string | null) => {
     setError(null);
     
     try {
-      // Update wallet address in the database
-      await updateWalletAddress(targetUserId, address);
+      // First remove the old wallet
+      if (walletAddress) {
+        // We need to remove the old wallet address first
+        await removeWalletAddress(walletAddress, parseInt(targetUserId) || 999);
+      }
+      
+      // Add the new wallet address
+      await addWalletAddress(
+        address,
+        parseInt(targetUserId) || 999,
+        user?.username || 'Anonymous',
+        false // Not permanent by default
+      );
       
       // Update local state
-      setWalletData(prev => prev ? {
-        ...prev,
+      const updatedWalletData: WalletData = {
         address,
-        updatedAt: Date.now()
-      } : {
-        address,
-        userId: targetUserId,
-        userName: user?.username,
-        role: user?.role,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      });
-      
-      setWalletAddress(address);
-      
-      // Update fallback storage
-      const updatedWallet = {
-        address,
-        userId: targetUserId,
-        userName: user?.username,
-        role: user?.role,
-        createdAt: walletData?.createdAt || Date.now(),
-        updatedAt: Date.now()
+        userId: parseInt(targetUserId) || 999, 
+        username: user?.username || 'Anonymous',
+        isPermanent: false,
+        timestamp: Date.now()
       };
-      saveWalletToFallback(targetUserId, updatedWallet);
+      
+      setWalletData(updatedWalletData);
+      setWalletAddress(address);
       
       toast({
         title: 'Wallet Updated',
@@ -217,8 +192,13 @@ export const useWallet = (userId?: string | null) => {
     setError(null);
     
     try {
-      // Delete wallet from the database
-      await deleteWallet(targetUserId);
+      // Get the wallet address for the user
+      const wallet = await getUserWallet(parseInt(targetUserId) || 999);
+      
+      // Remove the wallet from the database
+      if (wallet && wallet.address) {
+        await removeWalletAddress(wallet.address, parseInt(targetUserId) || 999);
+      }
       
       // Clear local state
       setWalletData(null);

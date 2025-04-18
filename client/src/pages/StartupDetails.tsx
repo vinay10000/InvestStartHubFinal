@@ -22,7 +22,7 @@ import { FirebaseStartup, FirebaseDocument } from "@/firebase/database";
 import { Document } from "@/services/documentService";
 import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
-import { getWalletByUserId } from "@/firebase/walletDatabase";
+import { getUserWallet } from "@/firebase/walletDatabase";
 
 // Helper function to convert any startup ID to a valid numeric ID for blockchain
 function getNumericStartupId(id: any): number {

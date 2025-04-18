@@ -10,7 +10,7 @@ import {
   listenToChainChanges
 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
-import { saveWalletAddress } from '@/firebase/walletDatabase';
+// Firebase wallet functions will be imported dynamically to avoid circular dependencies
 import { useAuth } from '@/hooks/useAuth';
 
 // Helper function to get network name from chain ID
@@ -124,11 +124,12 @@ export const useWeb3 = () => {
             const userRole = localStorage.getItem('user_role') || 'investor';
             
             // Save wallet to Firebase wallet database
-            await saveWalletAddress(
-              userId,
+            const { addWalletAddress } = await import("@/firebase/walletDatabase");
+            await addWalletAddress(
               newAddress,
-              auth.currentUser.displayName || auth.currentUser.email || 'User',
-              userRole
+              parseInt(userId) || 999, // Parse userId or use a fallback
+              auth.currentUser.displayName || auth.currentUser.email || 'User', 
+              false // Not permanent by default
             );
             
             console.log("[useWeb3] Successfully saved changed wallet to Firebase wallet database");
@@ -222,11 +223,12 @@ export const useWeb3 = () => {
             const userRole = localStorage.getItem('user_role') || 'investor';
             
             // Save wallet to Firebase wallet database
-            await saveWalletAddress(
-              userId,
+            const { addWalletAddress } = await import("@/firebase/walletDatabase");
+            await addWalletAddress(
               connectedAddress,
+              parseInt(userId) || 999, // Parse userId or use a fallback
               auth.currentUser.displayName || auth.currentUser.email || 'User',
-              userRole
+              false // Not permanent by default
             );
             
             console.log("[useWeb3] Successfully saved wallet to Firebase wallet database");

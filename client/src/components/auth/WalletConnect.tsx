@@ -1,274 +1,454 @@
-import React, { useState } from "react";
-import { useWeb3 } from "@/hooks/useWeb3";
-import { useToast } from "@/hooks/use-toast";
-import { truncateAddress } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Wallet, LogOut, Copy, CheckCircle, AlertCircle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import React, { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Wallet, AlertTriangle, ChevronRight, LockKeyhole } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { addWalletAddress, getUserWallet, makeWalletPermanent, isWalletAvailable, WalletData } from '@/firebase/walletDatabase';
+import { useLocation } from 'wouter';
 
 interface WalletConnectProps {
-  onConnect?: (address: string) => void;
-  onDisconnect?: () => void;
-  buttonVariant?: "default" | "outline" | "ghost" | "link" | "destructive" | "secondary";
-  buttonSize?: "default" | "sm" | "lg" | "icon";
-  showBalance?: boolean;
-  showAddress?: boolean;
-  showIcon?: boolean;
-  showChainId?: boolean;
-  showDialogOnConnect?: boolean;
+  onComplete?: () => void;
+  redirectPath?: string;
 }
 
-const SUPPORTED_CHAIN_ID = 1337; // Ganache local testnet
-
-const WalletConnect: React.FC<WalletConnectProps> = ({
-  onConnect,
-  onDisconnect,
-  buttonVariant = "default",
-  buttonSize = "default",
-  showBalance = true,
-  showAddress = true,
-  showIcon = true,
-  showChainId = false,
-  showDialogOnConnect = true,
+const WalletConnect: React.FC<WalletConnectProps> = ({ 
+  onComplete,
+  redirectPath
 }) => {
-  const { 
-    address, 
-    balance, 
-    chainId, 
-    isInstalled, 
-    isLoading, 
-    connect,
-    changeNetwork
-  } = useWeb3();
-  
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [showCopied, setShowCopied] = useState(false);
+  const [, navigate] = useLocation();
   
-  // Handle connect button click
-  const handleConnect = async () => {
-    if (!isInstalled) {
+  const [walletAddress, setWalletAddress] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentWallet, setCurrentWallet] = useState<WalletData | null>(null);
+  const [isPermanent, setIsPermanent] = useState<boolean>(false);
+  const [step, setStep] = useState<'connect' | 'confirm' | 'success'>('connect');
+  
+  // Load existing wallet if user is logged in
+  useEffect(() => {
+    const loadWallet = async () => {
+      if (user?.id) {
+        try {
+          const walletData = await getUserWallet(user.id);
+          if (walletData) {
+            setCurrentWallet(walletData);
+            setIsPermanent(walletData.isPermanent);
+          }
+        } catch (error) {
+          console.error('Error loading wallet data:', error);
+        }
+      }
+    };
+    
+    loadWallet();
+  }, [user]);
+  
+  // Try to get wallet from MetaMask if available
+  useEffect(() => {
+    const connectMetaMask = async () => {
+      if (window.ethereum && !currentWallet) {
+        try {
+          // Request account access
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          if (accounts && accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+          }
+        } catch (error) {
+          console.log('MetaMask not available or user denied access');
+        }
+      }
+    };
+    
+    connectMetaMask();
+  }, [currentWallet]);
+  
+  const isValidEthAddress = (address: string): boolean => {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+  
+  const handleConnectWallet = async () => {
+    if (!user?.id) {
       toast({
-        title: "MetaMask not installed",
-        description: "Please install MetaMask extension first",
-        variant: "destructive",
+        title: 'Authentication Required',
+        description: 'Please sign in to connect your wallet',
+        variant: 'destructive'
       });
-      window.open("https://metamask.io/download/", "_blank");
       return;
     }
     
-    const connected = await connect();
-    
-    if (connected && address) {
-      // Mark wallet as connected in localStorage to prevent further prompts
-      localStorage.setItem('wallet_connected', 'true');
-      
+    if (!isValidEthAddress(walletAddress)) {
       toast({
-        title: "Wallet Connected",
-        description: `Connected to ${truncateAddress(address)}`,
+        title: 'Invalid Wallet Address',
+        description: 'Please enter a valid Ethereum wallet address (0x...)',
+        variant: 'destructive'
       });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Check if wallet is already associated with another account
+      const isAvailable = await isWalletAvailable(walletAddress);
       
-      if (onConnect) {
-        onConnect(address);
-      }
-      
-      if (showDialogOnConnect) {
-        setDialogOpen(true);
-      }
-      
-      // Check if on right network and switch if needed
-      const currentChainId = chainId ? Number(chainId) : null;
-      if (currentChainId !== SUPPORTED_CHAIN_ID) {
+      if (!isAvailable) {
         toast({
-          title: "Switching Network",
-          description: "Switching to Ganache network for this application",
+          title: 'Wallet Already In Use',
+          description: 'This wallet address is already associated with another account',
+          variant: 'destructive'
         });
-        
-        const switched = await changeNetwork(SUPPORTED_CHAIN_ID.toString());
-        
-        if (!switched) {
-          toast({
-            title: "Network switch failed",
-            description: "Please manually switch to Ganache network (Chain ID: 1337)",
-            variant: "destructive",
-          });
-        }
+        setIsLoading(false);
+        return;
       }
-    }
-  };
-  
-  // Handle disconnect (this is limited with MetaMask, as it doesn't support programmatic disconnect)
-  const handleDisconnect = () => {
-    // Remove wallet connected flag from localStorage
-    localStorage.removeItem('wallet_connected');
-    
-    // Call the onDisconnect callback to let the parent component handle necessary state updates
-    if (onDisconnect) {
-      onDisconnect();
-    }
-    
-    toast({
-      title: "Wallet Disconnected",
-      description: "Your wallet has been disconnected from this application",
-    });
-    
-    // Close the dialog
-    setDialogOpen(false);
-    
-    // Force page reload to ensure all wallet state is cleared
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
-  
-  // Handle copy address
-  const handleCopyAddress = () => {
-    if (address) {
-      navigator.clipboard.writeText(address);
-      setShowCopied(true);
       
-      setTimeout(() => {
-        setShowCopied(false);
-      }, 2000);
+      // Move to confirmation step
+      setStep('confirm');
+    } catch (error) {
+      console.error('Error checking wallet availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to verify wallet availability. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleConfirmWallet = async () => {
+    if (!user?.id || !user.username) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign in to connect your wallet',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Add wallet to Firebase
+      await addWalletAddress(
+        walletAddress,
+        user.id,
+        user.username,
+        isPermanent
+      );
+      
+      // If wallet was set as permanent, make it permanent in Firebase
+      if (isPermanent) {
+        await makeWalletPermanent(walletAddress, user.id);
+      }
+      
+      // Update local state
+      setCurrentWallet({
+        address: walletAddress,
+        userId: user.id,
+        username: user.username,
+        isPermanent: isPermanent,
+        timestamp: Date.now()
+      });
+      
+      // Show success step
+      setStep('success');
       
       toast({
-        title: "Address Copied",
-        description: "Wallet address copied to clipboard",
+        title: 'Wallet Connected',
+        description: 'Your wallet has been successfully connected to your account.'
       });
+      
+      // Call completion callback if provided
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error: any) {
+      console.error('Error connecting wallet:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to connect wallet. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  // Get chain name
-  const getChainName = (id: string | null) => {
-    // Convert string to number if it's a string
-    const numId = id ? Number(id) : null;
-    
-    if (numId === 1) return "Ethereum Mainnet";
-    if (numId === 1337) return "Ganache Network";
-    if (numId === 11155111) return "Sepolia Testnet";
-    if (numId === 137) return "Polygon";
-    if (numId === 80001) return "Mumbai Testnet";
-    return numId ? `Chain ID: ${numId}` : "Unknown Chain";
+  const handleRedirect = () => {
+    if (redirectPath) {
+      navigate(redirectPath);
+    }
   };
   
-  // Check if connected to the right network
-  const isRightNetwork = chainId !== null && Number(chainId) === SUPPORTED_CHAIN_ID;
-  
-  if (!address) {
+  // If user already has a wallet connected
+  if (currentWallet) {
     return (
-      <Button
-        variant={buttonVariant}
-        size={buttonSize}
-        onClick={handleConnect}
-        disabled={isLoading}
-      >
-        {showIcon && <Wallet className="mr-2 h-4 w-4" />}
-        {isLoading ? "Connecting..." : "Connect Wallet"}
-      </Button>
-    );
-  }
-  
-  return (
-    <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant={buttonVariant} size={buttonSize}>
-            {showIcon && <Wallet className="mr-2 h-4 w-4" />}
-            {showAddress && truncateAddress(address)}
-            {showBalance && balance && ` (${parseFloat(balance || "0").toFixed(4)} ETH)`}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Wallet Information</DialogTitle>
-            <DialogDescription>
-              Your wallet is connected to the application
-            </DialogDescription>
-          </DialogHeader>
-          
-          {!isRightNetwork && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Wrong Network</AlertTitle>
-              <AlertDescription>
-                Please switch to Ganache network to use this application.
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => changeNetwork(SUPPORTED_CHAIN_ID.toString())}
-                >
-                  Switch to Ganache
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="grid gap-4 py-4">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Address:</span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono">{truncateAddress(address)}</span>
-                <Button variant="ghost" size="icon" onClick={handleCopyAddress}>
-                  {showCopied ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Wallet Connected
+          </CardTitle>
+          <CardDescription>
+            Your wallet is already connected to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 border rounded-lg bg-green-50">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Address</span>
+              <span className="text-sm font-mono break-all">{currentWallet.address}</span>
             </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Balance:</span>
-              <span className="font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Network:</span>
-              <span className={`font-medium ${isRightNetwork ? "text-green-500" : "text-red-500"}`}>
-                {getChainName(chainId)}
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Status</span>
+              <span className="text-sm">
+                {currentWallet.isPermanent ? (
+                  <span className="flex items-center text-green-700">
+                    <LockKeyhole className="h-3 w-3 mr-1" />
+                    Permanent
+                  </span>
+                ) : (
+                  'Changeable'
+                )}
               </span>
             </div>
           </div>
           
-          <DialogFooter>
+          {!currentWallet.isPermanent && (
+            <Alert className="bg-amber-50">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Your wallet is changeable</AlertTitle>
+              <AlertDescription>
+                You can change your wallet address at any time. To prevent unauthorized changes,
+                you can make it permanent.
+              </AlertDescription>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full"
+                onClick={async () => {
+                  if (user?.id) {
+                    try {
+                      setIsLoading(true);
+                      await makeWalletPermanent(currentWallet.address, user.id);
+                      setCurrentWallet({
+                        ...currentWallet,
+                        isPermanent: true
+                      });
+                      toast({
+                        title: 'Wallet Made Permanent',
+                        description: 'Your wallet address is now permanent and cannot be changed.'
+                      });
+                    } catch (error: any) {
+                      console.error('Error making wallet permanent:', error);
+                      toast({
+                        title: 'Error',
+                        description: error.message || 'Failed to make wallet permanent',
+                        variant: 'destructive'
+                      });
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }
+                }}
+                disabled={isLoading}
+              >
+                Make Permanent
+              </Button>
+            </Alert>
+          )}
+        </CardContent>
+        <CardFooter>
+          {redirectPath && (
             <Button 
-              variant="outline" 
-              onClick={() => setDialogOpen(false)}
+              className="w-full"
+              onClick={handleRedirect}
             >
-              Close
+              Continue
+              <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDisconnect}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Disconnect
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {showChainId && (
-        <div className={`text-xs ${isRightNetwork ? "text-green-500" : "text-red-500"}`}>
-          {getChainName(chainId)}
+          )}
+        </CardFooter>
+      </Card>
+    );
+  }
+  
+  // Connect wallet step
+  if (step === 'connect') {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Connect Your Wallet
+          </CardTitle>
+          <CardDescription>
+            Link your Ethereum wallet address to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Important</AlertTitle>
+            <AlertDescription>
+              Each wallet address can only be linked to one account. Once connected, 
+              you'll use this address for all crypto transactions on the platform.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="space-y-2">
+            <Label htmlFor="wallet-address">Ethereum Wallet Address</Label>
+            <Input
+              id="wallet-address"
+              placeholder="0x..."
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+            />
+            {walletAddress && !isValidEthAddress(walletAddress) && (
+              <p className="text-xs text-red-500">
+                Please enter a valid Ethereum address (0x...)
+              </p>
+            )}
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            className="w-full" 
+            onClick={handleConnectWallet}
+            disabled={isLoading || !walletAddress || !isValidEthAddress(walletAddress)}
+          >
+            Continue
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+  
+  // Confirm wallet step
+  if (step === 'confirm') {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Confirm Your Wallet
+          </CardTitle>
+          <CardDescription>
+            Review and confirm your wallet connection
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 border rounded-lg bg-slate-50">
+            <div className="text-sm font-medium mb-2">Wallet Address</div>
+            <div className="text-sm font-mono break-all mb-4">{walletAddress}</div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="permanent-wallet"
+                checked={isPermanent}
+                onCheckedChange={setIsPermanent}
+              />
+              <Label htmlFor="permanent-wallet" className="text-sm cursor-pointer">
+                Make wallet address permanent
+              </Label>
+            </div>
+            
+            {isPermanent && (
+              <p className="text-xs text-amber-600 mt-2">
+                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                This action cannot be undone. A permanent wallet cannot be changed later.
+              </p>
+            )}
+          </div>
+          
+          <Alert className="bg-blue-50">
+            <AlertTitle>Confirmation Required</AlertTitle>
+            <AlertDescription>
+              By connecting this wallet, you confirm that you own this address and consent to use it for 
+              cryptocurrency transactions on this platform.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-2">
+          <Button 
+            className="w-full" 
+            onClick={handleConfirmWallet}
+            disabled={isLoading}
+          >
+            Connect Wallet
+          </Button>
+          <Button 
+            variant="outline" 
+            className="w-full" 
+            onClick={() => setStep('connect')}
+            disabled={isLoading}
+          >
+            Go Back
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+  
+  // Success step
+  return (
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-green-600">
+          <Wallet className="h-5 w-5" />
+          Wallet Connected
+        </CardTitle>
+        <CardDescription>
+          Your wallet has been successfully connected
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="p-4 border rounded-lg bg-green-50 text-green-800">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium">Address</span>
+            <span className="text-sm font-mono break-all">{walletAddress}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Status</span>
+            <span className="text-sm">
+              {isPermanent ? (
+                <span className="flex items-center">
+                  <LockKeyhole className="h-3 w-3 mr-1" />
+                  Permanent
+                </span>
+              ) : (
+                'Changeable'
+              )}
+            </span>
+          </div>
         </div>
-      )}
-    </>
+      </CardContent>
+      <CardFooter>
+        {redirectPath ? (
+          <Button 
+            className="w-full"
+            onClick={handleRedirect}
+          >
+            Continue
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        ) : (
+          <Button 
+            className="w-full"
+            onClick={onComplete}
+          >
+            Done
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
   );
 };
 

@@ -27,66 +27,30 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}.appspot.com`,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:0000000000000000000000",
-  // Realtime Database URL
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}.firebaseio.com`,
+  // Realtime Database URL - use default format if not explicitly provided
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 
+               `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}-default-rtdb.firebaseio.com`,
 };
 
-// Initialize with proper types
-let app: ReturnType<typeof initializeApp>;
-let auth: ReturnType<typeof getAuth>;
-let firestore: ReturnType<typeof getFirestore>;
-let storage: ReturnType<typeof getStorage>;
-let database: ReturnType<typeof getDatabase>;
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase only if we have proper configuration
-try {
-  // Initialize Firebase
-  app = initializeApp(firebaseConfig);
+// Initialize Firebase services
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+const storage = getStorage(app);
+const database = getDatabase(app);
 
-  // Initialize Firebase services
-  auth = getAuth(app);
-  firestore = getFirestore(app);
-  storage = getStorage(app);
-  database = getDatabase(app);
-
-  // Set persistence to LOCAL to keep the user logged in even after page refresh
-  if (hasFirebaseConfig) {
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => {
-        console.log("Firebase Auth persistence set to LOCAL");
-      })
-      .catch((error) => {
-        console.error("Error setting persistence:", error);
-      });
-  }
-} catch (error) {
-  console.error("Error initializing Firebase:", error);
-  console.warn("Using fallback authentication and storage mechanisms");
-  
-  // Create a fallback implementation for Firebase services
-  // This will allow the app to work without Firebase when Firebase config is missing
-  auth = {
-    currentUser: null,
-    onAuthStateChanged: (callback: (user: null) => void) => {
-      callback(null);
-      return () => {};
-    },
-    signInWithEmailAndPassword: async () => {
-      throw new Error("Firebase not configured properly. Please add Firebase keys to environment variables.");
-    },
-    createUserWithEmailAndPassword: async () => {
-      throw new Error("Firebase not configured properly. Please add Firebase keys to environment variables.");
-    },
-    signOut: async () => {}
-  };
-  
-  firestore = {};
-  storage = {};
-  database = {};
+// Set persistence to LOCAL to keep the user logged in even after page refresh
+if (hasFirebaseConfig) {
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      console.log("Firebase Auth persistence set to LOCAL");
+    })
+    .catch((error) => {
+      console.error("Error setting persistence:", error);
+    });
 }
 
-// Export Firebase services
-export { auth, firestore, storage, database };
-
-// Export initialized app
-export default app;
+// Export Firebase services 
+export { auth, firestore, storage, database, app };

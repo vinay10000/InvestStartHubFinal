@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { 
-  getWalletByUserId, 
-  getLastSavedWalletAddress,
-  migrateWalletToFirebaseUid,
-  getUserIdByWalletAddress
+  getUserWallet,
+  addWalletAddress,
+  removeWalletAddress
 } from '@/firebase/walletDatabase';
 import { getUserByUid } from '@/firebase/database';
 import { useStartups } from '@/hooks/useStartups';

@@ -71,10 +71,14 @@ const WalletConnection = () => {
               
               <div className="flex justify-center py-4">
                 <WalletConnect 
-                  onConnect={handleWalletConnect}
-                  showBalance={false}
-                  buttonSize="lg"
-                  showDialogOnConnect={true}
+                  onComplete={() => {
+                    if (user?.walletAddress) {
+                      console.log("Wallet connected successfully:", user.walletAddress);
+                      // Add a small delay before redirecting
+                      setTimeout(() => setLocation(returnUrl), 1000);
+                    }
+                  }}
+                  redirectPath={returnUrl}
                 />
               </div>
             </>

@@ -17,6 +17,7 @@ import Transactions from "@/pages/Transactions";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import WalletConnection from "@/pages/WalletConnection";
+import WalletSetup from "@/pages/WalletSetup";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
@@ -28,6 +29,20 @@ function AutoRedirect() {
 
   useEffect(() => {
     if (!loading && user) {
+      // Check if the user has connected a wallet
+      const shouldPromptWallet = 
+        // Either they have no wallet address
+        (!user.walletAddress || user.walletAddress === '') &&
+        // Or they haven't explicitly skipped wallet connection
+        localStorage.getItem('skip_wallet_setup') !== 'true';
+      
+      // If they need a wallet, redirect to wallet setup
+      if (shouldPromptWallet) {
+        console.log("AutoRedirect - User needs to connect a wallet, redirecting to setup");
+        navigate('/wallet-setup');
+        return;
+      }
+      
       // First check localStorage, then fallback to user object, then default to investor
       const storedRole = localStorage.getItem('user_role');
       
@@ -120,6 +135,12 @@ function Router() {
       <Route path="/wallet-connect">
         <ProtectedRoute>
           <WalletConnection />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/wallet-setup">
+        <ProtectedRoute>
+          <WalletSetup />
         </ProtectedRoute>
       </Route>
       
