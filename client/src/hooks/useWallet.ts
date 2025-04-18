@@ -21,6 +21,17 @@ export const useWallet = (userId?: string | null) => {
   // Use either provided userId or the authenticated user's ID
   const targetUserId = userId || (user ? user.uid : null);
   
+  // For safer number parsing that works with both numeric and string IDs
+  const parseUserId = (id: string | null): number => {
+    if (!id) return 0;
+    try {
+      return parseInt(id, 10);
+    } catch (e) {
+      console.error('[useWallet] Error parsing user ID:', e);
+      return 0;
+    }
+  };
+  
   // Load wallet data on component mount or when userId changes
   useEffect(() => {
     const loadWalletData = async () => {
@@ -36,7 +47,7 @@ export const useWallet = (userId?: string | null) => {
       
       try {
         // Try to get wallet from the database
-        const wallet = await getUserWallet(parseInt(targetUserId));
+        const wallet = await getUserWallet(parseUserId(targetUserId));
         
         if (wallet) {
           console.log(`[useWallet] Found wallet for user ${targetUserId}:`, wallet);
@@ -80,7 +91,7 @@ export const useWallet = (userId?: string | null) => {
       // Save wallet address to the database
       await addWalletAddress(
         address,
-        parseInt(targetUserId) || 999,
+        parseUserId(targetUserId) || 999,
         user?.username || 'Anonymous',
         false // Not permanent by default
       );

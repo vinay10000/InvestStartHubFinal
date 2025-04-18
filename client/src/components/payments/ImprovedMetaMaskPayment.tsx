@@ -13,6 +13,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
+import { useWallet } from "@/hooks/useWallet";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 
@@ -36,6 +37,9 @@ const ImprovedMetaMaskPayment = ({
   
   // Get founder's wallet information
   const { founderWallet, founderInfo, isLoading: isWalletLoading, hasWallet } = useFounderWallet(startupId);
+  
+  // Get the current user's wallet - ensure userId is a string or undefined
+  const { walletAddress, isLoading: isUserWalletLoading } = useWallet(user?.id?.toString());
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -214,17 +218,50 @@ const ImprovedMetaMaskPayment = ({
   };
   
   // Render loading state while fetching wallet info
-  if (isWalletLoading) {
+  if (isWalletLoading || isUserWalletLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Finding Founder's Wallet</CardTitle>
+          <CardTitle>Finding Wallet Information</CardTitle>
           <CardDescription>
-            Please wait while we locate the wallet address for this startup
+            Please wait while we locate the necessary wallet addresses
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center py-6">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Check if user has a wallet connected in the database
+  if (!walletAddress && user) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Connect Your Wallet
+          </CardTitle>
+          <CardDescription>
+            You need to connect a wallet to continue with your investment
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Wallet Required</AlertTitle>
+            <AlertDescription>
+              To invest in a startup, you need to connect an Ethereum wallet. This is required for secure cryptocurrency transactions.
+            </AlertDescription>
+          </Alert>
+          <Button 
+            variant="default" 
+            className="w-full"
+            onClick={() => window.location.href = "/wallet-setup"}
+          >
+            Go to Wallet Setup
+          </Button>
         </CardContent>
       </Card>
     );
@@ -261,6 +298,46 @@ const ImprovedMetaMaskPayment = ({
               Install MetaMask
             </Button>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // If the MetaMask wallet is not connected, prompt the user to connect
+  if (!isWalletConnected && walletAddress) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Connect MetaMask
+          </CardTitle>
+          <CardDescription>
+            Connect your MetaMask wallet to proceed with the investment
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 border rounded-lg bg-blue-50">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Wallet Connected</span>
+              <span className="text-sm">Your wallet is already connected to your account</span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm">Address</span>
+              <span className="text-sm font-mono">{truncateAddress(walletAddress)}</span>
+            </div>
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-sm">Status</span>
+              <span className="text-sm">Permanent</span>
+            </div>
+          </div>
+          
+          <Button 
+            className="w-full" 
+            onClick={() => connect()}
+          >
+            Connect MetaMask Wallet
+          </Button>
         </CardContent>
       </Card>
     );
