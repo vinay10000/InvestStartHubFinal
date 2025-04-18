@@ -87,6 +87,22 @@ export const useFounderWallet = (startupId: string | number | null) => {
           return;
         }
         
+        // Also check if there's a walletAddress field directly in the startup data
+        if (startupWithCustomFields.walletAddress) {
+          console.log("[useFounderWallet] Using wallet address from startup walletAddress field:", 
+            startupWithCustomFields.walletAddress);
+          
+          setFounderWallet(startupWithCustomFields.walletAddress);
+          setFounderInfo({
+            id: founderId,
+            name: startupWithCustomFields.founderName || "Founder",
+            walletAddress: startupWithCustomFields.walletAddress
+          });
+          setIsLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+        
         // Try multiple methods to find the wallet address IN PARALLEL
         console.log("[useFounderWallet] Fetching wallet using multiple sources for ID:", founderId);
         
@@ -176,6 +192,6 @@ export const useFounderWallet = (startupId: string | number | null) => {
     founderInfo,
     isLoading: isLoading || isStartupLoading,
     error,
-    hasWallet: !!founderWallet
+    hasWallet: !!founderWallet || (founderInfo?.walletAddress && founderInfo.walletAddress !== "")
   };
 };

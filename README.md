@@ -1,4 +1,3 @@
-
 # StartupConnect Platform
 
 A full-stack web application connecting startups with investors, featuring both traditional and blockchain-based investment options.
@@ -78,7 +77,7 @@ npx hardhat compile
 npx hardhat test
 ```
 
-The application runs on port 5000 by default.
+The application runs on port 3000 by default.
 
 ## Project Structure
 

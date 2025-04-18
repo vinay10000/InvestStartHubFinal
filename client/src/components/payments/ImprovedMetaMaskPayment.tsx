@@ -14,11 +14,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
 import { useWallet } from "@/hooks/useWallet";
-import { Label } from "@/components/ui/label";
+import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { saveWalletToStartup } from '../../firebase/walletDatabase';
+import { Input } from "@/components/ui/input";
+import { firestore } from "@/firebase/config";
+import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
 
 interface ImprovedMetaMaskPaymentProps {
-  startupId: number;
+  startupId: string | number;
   startupName: string;
   onPaymentComplete?: (txHash: string, amount: string) => void;
 }
@@ -28,7 +32,7 @@ const ImprovedMetaMaskPayment = ({
   startupName,
   onPaymentComplete 
 }: ImprovedMetaMaskPaymentProps) => {
-  const { isInstalled, address, connect, isWalletConnected, balance, chainId } = useWeb3();
+  const { isInstalled, address, connect, isWalletConnected, balance, chainId, sendDirectETH } = useWeb3();
   const { investInStartup } = useContractInteraction();
   const { createTransaction } = useTransactions();
   const { user } = useAuth();
@@ -36,7 +40,8 @@ const ImprovedMetaMaskPayment = ({
   const { useStartup } = useStartups();
   
   // Get founder's wallet information
-  const { founderWallet, founderInfo, isLoading: isWalletLoading, hasWallet } = useFounderWallet(startupId);
+  const { data: startupData } = useStartup(startupId.toString());
+  const { walletAddress: founderWalletAddress } = useWallet(startupData?.founderId);
   
   // Get the current user's wallet - ensure userId is a string or undefined
   const { walletAddress, isLoading: isUserWalletLoading } = useWallet(user?.id?.toString());
@@ -51,6 +56,8 @@ const ImprovedMetaMaskPayment = ({
     hookProvidedWallet: walletAddress,
     sessionStorageWallet: sessionWalletAddress,
     effectiveWalletAddress,
+    founderWalletAddress,
+    startupFounderId: startupData?.founderId,
     isMetaMaskInstalled: isInstalled,
     isMetaMaskConnected: isWalletConnected(),
     currentMetaMaskAddress: address
@@ -70,6 +77,7 @@ const ImprovedMetaMaskPayment = ({
   const [useManualAddress, setUseManualAddress] = useState<boolean>(false);
   const [manualFounderWallet, setManualFounderWallet] = useState<string | null>(null);
   const [manualFounderInfo, setManualFounderInfo] = useState<any | null>(null);
+  const [showManualWalletInput, setShowManualWalletInput] = useState<boolean>(false);
   
   // Helper function to get network name from chain ID
   const getNetworkName = (chainIdStr: string | null): string => {
@@ -101,111 +109,62 @@ const ImprovedMetaMaskPayment = ({
     setNetworkName(getNetworkName(chainId));
   }, [chainId]);
   
-  // Auto-connect MetaMask when the component loads if user has a wallet
+  // Update the useEffect for wallet connection state
   useEffect(() => {
     const attemptAutoConnect = async () => {
-      // Skip if we have no wallet in database or MetaMask is not installed
-      if (!effectiveWalletAddress || !isInstalled) {
-        setNeedsMetaMaskConnection(false);
+      // Skip if MetaMask is not installed
+      if (!isInstalled) {
+        console.log("[ImprovedMetaMaskPayment] MetaMask not installed");
         return;
       }
 
-      // Check if we're already connected
-      if (isWalletConnected() && address) {
-        console.log("MetaMask already connected:", address);
-        setNeedsMetaMaskConnection(false);
+      // If we already have a connected address, we're done
+      if (address) {
+        console.log("[ImprovedMetaMaskPayment] Already connected to:", address);
         return;
       }
-      
-      console.log("Wallet found in database but not connected in browser:", effectiveWalletAddress);
-      
+
       try {
-        // Check silently first if MetaMask is unlocked and has accounts
-        let accounts = [];
-        try {
-          if (window.ethereum) {
-            accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          }
-        } catch (err) {
-          console.log("Error checking unlocked accounts:", err);
-        }
+        // Check if we're already connected in MetaMask
+        const metaMaskConnected = await isWalletConnected();
         
-        // If accounts already available, we're good (the connect function will use them)
-        if (accounts && accounts.length > 0) {
-          console.log("MetaMask is unlocked with accounts:", accounts);
-          
-          // Attempt to auto-connect with MetaMask
-          console.log("Attempting to auto-connect to unlocked MetaMask...");
-          const connected = await connect();
-          
-          if (connected) {
-            console.log("Auto-connection successful!");
-            setNeedsMetaMaskConnection(false);
-            
-            // Check if account matches the database
-            if (address && effectiveWalletAddress && address.toLowerCase() !== effectiveWalletAddress.toLowerCase()) {
-              console.warn("Connected account doesn't match database wallet", {
-                connectedAccount: address,
-                databaseWallet: effectiveWalletAddress
-              });
-              
-              toast({
-                title: "Wallet Account Mismatch",
-                description: "The connected MetaMask account is different from your registered wallet. Please switch to the correct account.",
-                variant: "destructive"
-              });
-            }
-          } else {
-            console.log("Auto-connection failed despite unlocked accounts, showing connection prompt");
-            setNeedsMetaMaskConnection(true);
-          }
-        } else {
-          // No unlocked accounts, we'll need to prompt the user
-          console.log("MetaMask is installed but locked or no accounts, showing connection prompt");
-          setNeedsMetaMaskConnection(true);
+        // Check localStorage for wallet connection status
+        const localStorageWalletStatus = localStorage.getItem('wallet_connected');
+        const isStoredAsConnected = localStorageWalletStatus === 'true';
+
+        console.log("[ImprovedMetaMaskPayment] Connection status:", {
+          metaMaskConnected,
+          localStorageWalletStatus,
+          effectiveWalletAddress
+        });
+
+        // If we have a stored wallet or MetaMask reports connected, try to connect
+        if (metaMaskConnected || isStoredAsConnected || effectiveWalletAddress) {
+          console.log("[ImprovedMetaMaskPayment] Attempting to auto-connect wallet");
+          await connect();
         }
       } catch (error) {
-        console.error("Error during auto-connect attempt:", error);
-        setNeedsMetaMaskConnection(true);
+        console.error("[ImprovedMetaMaskPayment] Error during auto-connect:", error);
       }
     };
-    
-    // Run the auto-connect attempt
+
     attemptAutoConnect();
-  }, [effectiveWalletAddress, isWalletConnected, connect, isInstalled, address, toast]);
+  }, [isInstalled, address, connect, isWalletConnected, effectiveWalletAddress]);
   
   // Handle investment process
   const handleInvest = async () => {
-    // Check if we need to connect MetaMask or we can proceed directly
+    // If we already have an address, we can proceed directly
     if (!address) {
+      // Only try to connect if not already connected
       try {
-        // First check if the user already has a wallet in database or in session
-        if (effectiveWalletAddress) {
-          console.log("User has a wallet available:", effectiveWalletAddress);
-          
-          // Try to auto-connect with wallet in database
-          console.log("Auto-connecting MetaMask...");
-          const connected = await connect();
-          
-          if (!connected) {
-            toast({
-              title: "Wallet Connection Required",
-              description: "Please connect your MetaMask browser extension to proceed with the investment",
-              variant: "destructive"
-            });
-            return;
-          }
-        } else {
-          // No wallet in database, regular connect flow
-          const connected = await connect();
-          if (!connected) {
-            toast({
-              title: "Wallet Connection Required",
-              description: "Please connect your MetaMask wallet to proceed with the investment",
-              variant: "destructive"
-            });
-            return;
-          }
+        const connected = await connect();
+        if (!connected) {
+          toast({
+            title: "Wallet Connection Required",
+            description: "Please connect your MetaMask wallet to proceed with the investment",
+            variant: "destructive"
+          });
+          return;
         }
       } catch (error: any) {
         toast({
@@ -216,7 +175,7 @@ const ImprovedMetaMaskPayment = ({
         return;
       }
     }
-    
+
     // Validate investment amount
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       toast({
@@ -226,7 +185,7 @@ const ImprovedMetaMaskPayment = ({
       });
       return;
     }
-    
+
     // Check if amount exceeds balance
     const numericAmount = parseFloat(amount);
     const userBalance = parseFloat(balance || "0");
@@ -238,7 +197,7 @@ const ImprovedMetaMaskPayment = ({
       });
       return;
     }
-    
+
     // Check if founder wallet is available
     if (!effectiveFounderWallet) {
       toast({
@@ -248,10 +207,10 @@ const ImprovedMetaMaskPayment = ({
       });
       return;
     }
-    
+
     setIsProcessing(true);
     setTransactionProgress(10);
-    
+
     try {
       // Clean the amount string for transaction
       const cleanAmount = numericAmount.toFixed(Math.min(18, amount.includes('.') ? amount.split('.')[1].length : 0));
@@ -260,32 +219,51 @@ const ImprovedMetaMaskPayment = ({
       setTransactionProgress(30);
       
       // Process the transaction using direct ETH transfer
-      if (!effectiveFounderWallet) {
-        throw new Error("Founder wallet address is missing");
-      }
       const result = await sendDirectETH(effectiveFounderWallet, cleanAmount);
       
       // Transaction sent
       setTransactionProgress(70);
       
-      if (result) {
+      if (result && user) {
         // Store transaction hash
         setTxHash(result.transactionHash);
         
         // Transaction confirmed
         setTransactionProgress(90);
         
-        // Record transaction in backend
-        if (user) {
-          await createTransaction.mutateAsync({
-            startupId: startupId.toString(),
-            investorId: user.id.toString(),
-            amount: cleanAmount,
-            paymentMethod: "metamask",
-            transactionId: result.transactionHash,
-            status: "pending" // Will be verified by admin
-          });
-        }
+        // Create a unique transaction ID
+        const transactionId = result.transactionHash;
+        
+        // Create transaction document in Firestore
+        const transactionData = {
+          startupId: startupId.toString(),
+          investorId: user.id.toString(),
+          founderId: startupData?.founderId,
+          amount: cleanAmount,
+          amountInEth: cleanAmount,
+          paymentMethod: "metamask",
+          transactionHash: result.transactionHash,
+          status: "completed",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          fromAddress: address,
+          toAddress: effectiveFounderWallet,
+          networkName: networkName,
+          startupName: startupName
+        };
+
+        // Add transaction to Firestore
+        await setDoc(doc(firestore, "transactions", transactionId), transactionData);
+
+        // Update startup's total investment
+        const startupRef = doc(firestore, "startups", startupId.toString());
+        const startupTransactionsRef = collection(startupRef, "transactions");
+        await setDoc(doc(startupTransactionsRef, transactionId), transactionData);
+
+        // Update user's investments
+        const userRef = doc(firestore, "users", user.id.toString());
+        const userTransactionsRef = collection(userRef, "transactions");
+        await setDoc(doc(userTransactionsRef, transactionId), transactionData);
         
         // Complete transaction
         setTransactionProgress(100);
@@ -327,20 +305,13 @@ const ImprovedMetaMaskPayment = ({
     }
   };
   
-  // Render loading state while fetching wallet info
-  if (isWalletLoading || isUserWalletLoading) {
+  // Show loading state while fetching wallet info
+  if (isUserWalletLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Finding Wallet Information</CardTitle>
-          <CardDescription>
-            Please wait while we locate the necessary wallet addresses
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-6">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        <span>Loading wallet information...</span>
+      </div>
     );
   }
   
@@ -603,13 +574,40 @@ const ImprovedMetaMaskPayment = ({
   }
   
   // Use the wallet info passed from props or provided by useFounderWallet hook
-  const effectiveFounderWallet = founderWallet;
-  const effectiveFounderInfo = founderInfo;
+  const effectiveFounderWallet = founderWalletAddress || manualFounderWallet;
+  const effectiveFounderInfo = {
+    name: startupData?.name || "Founder",
+    walletAddress: effectiveFounderWallet
+  };
   const effectiveHasWallet = !!effectiveFounderWallet;
   
   // Function to validate Ethereum address
   const isValidEthAddress = (address: string): boolean => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+  
+  // Handle manual wallet entry
+  const handleManualWalletSubmit = () => {
+    if (manualWalletAddress && isValidEthAddress(manualWalletAddress)) {
+      setManualFounderWallet(manualWalletAddress);
+      setManualFounderInfo({
+        id: "manual",
+        name: "Manual Entry",
+        walletAddress: manualWalletAddress
+      });
+      setShowManualWalletInput(false);
+      setManualWalletAddress("");
+      toast({
+        title: "Wallet Address Added",
+        description: "You can now proceed with the payment using the manually entered wallet address.",
+      });
+    } else if (manualWalletAddress) {
+      toast({
+        title: "Invalid Wallet Address",
+        description: "Please enter a valid Ethereum wallet address starting with 0x",
+        variant: "destructive"
+      });
+    }
   };
   
   // Render no founder wallet warning
@@ -634,6 +632,47 @@ const ImprovedMetaMaskPayment = ({
               Please try again later when the founder has setup their wallet.
             </AlertDescription>
           </Alert>
+          
+          {!showManualWalletInput ? (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowManualWalletInput(true)}
+            >
+              Enter wallet address manually
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <UILabel htmlFor="manualWallet">Founder's Wallet Address</UILabel>
+                <div className="flex gap-2">
+                  <Input
+                    id="manualWallet"
+                    placeholder="0x..."
+                    value={manualWalletAddress}
+                    onChange={(e) => setManualWalletAddress(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleManualWalletSubmit}
+                    disabled={!manualWalletAddress || !isValidEthAddress(manualWalletAddress)}
+                  >
+                    Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter a valid Ethereum wallet address starting with 0x
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => setShowManualWalletInput(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -692,17 +731,28 @@ const ImprovedMetaMaskPayment = ({
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">Your Wallet</span>
             <span className="text-sm font-mono bg-green-100 text-green-800 px-2 py-0.5 rounded">
-              {truncateAddress(address || "")}
+              {isWalletConnected() && address ? truncateAddress(address) : "Not Connected"}
             </span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm">Balance</span>
-            <span className="text-sm font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
-          </div>
-          <div className="flex justify-between items-center mt-1">
-            <span className="text-sm">Network</span>
-            <span className="text-sm">{networkName}</span>
-          </div>
+          {isWalletConnected() && address ? (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Balance</span>
+                <span className="text-sm font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
+              </div>
+            </>
+          ) : (
+            <div className="mt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full" 
+                onClick={connect}
+              >
+                Connect MetaMask
+              </Button>
+            </div>
+          )}
         </div>
         
         {/* Recipient Info */}
@@ -721,7 +771,7 @@ const ImprovedMetaMaskPayment = ({
         
         {/* Amount Input */}
         <div className="space-y-2">
-          <Label htmlFor="amount">Investment Amount (ETH)</Label>
+          <UILabel htmlFor="amount">Investment Amount (ETH)</UILabel>
           <div className="relative">
             <input
               id="amount"
@@ -765,16 +815,18 @@ const ImprovedMetaMaskPayment = ({
       <CardFooter>
         <Button 
           className="w-full" 
-          disabled={isProcessing}
           onClick={handleInvest}
+          disabled={isProcessing}
         >
           {isProcessing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Processing...
             </>
+          ) : address ? (
+            "Complete Investment"
           ) : (
-            `Invest ${amount} ETH Now`
+            "Connect Wallet & Invest"
           )}
         </Button>
       </CardFooter>

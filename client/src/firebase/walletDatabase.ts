@@ -1,4 +1,4 @@
-import { getDatabase, ref, set, get, remove, onValue } from 'firebase/database';
+import { getDatabase, ref, set, get, remove, onValue, update } from 'firebase/database';
 import { app } from './config';
 
 // Initialize Firebase Realtime Database
@@ -136,19 +136,54 @@ export const makeWalletPermanent = async (address: string, userId: number): Prom
  */
 export const getUserWallet = async (userId: number): Promise<WalletData | null> => {
   try {
+    console.log(`[Wallet DB] Getting wallet for user ID: ${userId}`);
+    
+    // First try to get from user-indexed location
     const userWalletRef = ref(database, `users/${userId}/wallet`);
     const snapshot = await get(userWalletRef);
     
     if (snapshot.exists()) {
       const walletData = snapshot.val();
+      console.log(`[Wallet DB] Found wallet reference in user record:`, walletData);
       
       // Get the full wallet data
       const walletRef = ref(database, `wallets/${walletData.address.toLowerCase()}`);
       const walletSnapshot = await get(walletRef);
       
       if (walletSnapshot.exists()) {
+        console.log(`[Wallet DB] Found full wallet data:`, walletSnapshot.val());
         return walletSnapshot.val() as WalletData;
+      } else {
+        console.log(`[Wallet DB] Wallet reference exists but full wallet data not found`);
       }
+    } else {
+      console.log(`[Wallet DB] No wallet reference found in user record for ID: ${userId}`);
+    }
+    
+    // If we didn't find it in the user record, try direct lookup by address
+    // This is a fallback for older data structures
+    console.log(`[Wallet DB] Trying direct wallet lookup for user ID: ${userId}`);
+    
+    // Get all wallets and filter by userId
+    const walletsRef = ref(database, 'wallets');
+    const walletsSnapshot = await get(walletsRef);
+    
+    if (walletsSnapshot.exists()) {
+      const wallets = walletsSnapshot.val();
+      console.log(`[Wallet DB] Found ${Object.keys(wallets).length} total wallets in database`);
+      
+      // Find wallet with matching userId
+      for (const address in wallets) {
+        const wallet = wallets[address];
+        if (wallet.userId === userId) {
+          console.log(`[Wallet DB] Found wallet by direct lookup:`, wallet);
+          return wallet as WalletData;
+        }
+      }
+      
+      console.log(`[Wallet DB] No wallet found with userId: ${userId}`);
+    } else {
+      console.log(`[Wallet DB] No wallets found in database`);
     }
     
     return null;
@@ -247,6 +282,42 @@ export const initializeWalletDatabase = async (): Promise<boolean> => {
     });
   } catch (error) {
     console.error('[Wallet DB] Error initializing database:', error);
+    return false;
+  }
+};
+
+/**
+ * Saves a wallet address directly to a startup's data
+ * This ensures the founder's wallet is properly associated with the startup
+ */
+export const saveWalletToStartup = async (
+  startupId: string | number,
+  walletAddress: string,
+  founderName?: string
+): Promise<boolean> => {
+  try {
+    console.log(`[Wallet DB] Saving wallet ${walletAddress} to startup ${startupId}`);
+    
+    // Update the startup data with the wallet address
+    const startupRef = ref(database, `startups/${startupId}`);
+    
+    // Prepare the update data
+    const updateData: Record<string, any> = {
+      founderWalletAddress: walletAddress.toLowerCase()
+    };
+    
+    // Add founder name if provided
+    if (founderName) {
+      updateData.founderName = founderName;
+    }
+    
+    // Update the startup data
+    await update(startupRef, updateData);
+    
+    console.log(`[Wallet DB] Successfully saved wallet to startup ${startupId}`);
+    return true;
+  } catch (error) {
+    console.error(`[Wallet DB] Error saving wallet to startup:`, error);
     return false;
   }
 };

@@ -24,6 +24,8 @@ import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayme
 import SimpleMetaMaskPayment from "@/components/payments/SimpleMetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
 import { getUserWallet } from "@/firebase/walletDatabase";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Helper function to convert any startup ID to a valid numeric ID for blockchain
 function getNumericStartupId(id: any): number {
@@ -71,6 +73,10 @@ const StartupDetails = () => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
+  const { connect } = useWeb3();
+  const [manualWalletAddress, setManualWalletAddress] = useState("");
+  const [isSubmittingWallet, setIsSubmittingWallet] = useState(false);
+  const [hasWalletConnected, setHasWalletConnected] = useState(false);
 
   // Always convert the ID to string to properly handle Firebase IDs
   const safeStartupId = startupId ? startupId.toString() : "";
@@ -91,25 +97,11 @@ const StartupDetails = () => {
   console.log("StartupDetails - Fetched startup data:", startupData);
   console.log("StartupDetails - Fetched documents data:", documentsData);
   
-  // Add more detailed logging for debugging
-  if (startupData) {
-    // Use conditional access to avoid TypeScript errors
-    console.log("StartupDetails - UPI QR code URL:", 
-      startupData.upi_qr_code || (startupData as any).upiQrCode || "Not available");
-    console.log("StartupDetails - UPI ID:", 
-      startupData.upi_id || (startupData as any).upiId || "Not available");
-  }
-  
-  // Log document URLs if available
-  if (documentsData && documentsData.documents && documentsData.documents.length > 0) {
-    console.log("StartupDetails - Document URLs:", documentsData.documents.map((doc: any) => doc.fileUrl));
-  }
-  
   // Use useWeb3 hook for accurate wallet connection status
   const { address: metamaskAddress, isWalletConnected } = useWeb3();
   
   // Use the dedicated isWalletConnected method which checks all sources of truth
-  const hasWalletConnected = isWalletConnected() || (user?.walletAddress && user.walletAddress !== '');
+  const hasWalletConnectedMethod = isWalletConnected() || (user?.walletAddress && user.walletAddress !== '');
   
   // Log wallet connection status for debugging
   console.log("Wallet connection status:", { 
@@ -117,7 +109,7 @@ const StartupDetails = () => {
     metamaskAddress,
     localStorageWalletConnected: localStorage.getItem('wallet_connected'),
     isWalletConnectedMethod: isWalletConnected(),
-    hasWalletConnected 
+    hasWalletConnected: hasWalletConnectedMethod
   });
 
   // Safely extract data with null checks and type handling
@@ -387,6 +379,51 @@ const StartupDetails = () => {
     }
   };
 
+  // Validate Ethereum address
+  const isValidEthAddress = (address: string): boolean => {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+
+  // Handle manual wallet connection
+  const handleManualWalletConnect = async () => {
+    if (!manualWalletAddress || !isValidEthAddress(manualWalletAddress)) {
+      toast({
+        title: "Invalid Address",
+        description: "Please enter a valid Ethereum address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmittingWallet(true);
+    try {
+      const success = await connect();
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Wallet connected successfully"
+        });
+        setHasWalletConnected(true);
+        setManualWalletAddress("");
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to connect wallet",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect wallet",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingWallet(false);
+    }
+  };
+
   if (startupLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -422,6 +459,71 @@ const StartupDetails = () => {
   const fundingGoal = startup.funding_goal || '0';
   
   const { bg: stageBg, text: stageText } = getInvestmentStageColor(investmentStage);
+
+  // Update the investment dialog content
+  const renderInvestmentDialog = () => (
+    <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Invest in {startup?.name}</DialogTitle>
+          <DialogDescription>
+            Choose your preferred payment method to invest in this startup.
+          </DialogDescription>
+        </DialogHeader>
+        
+        {!hasWalletConnected ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="wallet-address">Ethereum Wallet Address</Label>
+              <Input
+                id="wallet-address"
+                placeholder="0x..."
+                value={manualWalletAddress}
+                onChange={(e) => setManualWalletAddress(e.target.value)}
+                disabled={isSubmittingWallet}
+              />
+              {manualWalletAddress && !isValidEthAddress(manualWalletAddress) && (
+                <p className="text-xs text-red-500">
+                  Please enter a valid Ethereum address (0x...)
+                </p>
+              )}
+            </div>
+            
+            <Button 
+              className="w-full" 
+              onClick={handleManualWalletConnect}
+              disabled={isSubmittingWallet || !manualWalletAddress || !isValidEthAddress(manualWalletAddress)}
+            >
+              {isSubmittingWallet ? "Connecting..." : "Connect Wallet"}
+            </Button>
+          </div>
+        ) : (
+          <Tabs defaultValue="metamask" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="metamask">MetaMask</TabsTrigger>
+              <TabsTrigger value="upi">UPI</TabsTrigger>
+            </TabsList>
+            <TabsContent value="metamask">
+              <ImprovedMetaMaskPayment 
+                startupId={getNumericStartupId(startup.id)}
+                startupName={startup.name}
+                onPaymentComplete={() => setIsInvestDialogOpen(false)}
+              />
+            </TabsContent>
+            <TabsContent value="upi">
+              <UPIPayment 
+                startupId={Number(startup.id).toString()}
+                startupName={startup.name}
+                upiId={upiId || ""}
+                upiQrCode={upiQrCode || ""}
+                onPaymentComplete={() => setIsInvestDialogOpen(false)}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -509,41 +611,7 @@ const StartupDetails = () => {
                 </Button>
                 
                 {/* Investment Dialog */}
-                <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
-                  <DialogContent className="sm:max-w-[550px]">
-                    <DialogHeader>
-                      <DialogTitle>Invest in {name}</DialogTitle>
-                      <DialogDescription>
-                        Choose your preferred payment method
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <Tabs defaultValue={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "metamask" | "upi")}>
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="metamask">MetaMask</TabsTrigger>
-                        <TabsTrigger value="upi">UPI</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="metamask">
-                        <SimpleMetaMaskPayment 
-                          startupId={getNumericStartupId(startup.id)}
-                          startupName={startup.name}
-                          onPaymentComplete={() => setIsInvestDialogOpen(false)}
-                        />
-                      </TabsContent>
-                      
-                      <TabsContent value="upi">
-                        <UPIPayment 
-                          startupId={Number(startup.id).toString()}
-                          startupName={startup.name}
-                          upiId={upiId || ""}
-                          upiQrCode={upiQrCode || ""}
-                          onPaymentComplete={() => setIsInvestDialogOpen(false)}
-                        />
-                      </TabsContent>
-                    </Tabs>
-                  </DialogContent>
-                </Dialog>
+                {renderInvestmentDialog()}
               </div>
             )}
           </div>

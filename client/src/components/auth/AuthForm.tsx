@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 // Form schema for sign in
 const signInSchema = z.object({
@@ -165,17 +166,19 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
           />
         )}
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <span className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {type === "signin" ? "Signing In..." : "Creating Account..."}
-            </span>
+            <Spinner 
+              size="sm" 
+              variant="primary" 
+              loadingText={type === "signin" ? "Signing in..." : "Creating account..."}
+            />
           ) : (
-            <span>{type === "signin" ? "Sign In" : "Create Account"}</span>
+            type === "signin" ? "Sign in" : "Create account"
           )}
         </Button>
       </form>

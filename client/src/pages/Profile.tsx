@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useWeb3 } from "@/hooks/useWeb3";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,11 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Wallet } from "lucide-react";
-import WalletConnect from "@/components/auth/WalletConnect";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 
 const profileSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters long"),
@@ -23,6 +23,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const Profile = () => {
   const { user, updateProfile, disconnectWallet } = useAuth();
+  const { isInstalled, address, connect, isWalletConnected } = useWeb3();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ProfileFormValues>({
@@ -55,6 +56,27 @@ const Profile = () => {
       .toUpperCase();
   };
 
+  const handleConnectMetaMask = async () => {
+    if (!isInstalled) {
+      window.open("https://metamask.io/download/", "_blank");
+      return;
+    }
+    await connect();
+  };
+
+  const handleDisconnectWallet = async () => {
+    if (confirm("Are you sure you want to disconnect your wallet?")) {
+      // Remove wallet_connected flag from localStorage
+      localStorage.removeItem('wallet_connected');
+      
+      // Call disconnectWallet from auth context
+      await disconnectWallet();
+      
+      // Force reload the page to ensure all states are reset
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-2">My Profile</h1>
@@ -75,10 +97,10 @@ const Profile = () => {
               <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                 {user?.role === "founder" ? "Startup Founder" : "Investor"}
               </div>
-              {user?.walletAddress && (
+              {address && (
                 <div className="mt-4 text-sm flex items-center text-gray-600">
                   <Wallet className="h-4 w-4 mr-1" />
-                  <span className="truncate max-w-[150px]">{user.walletAddress}</span>
+                  <span className="truncate max-w-[150px]">{address}</span>
                 </div>
               )}
             </div>
@@ -90,7 +112,7 @@ const Profile = () => {
           <Tabs defaultValue="account">
             <TabsList className="mb-4">
               <TabsTrigger value="account">Account Details</TabsTrigger>
-              <TabsTrigger value="wallet">Connect Wallet</TabsTrigger>
+              <TabsTrigger value="wallet">Wallet</TabsTrigger>
             </TabsList>
             
             <TabsContent value="account">
@@ -146,48 +168,54 @@ const Profile = () => {
             <TabsContent value="wallet">
               <Card>
                 <CardHeader>
-                  <CardTitle>Wallet Connection</CardTitle>
+                  <CardTitle>MetaMask Wallet</CardTitle>
                   <CardDescription>
-                    Connect your MetaMask wallet to invest in startups or receive funds
+                    Connect your MetaMask wallet to receive investments or make payments
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <WalletConnect 
-                    onDisconnect={() => {
-                      // Call the disconnectWallet function from our auth context
-                      disconnectWallet().catch(error => {
-                        console.error("Error disconnecting wallet from auth context:", error);
-                      });
-                    }}
-                  />
-                  
-                  {user?.walletAddress && (
-                    <div className="mt-6 pt-6 border-t">
-                      <h3 className="font-medium mb-2">Disconnect Wallet</h3>
-                      <p className="text-sm text-gray-600 mb-3">
-                        If you need to change your wallet or disconnect for security reasons, you can do so here.
-                      </p>
-                      <Button 
-                        variant="destructive" 
-                        onClick={() => {
-                          if (confirm("Are you sure you want to disconnect your wallet?")) {
-                            // Remove wallet_connected flag from localStorage
-                            localStorage.removeItem('wallet_connected');
-                            
-                            // Call disconnectWallet from auth context
-                            disconnectWallet().then(() => {
-                              // Force reload the page to ensure all states are reset
-                              window.location.reload();
-                            }).catch(error => {
-                              console.error("Error disconnecting wallet:", error);
-                            });
-                          }
-                        }}
-                      >
-                        Disconnect Wallet
-                      </Button>
-                    </div>
-                  )}
+                  <div className="space-y-6">
+                    {!isInstalled ? (
+                      <div className="text-center p-6 border rounded-lg bg-gray-50">
+                        <h3 className="text-lg font-medium mb-2">MetaMask Not Installed</h3>
+                        <p className="text-gray-600 mb-4">
+                          To connect your wallet, you need to install MetaMask first.
+                        </p>
+                        <Button onClick={handleConnectMetaMask}>
+                          Install MetaMask
+                        </Button>
+                      </div>
+                    ) : !isWalletConnected() ? (
+                      <div className="text-center p-6 border rounded-lg bg-gray-50">
+                        <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
+                        <p className="text-gray-600 mb-4">
+                          Connect your MetaMask wallet to start using blockchain features.
+                        </p>
+                        <Button onClick={handleConnectMetaMask}>
+                          Connect MetaMask
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-4 border rounded-lg bg-green-50">
+                          <h3 className="font-medium mb-2">Connected Wallet</h3>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Address:</span>
+                            <span className="font-mono">{address}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="destructive" 
+                            onClick={handleDisconnectWallet}
+                          >
+                            Disconnect Wallet
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

@@ -1,14 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wallet, ArrowLeft, AlertTriangle, CheckCircle } from "lucide-react";
-import WalletConnect from "@/components/auth/WalletConnect";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 const WalletConnection = () => {
   const { user, connectWallet } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [walletAddress, setWalletAddress] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get the return URL from query params
   const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") || "/";
@@ -25,15 +30,43 @@ const WalletConnection = () => {
     }
   }, [user?.walletAddress, returnUrl, setLocation]);
   
+  // Validate Ethereum address
+  const isValidEthAddress = (address: string): boolean => {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+  
   // Handle wallet connection
-  const handleWalletConnect = async (address: string) => {
+  const handleWalletConnect = async () => {
+    if (!isValidEthAddress(walletAddress)) {
+      toast({
+        title: "Invalid Wallet Address",
+        description: "Please enter a valid Ethereum wallet address (0x...)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
+      setIsSubmitting(true);
       if (connectWallet) {
-        await connectWallet(address);
-        console.log("Wallet connected successfully:", address);
+        await connectWallet(walletAddress);
+        console.log("Wallet connected successfully:", walletAddress);
+        toast({
+          title: "Wallet Connected",
+          description: "Your wallet has been successfully connected to your account."
+        });
+        // Add a small delay before redirecting
+        setTimeout(() => setLocation(returnUrl), 1000);
       }
     } catch (error) {
       console.error("Error connecting wallet:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect wallet. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -69,17 +102,30 @@ const WalletConnection = () => {
                 </div>
               </div>
               
-              <div className="flex justify-center py-4">
-                <WalletConnect 
-                  onComplete={() => {
-                    if (user?.walletAddress) {
-                      console.log("Wallet connected successfully:", user.walletAddress);
-                      // Add a small delay before redirecting
-                      setTimeout(() => setLocation(returnUrl), 1000);
-                    }
-                  }}
-                  redirectPath={returnUrl}
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wallet-address">Ethereum Wallet Address</Label>
+                  <Input
+                    id="wallet-address"
+                    placeholder="0x..."
+                    value={walletAddress}
+                    onChange={(e) => setWalletAddress(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                  {walletAddress && !isValidEthAddress(walletAddress) && (
+                    <p className="text-xs text-red-500">
+                      Please enter a valid Ethereum address (0x...)
+                    </p>
+                  )}
+                </div>
+                
+                <Button 
+                  className="w-full" 
+                  onClick={handleWalletConnect}
+                  disabled={isSubmitting || !walletAddress || !isValidEthAddress(walletAddress)}
+                >
+                  {isSubmitting ? "Connecting..." : "Connect Wallet"}
+                </Button>
               </div>
             </>
           )}

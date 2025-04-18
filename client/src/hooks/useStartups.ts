@@ -27,6 +27,11 @@ export function useStartups() {
         const startups = await getStartups();
         return { startups }; // Match expected API response structure
       },
+      // Add these options to improve caching behavior
+      staleTime: 0, // Consider data stale immediately
+      gcTime: 5 * 60 * 1000, // Cache for 5 minutes (formerly cacheTime)
+      refetchOnMount: true, // Always refetch when component mounts
+      refetchOnWindowFocus: true, // Refetch when window regains focus
     });
   };
 

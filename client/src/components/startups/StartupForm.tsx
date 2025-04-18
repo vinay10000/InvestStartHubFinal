@@ -24,6 +24,7 @@ const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
   description: z.string().min(10, "Description must be at least 10 characters"),
   pitch: z.string().min(10, "Pitch must be at least 10 characters"),
   fundingGoalEth: z.string().min(1, "Funding goal is required"),
+  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid Ethereum wallet address"),
   upiQrCodeFile: z.instanceof(File, { message: "QR code image is required" }).optional(),
   pitchDeckFile: z.instanceof(File, { message: "Pitch deck is required" }).optional(),
   financialReportFile: z.instanceof(File, { message: "Financial report is required" }).optional(),
@@ -77,6 +78,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
       pitch: defaultValues?.pitch || "",
       investmentStage: defaultValues?.investmentStage || "pre-seed",
       fundingGoalEth: defaultValues?.fundingGoalEth || "",
+      walletAddress: defaultValues?.walletAddress || "",
       upiId: defaultValues?.upiId || "",
       upiQrCode: defaultValues?.upiQrCode || "",
     },
@@ -714,6 +716,27 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
               </FormControl>
               <FormDescription>
                 Amount of ETH needed for your startup
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="walletAddress"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Founder Wallet Address</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="0x..." 
+                  {...field} 
+                  disabled={isLoading} 
+                />
+              </FormControl>
+              <FormDescription>
+                Your Ethereum wallet address for receiving investments
               </FormDescription>
               <FormMessage />
             </FormItem>

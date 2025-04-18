@@ -139,6 +139,7 @@ export const createStartup = async (startupData: FirebaseStartup): Promise<Fireb
 // Get all startups
 export const getStartups = async (): Promise<FirebaseStartup[]> => {
   try {
+    console.log("[database] Fetching all startups");
     const startupsRef = ref(database, 'startups');
     const snapshot = await get(startupsRef);
 
@@ -148,12 +149,14 @@ export const getStartups = async (): Promise<FirebaseStartup[]> => {
         const startup = childSnapshot.val();
         startups.push(startup);
       });
+      console.log(`[database] Found ${startups.length} startups`);
       return startups;
     } else {
+      console.log("[database] No startups found in database");
       return [];
     }
   } catch (error) {
-    console.error("Error getting startups:", error);
+    console.error("[database] Error getting startups:", error);
     return [];
   }
 };
