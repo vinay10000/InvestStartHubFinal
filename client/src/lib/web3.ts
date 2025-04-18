@@ -295,7 +295,7 @@ export const useWeb3 = () => {
             try {
               // Import Firebase modules dynamically to avoid circular dependencies
               const { auth } = await import("../firebase/config");
-              const { saveWalletAddress } = await import("../firebase/walletDatabase");
+              const { addWalletAddress } = await import("../firebase/walletDatabase");
               const { updateUser } = await import("../firebase/database");
               
               if (auth.currentUser) {
@@ -369,11 +369,11 @@ export const useWeb3 = () => {
             const userRole = localStorage.getItem('user_role') || 'investor';
             
             // Save to dedicated wallet database
-            await saveWalletAddress(
-              userId,
-              newAddress,
+            await addWalletAddress(
+              newAddress, 
+              parseInt(userId) || 999,
               auth.currentUser.displayName || auth.currentUser.email || 'User',
-              userRole
+              false
             );
             
             // Also update the user profile
@@ -442,11 +442,11 @@ export const useWeb3 = () => {
             const userRole = localStorage.getItem('user_role') || 'investor';
             
             // Save to dedicated wallet database
-            await saveWalletAddress(
-              userId,
+            await addWalletAddress(
               connectedAddress,
+              parseInt(userId) || 999,
               auth.currentUser.displayName || auth.currentUser.email || 'User',
-              userRole
+              false
             );
             
             // Also update the user profile
