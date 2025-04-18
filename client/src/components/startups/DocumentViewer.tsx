@@ -76,19 +76,22 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
 
   const getDocumentPreviewUrl = (document: Document): string => {
     try {
-      // Log the document being previewed
-      console.log("Getting preview URL for document:", document);
+      // For both ImageKit and local files, use our document view proxy
+      if (document.fileId) {
+        // The secure proxy will handle authentication and proper content-type
+        return `/api/document/view/${document.fileId}`;
+      }
       
-      // For PDFs, Google Docs Viewer provides a good preview
+      // For PDFs without fileId, use Google Docs Viewer
       if (document.mimeType?.includes('pdf')) {
         const encodedUrl = encodeURIComponent(document.fileUrl);
-        console.log("Using Google Docs viewer for PDF:", encodedUrl);
         return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
       }
       
-      // For images, direct link works
-      if (document.mimeType?.includes('image')) {
-        console.log("Using direct link for image:", document.fileUrl);
+      // For images and other media files
+      if (document.mimeType?.includes('image') || 
+          document.mimeType?.includes('video') ||
+          document.mimeType?.includes('audio')) {
         return document.fileUrl;
       }
       
@@ -96,18 +99,15 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
       if (document.fileUrl.includes('imagekit.io') || 
           document.fileUrl.includes('ik.imagekit.io') || 
           document.fileUrl.includes('cdn.')) {
-        console.log("Using direct link for managed document:", document.fileUrl);
         return document.fileUrl;
       }
       
       // For local file uploads
       if (document.fileUrl.startsWith('/uploads/')) {
-        console.log("Using local path for upload:", document.fileUrl);
         return document.fileUrl;
       }
       
-      // For other documents, we'll use the download link, but log it first
-      console.log("Using default document URL:", document.fileUrl);
+      // Default fallback
       return document.fileUrl;
     } catch (error) {
       console.error("Error creating document preview URL:", error);
@@ -120,7 +120,14 @@ export default function DocumentViewer({ documents, isLoading }: DocumentViewerP
     setLoadingDocument(document.id.toString());
     
     try {
-      await downloadDocument(document.fileUrl, document.fileName || document.name || 'document');
+      // If the document has a fileId, use our proxy download endpoint
+      if (document.fileId) {
+        const downloadUrl = `/api/document/download/${document.fileId}`;
+        window.open(downloadUrl, '_blank');
+      } else {
+        // Fall back to the generic download utility for direct URLs
+        await downloadDocument(document.fileUrl, document.fileName || document.name || 'document');
+      }
     } catch (error) {
       console.error('Error downloading document:', error);
     } finally {

@@ -79,9 +79,15 @@ export const uploadStartupDocument = async (
   fileId: string,
   fileName: string,
   mimeType: string,
-  fileSize: number
+  fileSize: number,
+  thumbnailUrl?: string,
+  filePath?: string
 }> => {
   try {
+    if (!startupId) {
+      throw new Error('Startup ID is required for document upload');
+    }
+    
     // Format a clean filename with timestamp for uniqueness
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
     const fileName = `${documentType}_${Date.now()}.${fileExtension}`;
@@ -93,6 +99,14 @@ export const uploadStartupDocument = async (
     formData.append('folder', `startups/${startupId}/documents`);
     formData.append('useUniqueFileName', 'false');
     formData.append('tags', documentType);
+    
+    // Add more metadata
+    if (file.type) {
+      formData.append('mimeType', file.type);
+    }
+    
+    // Log the upload attempt for debugging
+    console.log(`Uploading ${documentType} document for startup ${startupId}`);
     
     // Upload via our server-side proxy endpoint
     const response = await fetch('/api/imagekit/upload', {
@@ -106,16 +120,20 @@ export const uploadStartupDocument = async (
       throw new Error(data.message || 'Failed to upload document');
     }
     
+    console.log(`Successfully uploaded ${documentType} document:`, data);
+    
     return {
       url: data.url,
       fileId: data.fileId || '',
       fileName: file.name, // Original file name
       mimeType: file.type,
-      fileSize: file.size
+      fileSize: data.size || file.size,
+      thumbnailUrl: data.thumbnailUrl,
+      filePath: data.filePath
     };
   } catch (error) {
-    console.error('Error uploading document:', error);
-    throw new Error('Failed to upload document');
+    console.error(`Error uploading ${documentType} document:`, error);
+    throw new Error(`Failed to upload ${documentType} document: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -158,7 +176,7 @@ export const deleteFile = async (fileUrl: string): Promise<void> => {
   }
 };
 
-// Upload document for Firebase integration
+// Upload document for Firebase integration with enhanced metadata
 export const uploadDocumentToImageKit = async (
   startupId: string,
   documentType: string,
@@ -168,7 +186,9 @@ export const uploadDocumentToImageKit = async (
   fileId: string,
   name: string,
   mimeType: string,
-  fileSize: number
+  fileSize: number,
+  thumbnailUrl?: string,
+  filePath?: string
 }> => {
   try {
     // Format a clean filename with timestamp for uniqueness
@@ -182,6 +202,11 @@ export const uploadDocumentToImageKit = async (
     formData.append('folder', `startups/${startupId}/documents`);
     formData.append('useUniqueFileName', 'false');
     formData.append('tags', documentType);
+    
+    // Add more metadata
+    if (file.type) {
+      formData.append('mimeType', file.type);
+    }
     
     // Upload via our server-side proxy endpoint
     const response = await fetch('/api/imagekit/upload', {
@@ -198,9 +223,11 @@ export const uploadDocumentToImageKit = async (
     return {
       url: data.url,
       fileId: data.fileId || '',
-      name: file.name, // Original file name
+      name: data.name || file.name, // Get name from server or use original
       mimeType: file.type,
-      fileSize: file.size
+      fileSize: data.size || file.size,
+      thumbnailUrl: data.thumbnailUrl,
+      filePath: data.filePath
     };
   } catch (error) {
     console.error('Error uploading document:', error);
@@ -208,7 +235,7 @@ export const uploadDocumentToImageKit = async (
   }
 };
 
-// Upload startup media (logo, images, videos)
+// Upload startup media (logo, images, videos) with enhanced metadata
 export const uploadStartupMedia = async (
   startupId: number | string,
   mediaType: 'logo' | 'image' | 'video',
@@ -218,7 +245,10 @@ export const uploadStartupMedia = async (
   fileId: string,
   fileName: string,
   mimeType: string,
-  fileSize: number
+  fileSize: number,
+  thumbnailUrl?: string,
+  height?: number,
+  width?: number
 }> => {
   try {
     // Validate file type based on mediaType
@@ -246,6 +276,13 @@ export const uploadStartupMedia = async (
     formData.append('useUniqueFileName', 'false');
     formData.append('tags', `${mediaType},startup`);
     
+    // Add more metadata
+    if (file.type) {
+      formData.append('mimeType', file.type);
+    }
+    
+    console.log(`Uploading ${mediaType} for startup ${startupId}`);
+    
     // Upload via our server-side proxy endpoint
     const response = await fetch('/api/imagekit/upload', {
       method: 'POST',
@@ -258,16 +295,21 @@ export const uploadStartupMedia = async (
       throw new Error(data.message || `Failed to upload ${mediaType}`);
     }
     
+    console.log(`Successfully uploaded ${mediaType}:`, data);
+    
     return {
       url: data.url,
       fileId: data.fileId || '',
       fileName: file.name, // Original file name
       mimeType: file.type,
-      fileSize: file.size
+      fileSize: data.size || file.size,
+      thumbnailUrl: data.thumbnailUrl,
+      height: data.height,
+      width: data.width
     };
   } catch (error) {
     console.error(`Error uploading ${mediaType}:`, error);
-    throw new Error(`Failed to upload ${mediaType}`);
+    throw new Error(`Failed to upload ${mediaType}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

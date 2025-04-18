@@ -104,12 +104,22 @@ export function registerImageKitRoutes(app: Express): void {
 
       const folder = req.body.folder || '';
       const customFileName = req.body.fileName || path.basename(req.file.path);
+      const tags = req.body.tags ? req.body.tags.split(',') : [];
       
-      // Upload file to ImageKit
+      // Upload file to ImageKit with tags and metadata if provided
       const uploadResponse = await imagekit.upload({
         file: fs.readFileSync(req.file.path),
         fileName: customFileName,
-        folder: folder
+        folder: folder,
+        tags: tags,
+        useUniqueFileName: req.body.useUniqueFileName === 'true',
+        // Add some useful metadata for tracking the document
+        customMetadata: {
+          uploadedAt: new Date().toISOString(),
+          contentType: req.file.mimetype,
+          originalName: req.file.originalname,
+          docType: req.body.tags || 'document'
+        }
       });
       
       // Delete the temporary file
@@ -117,7 +127,14 @@ export function registerImageKitRoutes(app: Express): void {
       
       res.status(200).json({ 
         url: uploadResponse.url,
-        fileId: uploadResponse.fileId
+        fileId: uploadResponse.fileId,
+        name: uploadResponse.name,
+        filePath: uploadResponse.filePath,
+        size: uploadResponse.size,
+        fileType: uploadResponse.fileType,
+        height: uploadResponse.height,
+        width: uploadResponse.width,
+        thumbnailUrl: uploadResponse.thumbnailUrl
       });
     } catch (error) {
       log(`Error uploading file to ImageKit: ${error}`, 'imagekit');
@@ -194,6 +211,105 @@ export function registerImageKitRoutes(app: Express): void {
     } catch (error) {
       log(`Error listing files from ImageKit: ${error}`, 'imagekit');
       res.status(500).json({ message: 'Failed to list files' });
+    }
+  });
+  
+  // Document proxy endpoint - secure way to view documents with authentication check
+  app.get('/api/document/view/:fileId', async (req: Request, res: Response) => {
+    try {
+      const { fileId } = req.params;
+      
+      if (!fileId) {
+        return res.status(400).json({ message: 'No file ID provided' });
+      }
+      
+      log(`Document view request for fileId: ${fileId}`, 'imagekit');
+      
+      // Check if this is a development file path
+      if (fileId.includes('/uploads/') || !hasRealImageKitCredentials()) {
+        const localPath = fileId.includes('/uploads/') 
+          ? path.join(__dirname, '..', fileId) 
+          : path.join(__dirname, '../uploads', fileId);
+          
+        log(`Attempting to serve local file: ${localPath}`, 'imagekit');
+        
+        if (fs.existsSync(localPath)) {
+          return res.sendFile(path.resolve(localPath));
+        } else {
+          log(`Local file not found: ${localPath}`, 'imagekit');
+          return res.status(404).json({ message: 'File not found' });
+        }
+      }
+      
+      // Get file details from ImageKit
+      let fileDetails;
+      try {
+        fileDetails = await imagekit.getFileDetails(fileId);
+        log(`File details retrieved: ${fileDetails.name}`, 'imagekit');
+      } catch (error) {
+        log(`Error getting file details: ${error}`, 'imagekit');
+        return res.status(404).json({ message: 'File not found in ImageKit' });
+      }
+      
+      if (!fileDetails) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+      
+      // For images, PDFs and certain document types, redirect to URL with proper disposition
+      const contentType = fileDetails.fileType || 'application/octet-stream';
+      
+      // ImageKit CDN will handle the file content properly when redirected
+      return res.redirect(fileDetails.url);
+    } catch (error) {
+      log(`Error viewing document: ${error}`, 'imagekit');
+      res.status(500).json({ message: 'Failed to view document' });
+    }
+  });
+  
+  // Document download endpoint
+  app.get('/api/document/download/:fileId', async (req: Request, res: Response) => {
+    try {
+      const { fileId } = req.params;
+      
+      if (!fileId) {
+        return res.status(400).json({ message: 'No file ID provided' });
+      }
+      
+      // Check if this is a development file path
+      if (fileId.includes('/uploads/') || !hasRealImageKitCredentials()) {
+        const localPath = fileId.includes('/uploads/') 
+          ? path.join(__dirname, '..', fileId) 
+          : path.join(__dirname, '../uploads', fileId);
+          
+        if (fs.existsSync(localPath)) {
+          const filename = path.basename(localPath);
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+          return res.sendFile(path.resolve(localPath));
+        } else {
+          return res.status(404).json({ message: 'File not found' });
+        }
+      }
+      
+      // Get file details from ImageKit
+      let fileDetails;
+      try {
+        fileDetails = await imagekit.getFileDetails(fileId);
+      } catch (error) {
+        return res.status(404).json({ message: 'File not found in ImageKit' });
+      }
+      
+      if (!fileDetails) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+      
+      // Set content disposition to force download
+      res.setHeader('Content-Disposition', `attachment; filename="${fileDetails.name}"`);
+      
+      // Redirect to the file URL
+      return res.redirect(fileDetails.url);
+    } catch (error) {
+      log(`Error downloading document: ${error}`, 'imagekit');
+      res.status(500).json({ message: 'Failed to download document' });
     }
   });
 }
