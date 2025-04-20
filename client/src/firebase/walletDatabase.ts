@@ -389,6 +389,45 @@ export const saveWalletToStartup = async (
     // Update the startup data
     await update(startupRef, updateData);
     
+    // Broadcast the wallet update via WebSocket to notify any investors viewing this startup
+    try {
+      // Only send if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        // Get WebSocket URL based on current environment
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        
+        console.log(`[Wallet DB] Sending wallet update notification via WebSocket: ${startupId}:${walletAddress}`);
+        
+        // Create a new connection if we don't want to affect any existing ones
+        const socket = new WebSocket(wsUrl);
+        
+        // Once connected, send the wallet update notification
+        socket.addEventListener('open', () => {
+          const message = {
+            type: 'wallet_update',
+            startupId: startupId,
+            walletAddress: walletAddress.toLowerCase(),
+            timestamp: Date.now()
+          };
+          
+          socket.send(JSON.stringify(message));
+          console.log('[Wallet DB] Wallet update notification sent via WebSocket');
+          
+          // Close the connection after sending
+          setTimeout(() => socket.close(), 1000);
+        });
+        
+        // Handle any errors
+        socket.addEventListener('error', (error) => {
+          console.error('[Wallet DB] WebSocket error when sending wallet update:', error);
+        });
+      }
+    } catch (wsError) {
+      // Don't let WebSocket issues affect the success of the wallet save operation
+      console.error('[Wallet DB] Failed to send WebSocket notification:', wsError);
+    }
+    
     console.log(`[Wallet DB] Successfully saved wallet to startup ${startupId}`);
     return true;
   } catch (error) {
@@ -404,7 +443,8 @@ export const saveWalletAddress = async (
   firebaseUid: string,
   walletAddress: string,
   username: string = '',
-  role: string = ''
+  role: string = '',
+  startupId?: string // Optional parameter to link to startups
 ): Promise<boolean> => {
   try {
     console.log(`[Wallet DB] Saving wallet ${walletAddress} to Firebase user ${firebaseUid}`);
@@ -418,6 +458,39 @@ export const saveWalletAddress = async (
       username: username || '',
       role: role || ''
     });
+    
+    // If we have a startupId, also update the startup data and send WebSocket notification
+    if (startupId) {
+      await saveWalletToStartup(startupId, walletAddress, username);
+    } else if (role === 'founder') {
+      // If the user is a founder, try to find associated startups
+      try {
+        // Try to find this user's startups
+        const startupRef = ref(database, 'startups');
+        const startupSnapshot = await get(startupRef);
+        
+        if (startupSnapshot.exists()) {
+          const startups = startupSnapshot.val();
+          
+          // Look for startups with this founder ID
+          for (const [id, data] of Object.entries(startups)) {
+            const startup = data as any;
+            if (
+              (startup.founderId && startup.founderId.toString() === firebaseUid) ||
+              (startup.founder_id && startup.founder_id.toString() === firebaseUid) ||
+              (startup.createdBy && startup.createdBy.toString() === firebaseUid)
+            ) {
+              console.log(`[Wallet DB] Found associated startup ${id} for founder ${firebaseUid}`);
+              
+              // Update this startup with the wallet
+              await saveWalletToStartup(id, walletAddress, username);
+            }
+          }
+        }
+      } catch (startupError) {
+        console.error(`[Wallet DB] Error finding associated startups:`, startupError);
+      }
+    }
     
     console.log(`[Wallet DB] Successfully saved wallet to Firebase user ${firebaseUid}`);
     return true;

@@ -599,6 +599,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             break;
             
+          case 'wallet_update':
+            // Handle wallet update notifications
+            if (data.startupId && data.walletAddress) {
+              console.log(`Broadcasting wallet update for startup ${data.startupId}: ${data.walletAddress}`);
+              
+              // Broadcast the wallet update to all connected clients
+              connections.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'wallet_update_notification',
+                    startupId: data.startupId,
+                    walletAddress: data.walletAddress,
+                    updated: true,
+                    timestamp: Date.now()
+                  }));
+                }
+              });
+            }
+            break;
+            
           case 'wallet_diagnostics':
             // Handle wallet diagnostics requests
             if (data.startupId) {
@@ -626,6 +646,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }));
                 }
               }, 1500); // Simulate processing time
+            }
+            break;
+          
+          case 'wallet_missing_notification':
+            // Handle notification when investor tries to invest but founder wallet is missing
+            if (data.startupId && data.investorId) {
+              console.log(`Wallet missing notification for startup ${data.startupId} from investor ${data.investorId}`);
+              
+              // Broadcast to all connected clients
+              connections.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'wallet_missing_notification',
+                    startupId: data.startupId,
+                    investorId: data.investorId,
+                    startupName: data.startupName || '',
+                    investorName: data.investorName || '',
+                    message: 'An investor tried to invest in your startup but your wallet address is not connected.',
+                    timestamp: Date.now()
+                  }));
+                }
+              });
             }
             break;
             

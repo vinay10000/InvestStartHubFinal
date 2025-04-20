@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
 import { useWallet } from "@/hooks/useWallet";
+import { useWebSocket } from "@/context/WebSocketContext";
 import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -54,33 +55,81 @@ const ImprovedMetaMaskPayment = ({
   const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true);
   const [walletSource, setWalletSource] = useState<string>("unknown");
   
-  // Use our enhanced getStartupWallet function to fetch the real wallet address
-  // This runs when the component mounts
-  useEffect(() => {
-    const loadStartupWallet = async () => {
-      setIsLoadingWallet(true);
-      try {
-        // Use our dedicated function that fetches directly from Firebase
-        const wallet = await getStartupWallet(startupId);
-        
-        if (wallet && !isSampleWalletAddress(wallet)) {
-          console.log("[ImprovedMetaMaskPayment] Found real startup wallet:", wallet);
-          setFounderWallet(wallet);
-          setWalletSource("firebase_direct");
-        } else {
-          console.log("[ImprovedMetaMaskPayment] No real wallet found or wallet is a sample address");
-          setFounderWallet(null);
-        }
-      } catch (error) {
-        console.error("[ImprovedMetaMaskPayment] Error fetching startup wallet:", error);
+  // Import WebSocket context
+  const { lastMessage, sendMessage } = useWebSocket();
+  
+  // Function to load the wallet
+  const loadStartupWallet = async () => {
+    setIsLoadingWallet(true);
+    try {
+      // Use our dedicated function that fetches directly from Firebase
+      const wallet = await getStartupWallet(startupId);
+      
+      if (wallet && !isSampleWalletAddress(wallet)) {
+        console.log("[ImprovedMetaMaskPayment] Found real startup wallet:", wallet);
+        setFounderWallet(wallet);
+        setWalletSource("firebase_direct");
+      } else {
+        console.log("[ImprovedMetaMaskPayment] No real wallet found or wallet is a sample address");
         setFounderWallet(null);
-      } finally {
-        setIsLoadingWallet(false);
       }
-    };
-    
+    } catch (error) {
+      console.error("[ImprovedMetaMaskPayment] Error fetching startup wallet:", error);
+      setFounderWallet(null);
+    } finally {
+      setIsLoadingWallet(false);
+    }
+  };
+  
+  // Load wallet when component mounts
+  useEffect(() => {
     loadStartupWallet();
   }, [startupId]);
+  
+  // Send notification when wallet is missing and user views investment options
+  useEffect(() => {
+    if (!isLoadingWallet && !founderWallet && startupData && user) {
+      console.log("[ImprovedMetaMaskPayment] Sending wallet missing notification", {
+        startupId,
+        investorId: user.id || user.uid,
+        startupName: startupData.name || startupName
+      });
+      
+      // Send wallet missing notification via WebSocket
+      sendMessage('wallet_missing_notification', {
+        startupId: startupId.toString(),
+        investorId: user.id || user.uid,
+        startupName: startupData.name || startupName,
+        investorName: user.username || 'An investor'
+      });
+    }
+  }, [isLoadingWallet, founderWallet, startupData, user, startupId, startupName, sendMessage]);
+  
+  // Listen for wallet updates from WebSocket
+  useEffect(() => {
+    if (lastMessage && lastMessage.type === 'wallet_update_notification') {
+      // If this update is for our startup, refresh the wallet data
+      if (lastMessage.startupId.toString() === startupId.toString()) {
+        console.log("[ImprovedMetaMaskPayment] Received wallet update via WebSocket:", lastMessage);
+        
+        // If the message includes a wallet address, set it directly to avoid another Firebase fetch
+        if (lastMessage.walletAddress && lastMessage.walletAddress.startsWith('0x')) {
+          setFounderWallet(lastMessage.walletAddress);
+          setWalletSource("websocket_notification");
+          setIsLoadingWallet(false);
+          
+          // Show a toast notification
+          toast({
+            title: "Startup Wallet Updated",
+            description: "The founder's wallet has been connected. You can now proceed with your investment.",
+          });
+        } else {
+          // Otherwise refresh from Firebase
+          loadStartupWallet();
+        }
+      }
+    }
+  }, [lastMessage, startupId, toast]);
   
   // Whether we have a valid wallet address for the founder
   const effectiveHasWallet = !!founderWallet;
@@ -744,9 +793,31 @@ const ImprovedMetaMaskPayment = ({
             <AlertTitle>Founder Wallet Not Found</AlertTitle>
             <AlertDescription>
               The startup founder hasn't connected their wallet yet.
-              Please try again later when the founder has setup their wallet in their profile.
+              We've sent a notification to remind them to connect their wallet.
             </AlertDescription>
           </Alert>
+          
+          {/* Add a button to manually try again */}
+          <div className="pt-2">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={loadStartupWallet}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Check Again
+            </Button>
+          </div>
+          
+          {/* Add a note about alternative payment methods */}
+          <div className="mt-2 text-sm text-muted-foreground">
+            <p>While waiting for the founder to connect their wallet, you can:</p>
+            <ul className="list-disc pl-5 mt-2">
+              <li>Try UPI payment if available</li>
+              <li>Send the founder a message to remind them</li>
+              <li>Check back later - we'll notify you when their wallet is connected</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     );

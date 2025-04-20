@@ -424,6 +424,46 @@ export const saveWalletAddressComprehensive = async (
     }
     
     console.log(`[Direct Wallet] Successfully saved wallet address in all locations`);
+    
+    // Broadcast the wallet update via WebSocket to notify any investors viewing this startup
+    try {
+      // Only send if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        // Get WebSocket URL based on current environment
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        
+        console.log(`[Direct Wallet] Sending wallet update notification via WebSocket: ${startupId}:${walletAddress}`);
+        
+        // Create a new connection if we don't want to affect any existing ones
+        const socket = new WebSocket(wsUrl);
+        
+        // Once connected, send the wallet update notification
+        socket.addEventListener('open', () => {
+          const message = {
+            type: 'wallet_update',
+            startupId: startupId,
+            walletAddress: walletAddress,
+            timestamp: Date.now()
+          };
+          
+          socket.send(JSON.stringify(message));
+          console.log('[Direct Wallet] Wallet update notification sent via WebSocket');
+          
+          // Close the connection after sending
+          setTimeout(() => socket.close(), 1000);
+        });
+        
+        // Handle any errors
+        socket.addEventListener('error', (error) => {
+          console.error('[Direct Wallet] WebSocket error when sending wallet update:', error);
+        });
+      }
+    } catch (wsError) {
+      // Don't let WebSocket issues affect the success of the wallet save operation
+      console.error('[Direct Wallet] Failed to send WebSocket notification:', wsError);
+    }
+    
     return true;
   } catch (error) {
     console.error('[Direct Wallet] Error saving wallet address:', error);

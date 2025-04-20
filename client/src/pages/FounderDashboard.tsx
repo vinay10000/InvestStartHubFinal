@@ -429,115 +429,131 @@ const FounderDashboard = () => {
     }
   };
   
-  // Upload documents for a startup
+  // Upload media files for a startup
   const uploadStartupDocuments = async (startupId: string, startupData: any) => {
     try {
-      // Handle pitch deck upload
-      if (startupData.pitchDeckFile) {
+      // Handle UPI QR code upload
+      if (startupData.upiQrCodeFile) {
         try {
-          console.log("Uploading pitch deck for startup:", startupId);
+          console.log("Uploading UPI QR code for startup:", startupId);
           
           // First upload file to ImageKit
           const { uploadDocumentToImageKit } = await import('@/services/imagekit');
-          const uploadResult = await uploadDocumentToImageKit(startupId, 'pitch_deck', startupData.pitchDeckFile);
+          const uploadResult = await uploadDocumentToImageKit(startupId, 'upi_qr_code', startupData.upiQrCodeFile);
           
           if (uploadResult && uploadResult.url) {
-            console.log("Pitch deck uploaded to ImageKit:", uploadResult.url);
+            console.log("UPI QR code uploaded to ImageKit:", uploadResult.url);
             
-            // Create document record in Firebase
-            const documentData = {
-              startupId: startupId,
-              type: 'pitch_deck',
-              name: startupData.pitchDeckFile.name,
-              fileUrl: uploadResult.url,
-              fileId: uploadResult.fileId,
-              fileName: uploadResult.name,
-              mimeType: startupData.pitchDeckFile.type,
-              fileSize: startupData.pitchDeckFile.size
-            };
+            // Update startup with QR code URL in Firebase
+            await firebaseUpdateStartup(startupId, {
+              upi_qr_code: uploadResult.url
+            });
             
-            // Create document in Firebase
-            await firebaseCreateDocument(documentData);
-            console.log("Pitch deck document record created in Firebase");
+            console.log("Startup updated with UPI QR code URL");
           }
           
-          console.log("Pitch deck uploaded successfully");
+          console.log("UPI QR code uploaded successfully");
         } catch (error) {
-          console.error("Error uploading pitch deck:", error);
+          console.error("Error uploading UPI QR code:", error);
         }
       }
       
-      // Handle financial report upload
-      if (startupData.financialReportFile) {
+      // Handle logo upload
+      if (startupData.logoFile) {
         try {
-          console.log("Uploading financial report for startup:", startupId);
+          console.log("Uploading logo for startup:", startupId);
           
           // First upload file to ImageKit
           const { uploadDocumentToImageKit } = await import('@/services/imagekit');
-          const uploadResult = await uploadDocumentToImageKit(startupId, 'financial_report', startupData.financialReportFile);
+          const uploadResult = await uploadDocumentToImageKit(startupId, 'logo', startupData.logoFile);
           
           if (uploadResult && uploadResult.url) {
-            console.log("Financial report uploaded to ImageKit:", uploadResult.url);
+            console.log("Logo uploaded to ImageKit:", uploadResult.url);
             
-            // Create document record in Firebase
-            const documentData = {
-              startupId: startupId,
-              type: 'financial_report',
-              name: startupData.financialReportFile.name,
-              fileUrl: uploadResult.url,
-              fileId: uploadResult.fileId,
-              fileName: uploadResult.name,
-              mimeType: startupData.financialReportFile.type,
-              fileSize: startupData.financialReportFile.size
-            };
+            // Update startup with logo URL in Firebase
+            await firebaseUpdateStartup(startupId, {
+              logo_url: uploadResult.url
+            });
             
-            // Create document in Firebase
-            await firebaseCreateDocument(documentData);
-            console.log("Financial report document record created in Firebase");
+            console.log("Startup updated with logo URL");
           }
           
-          console.log("Financial report uploaded successfully");
+          console.log("Logo uploaded successfully");
         } catch (error) {
-          console.error("Error uploading financial report:", error);
+          console.error("Error uploading logo:", error);
         }
       }
       
-      // Handle investor agreement upload
-      if (startupData.investorAgreementFile) {
+      // Handle media files upload (multiple images)
+      if (startupData.mediaFiles && startupData.mediaFiles.length > 0) {
         try {
-          console.log("Uploading investor agreement for startup:", startupId);
+          console.log(`Uploading ${startupData.mediaFiles.length} media files for startup:`, startupId);
+          
+          const mediaUrls: string[] = [];
+          
+          // Upload each file to ImageKit
+          const { uploadDocumentToImageKit } = await import('@/services/imagekit');
+          
+          for (let i = 0; i < startupData.mediaFiles.length; i++) {
+            const file = startupData.mediaFiles[i];
+            try {
+              const uploadResult = await uploadDocumentToImageKit(
+                startupId, 
+                `media_${i + 1}`, 
+                file
+              );
+              
+              if (uploadResult && uploadResult.url) {
+                console.log(`Media file ${i + 1} uploaded to ImageKit:`, uploadResult.url);
+                mediaUrls.push(uploadResult.url);
+              }
+            } catch (error) {
+              console.error(`Error uploading media file ${i + 1}:`, error);
+            }
+          }
+          
+          if (mediaUrls.length > 0) {
+            // Update startup with media URLs in Firebase
+            await firebaseUpdateStartup(startupId, {
+              media_urls: mediaUrls
+            });
+            
+            console.log("Startup updated with media URLs");
+          }
+          
+          console.log("Media files uploaded successfully");
+        } catch (error) {
+          console.error("Error uploading media files:", error);
+        }
+      }
+      
+      // Handle video file upload
+      if (startupData.videoFile) {
+        try {
+          console.log("Uploading video for startup:", startupId);
           
           // First upload file to ImageKit
           const { uploadDocumentToImageKit } = await import('@/services/imagekit');
-          const uploadResult = await uploadDocumentToImageKit(startupId, 'investor_agreement', startupData.investorAgreementFile);
+          const uploadResult = await uploadDocumentToImageKit(startupId, 'video', startupData.videoFile);
           
           if (uploadResult && uploadResult.url) {
-            console.log("Investor agreement uploaded to ImageKit:", uploadResult.url);
+            console.log("Video uploaded to ImageKit:", uploadResult.url);
             
-            // Create document record in Firebase
-            const documentData = {
-              startupId: startupId,
-              type: 'investor_agreement',
-              name: startupData.investorAgreementFile.name,
-              fileUrl: uploadResult.url,
-              fileId: uploadResult.fileId,
-              fileName: uploadResult.name,
-              mimeType: startupData.investorAgreementFile.type,
-              fileSize: startupData.investorAgreementFile.size
-            };
+            // Update startup with video URL in Firebase
+            await firebaseUpdateStartup(startupId, {
+              video_url: uploadResult.url
+            });
             
-            // Create document in Firebase
-            await firebaseCreateDocument(documentData);
-            console.log("Investor agreement document record created in Firebase");
+            console.log("Startup updated with video URL");
           }
           
-          console.log("Investor agreement uploaded successfully");
+          console.log("Video uploaded successfully");
         } catch (error) {
-          console.error("Error uploading investor agreement:", error);
+          console.error("Error uploading video:", error);
         }
       }
     } catch (error) {
-      console.error("Error uploading startup documents:", error);
+      console.error("Error in uploadStartupDocuments:", error);
     }
   };
 

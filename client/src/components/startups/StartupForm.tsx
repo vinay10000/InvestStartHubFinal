@@ -9,14 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertStartupSchema } from "@shared/schema";
-import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet, CheckCircle, FileVideo, Plus, X } from "lucide-react";
+import { AlertCircle, Image, FileVideo, Plus, X, CheckCircle, Wallet } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-
-// Document types
-type DocumentType = 'pitch_deck' | 'financial_report' | 'investor_agreement';
 
 // Extend the startup schema for form validation
 const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
@@ -26,9 +23,6 @@ const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
   fundingGoalEth: z.string().min(1, "Funding goal is required"),
   // Wallet address is now automatically obtained during signup
   upiQrCodeFile: z.instanceof(File, { message: "QR code image is required" }).optional(),
-  pitchDeckFile: z.instanceof(File, { message: "Pitch deck is required" }).optional(),
-  financialReportFile: z.instanceof(File, { message: "Financial report is required" }).optional(),
-  investorAgreementFile: z.instanceof(File, { message: "Investor agreement is required" }).optional(),
   // Media fields
   logoFile: z.instanceof(File, { message: "Logo image is required" }).optional(),
   mediaFiles: z.array(z.instanceof(File)).optional(),
@@ -39,10 +33,7 @@ type StartupFormValues = z.infer<typeof startupFormSchema>;
 
 interface StartupFormProps {
   onSubmit: (data: StartupFormValues & { 
-    upiQrCodeFile?: File,
-    pitchDeckFile?: File,
-    financialReportFile?: File,
-    investorAgreementFile?: File
+    upiQrCodeFile?: File
   }) => Promise<void>;
   isLoading: boolean;
   defaultValues?: Partial<StartupFormValues>;
@@ -50,10 +41,7 @@ interface StartupFormProps {
 
 const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) => {
   const [upiQrCodeFile, setUpiQrCodeFile] = useState<File | null>(null);
-  const [pitchDeckFile, setPitchDeckFile] = useState<File | null>(null);
-  const [financialReportFile, setFinancialReportFile] = useState<File | null>(null);
-  const [investorAgreementFile, setInvestorAgreementFile] = useState<File | null>(null);
-  // New media state variables
+  // Media state variables
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -64,11 +52,6 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
   const [mediaPreviewUrls, setMediaPreviewUrls] = useState<string[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [documentErrors, setDocumentErrors] = useState<Record<DocumentType, string | null>>({
-    pitch_deck: null,
-    financial_report: null,
-    investor_agreement: null
-  });
 
   const form = useForm<StartupFormValues>({
     resolver: zodResolver(startupFormSchema),
@@ -112,7 +95,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
     }
   };
 
-  // Handle drag and drop
+  // Handle drag and drop for UPI QR code
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -147,87 +130,6 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
         setPreviewUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  // File handlers for document uploads
-  const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>, documentType: DocumentType) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Check file size (max 10MB for documents)
-    if (file.size > 10 * 1024 * 1024) {
-      setDocumentErrors({
-        ...documentErrors,
-        [documentType]: "File size should be less than 10MB"
-      });
-      return;
-    }
-    
-    // Validate file type based on document type
-    const isValid = validateFileType(file, documentType);
-    if (!isValid) {
-      setDocumentErrors({
-        ...documentErrors,
-        [documentType]: "Unsupported file format for this document type"
-      });
-      return;
-    }
-    
-    // Clear errors and set file
-    setDocumentErrors({
-      ...documentErrors,
-      [documentType]: null
-    });
-    
-    // Update the appropriate file state
-    switch (documentType) {
-      case 'pitch_deck':
-        setPitchDeckFile(file);
-        form.setValue("pitchDeckFile", file);
-        break;
-      case 'financial_report':
-        setFinancialReportFile(file);
-        form.setValue("financialReportFile", file);
-        break;
-      case 'investor_agreement':
-        setInvestorAgreementFile(file);
-        form.setValue("investorAgreementFile", file);
-        break;
-    }
-  };
-  
-  // File type validation based on document type
-  const validateFileType = (file: File, documentType: DocumentType): boolean => {
-    const fileName = file.name.toLowerCase();
-    const fileType = file.type;
-    
-    switch (documentType) {
-      case 'pitch_deck':
-        // Allow PDFs and PowerPoint files
-        return fileType === 'application/pdf' || 
-               fileType === 'application/vnd.ms-powerpoint' || 
-               fileType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
-               fileName.endsWith('.pdf') || fileName.endsWith('.ppt') || fileName.endsWith('.pptx');
-      
-      case 'financial_report':
-        // Allow PDFs, Excel, and CSV files
-        return fileType === 'application/pdf' || 
-               fileType === 'application/vnd.ms-excel' || 
-               fileType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-               fileType === 'text/csv' ||
-               fileName.endsWith('.pdf') || fileName.endsWith('.xls') || 
-               fileName.endsWith('.xlsx') || fileName.endsWith('.csv');
-      
-      case 'investor_agreement':
-        // Allow PDFs and Word documents
-        return fileType === 'application/pdf' || 
-               fileType === 'application/msword' || 
-               fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-               fileName.endsWith('.pdf') || fileName.endsWith('.doc') || fileName.endsWith('.docx');
-      
-      default:
-        return false;
     }
   };
   
@@ -485,120 +387,16 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
     setMediaPreviewUrls(updatedPreviews);
     form.setValue("mediaFiles", updatedFiles);
   };
-  
-  // Handle document drag and drop
-  const handleDocumentDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
-  const handleDocumentDrop = (e: React.DragEvent<HTMLDivElement>, documentType: DocumentType) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      
-      // Check file size (max 10MB for documents)
-      if (file.size > 10 * 1024 * 1024) {
-        setDocumentErrors({
-          ...documentErrors,
-          [documentType]: "File size should be less than 10MB"
-        });
-        return;
-      }
-      
-      // Validate file type based on document type
-      const isValid = validateFileType(file, documentType);
-      if (!isValid) {
-        setDocumentErrors({
-          ...documentErrors,
-          [documentType]: "Unsupported file format for this document type"
-        });
-        return;
-      }
-      
-      // Clear errors and set file
-      setDocumentErrors({
-        ...documentErrors,
-        [documentType]: null
-      });
-      
-      // Update the appropriate file state
-      switch (documentType) {
-        case 'pitch_deck':
-          setPitchDeckFile(file);
-          form.setValue("pitchDeckFile", file);
-          break;
-        case 'financial_report':
-          setFinancialReportFile(file);
-          form.setValue("financialReportFile", file);
-          break;
-        case 'investor_agreement':
-          setInvestorAgreementFile(file);
-          form.setValue("investorAgreementFile", file);
-          break;
-      }
-    }
-  };
-  
-  // Get document icon based on type
-  const getDocumentIcon = (type: DocumentType) => {
-    switch (type) {
-      case 'pitch_deck':
-        return <FileText className="h-8 w-8 text-gray-400" />;
-      case 'financial_report':
-        return <BarChart2 className="h-8 w-8 text-gray-400" />;
-      case 'investor_agreement':
-        return <FileCheck className="h-8 w-8 text-gray-400" />;
-      default:
-        return <FileText className="h-8 w-8 text-gray-400" />;
-    }
-  };
-  
-  // Get document description based on type
-  const getDocumentDescription = (type: DocumentType): string => {
-    switch (type) {
-      case 'pitch_deck':
-        return 'Upload your pitch presentation (PDF, PowerPoint)';
-      case 'financial_report':
-        return 'Upload financial projections and reports (PDF, Excel, CSV)';
-      case 'investor_agreement':
-        return 'Upload investor term sheet or agreement (PDF, Word)';
-      default:
-        return 'Upload document';
-    }
-  };
-  
-  // Get document accepted formats based on type
-  const getDocumentFormats = (type: DocumentType): string => {
-    switch (type) {
-      case 'pitch_deck':
-        return 'PDF, PPT, PPTX';
-      case 'financial_report':
-        return 'PDF, Excel, CSV';
-      case 'investor_agreement':
-        return 'PDF, DOC, DOCX';
-      default:
-        return 'PDF';
-    }
-  };
 
   // Get user from auth context
   const { user } = useAuth();
   
   const handleSubmit = async (data: StartupFormValues) => {
-    // Include all files in the submission
+    // Include only the UPI QR code file in the submission
+    // No document files like pitch deck, financial report, or investor agreement
     await onSubmit({
       ...data,
       upiQrCodeFile: upiQrCodeFile || undefined,
-      pitchDeckFile: pitchDeckFile || undefined,
-      financialReportFile: financialReportFile || undefined,
-      investorAgreementFile: investorAgreementFile || undefined,
-      // Add media files
-      logoFile: logoFile || undefined,
-      mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
-      videoFile: videoFile || undefined
     });
   };
 
@@ -999,208 +797,6 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
                       <FormDescription>
                         Upload a short pitch video or product demo (max 20MB)
                       </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-        
-        {mediaError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{mediaError}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Document Upload Section */}
-        <FormLabel className="text-lg font-medium mt-8 mb-4 block">Important Documents</FormLabel>
-        <Card className="border-dashed">
-          <CardContent className="p-6">
-            <Tabs defaultValue="pitch_deck" className="w-full">
-              <TabsList className="grid grid-cols-3 mb-4">
-                <TabsTrigger value="pitch_deck">Pitch Deck</TabsTrigger>
-                <TabsTrigger value="financial_report">Financial Report</TabsTrigger>
-                <TabsTrigger value="investor_agreement">Investor Agreement</TabsTrigger>
-              </TabsList>
-              
-              {/* Pitch Deck Upload */}
-              <TabsContent value="pitch_deck">
-                <FormField
-                  control={form.control}
-                  name="pitchDeckFile"
-                  render={({ field: { value, onChange, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div 
-                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
-                          onDragOver={handleDocumentDragOver}
-                          onDrop={(e) => handleDocumentDrop(e, 'pitch_deck')}
-                        >
-                          {pitchDeckFile ? (
-                            <div className="flex flex-col items-center">
-                              <FileText className="h-16 w-16 text-primary mb-2" />
-                              <p className="text-sm font-medium">{pitchDeckFile.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {(pitchDeckFile.size / (1024 * 1024)).toFixed(2)} MB
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              {getDocumentIcon('pitch_deck')}
-                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                              <p className="text-xs text-gray-500">{getDocumentFormats('pitch_deck')} (Max 10MB)</p>
-                            </>
-                          )}
-                          <Input
-                            type="file"
-                            accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                            onChange={(e) => handleDocumentFileChange(e, 'pitch_deck')}
-                            disabled={isLoading}
-                            className="hidden"
-                            id="pitch-deck-upload"
-                            {...fieldProps}
-                          />
-                          <label htmlFor="pitch-deck-upload" className="mt-2 cursor-pointer">
-                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
-                              {pitchDeckFile ? "Change File" : "Browse Files"}
-                            </div>
-                          </label>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        {getDocumentDescription('pitch_deck')}
-                      </FormDescription>
-                      {documentErrors.pitch_deck && (
-                        <Alert variant="destructive" className="mt-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>{documentErrors.pitch_deck}</AlertDescription>
-                        </Alert>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-              
-              {/* Financial Report Upload */}
-              <TabsContent value="financial_report">
-                <FormField
-                  control={form.control}
-                  name="financialReportFile"
-                  render={({ field: { value, onChange, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div 
-                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
-                          onDragOver={handleDocumentDragOver}
-                          onDrop={(e) => handleDocumentDrop(e, 'financial_report')}
-                        >
-                          {financialReportFile ? (
-                            <div className="flex flex-col items-center">
-                              <BarChart2 className="h-16 w-16 text-primary mb-2" />
-                              <p className="text-sm font-medium">{financialReportFile.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {(financialReportFile.size / (1024 * 1024)).toFixed(2)} MB
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              {getDocumentIcon('financial_report')}
-                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                              <p className="text-xs text-gray-500">{getDocumentFormats('financial_report')} (Max 10MB)</p>
-                            </>
-                          )}
-                          <Input
-                            type="file"
-                            accept=".pdf,.xls,.xlsx,.csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                            onChange={(e) => handleDocumentFileChange(e, 'financial_report')}
-                            disabled={isLoading}
-                            className="hidden"
-                            id="financial-report-upload"
-                            {...fieldProps}
-                          />
-                          <label htmlFor="financial-report-upload" className="mt-2 cursor-pointer">
-                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
-                              {financialReportFile ? "Change File" : "Browse Files"}
-                            </div>
-                          </label>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        {getDocumentDescription('financial_report')}
-                      </FormDescription>
-                      {documentErrors.financial_report && (
-                        <Alert variant="destructive" className="mt-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>{documentErrors.financial_report}</AlertDescription>
-                        </Alert>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-              
-              {/* Investor Agreement Upload */}
-              <TabsContent value="investor_agreement">
-                <FormField
-                  control={form.control}
-                  name="investorAgreementFile"
-                  render={({ field: { value, onChange, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div 
-                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
-                          onDragOver={handleDocumentDragOver}
-                          onDrop={(e) => handleDocumentDrop(e, 'investor_agreement')}
-                        >
-                          {investorAgreementFile ? (
-                            <div className="flex flex-col items-center">
-                              <FileCheck className="h-16 w-16 text-primary mb-2" />
-                              <p className="text-sm font-medium">{investorAgreementFile.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {(investorAgreementFile.size / (1024 * 1024)).toFixed(2)} MB
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              {getDocumentIcon('investor_agreement')}
-                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                              <p className="text-xs text-gray-500">{getDocumentFormats('investor_agreement')} (Max 10MB)</p>
-                            </>
-                          )}
-                          <Input
-                            type="file"
-                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            onChange={(e) => handleDocumentFileChange(e, 'investor_agreement')}
-                            disabled={isLoading}
-                            className="hidden"
-                            id="investor-agreement-upload"
-                            {...fieldProps}
-                          />
-                          <label htmlFor="investor-agreement-upload" className="mt-2 cursor-pointer">
-                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
-                              {investorAgreementFile ? "Change File" : "Browse Files"}
-                            </div>
-                          </label>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        {getDocumentDescription('investor_agreement')}
-                      </FormDescription>
-                      {documentErrors.investor_agreement && (
-                        <Alert variant="destructive" className="mt-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>{documentErrors.investor_agreement}</AlertDescription>
-                        </Alert>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}
