@@ -51,8 +51,7 @@ const SampleWalletCleaner = () => {
       } else {
         toast({
           title: "Scan Complete",
-          description: "No sample wallet addresses found in the database",
-          variant: "success"
+          description: "No sample wallet addresses found in the database"
         });
       }
     } catch (error) {
@@ -245,8 +244,7 @@ const SampleWalletCleaner = () => {
       
       toast({
         title: "Cleaning Complete",
-        description: `Successfully processed ${results.length} items`,
-        variant: "success"
+        description: `Successfully processed ${results.length} items`
       });
       
       // Clear the found sample wallets list
@@ -296,7 +294,7 @@ const SampleWalletCleaner = () => {
             </div>
           ) : cleaningResults.length > 0 ? (
             <div className="space-y-4">
-              <Alert variant="success">
+              <Alert>
                 <Check className="h-4 w-4" />
                 <AlertTitle>Cleaning Complete</AlertTitle>
                 <AlertDescription>

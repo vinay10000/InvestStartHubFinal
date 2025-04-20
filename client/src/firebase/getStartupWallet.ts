@@ -24,6 +24,7 @@ const database = getDatabase(app);
 /**
  * Directly fetch the wallet address for a startup from Firebase
  * This function prioritizes real wallet addresses and avoids sample wallets
+ * Getting the address directly from the user who created the startup
  */
 export const getStartupWallet = async (startupId: string | number): Promise<string | null> => {
   try {
@@ -40,18 +41,40 @@ export const getStartupWallet = async (startupId: string | number): Promise<stri
       const startupData = snapshot.val();
       console.log(`[getStartupWallet] Found startup data:`, startupData);
       
-      // Check for wallet address in various fields (handle different naming conventions)
-      if (startupData.founderWalletAddress) {
-        console.log(`[getStartupWallet] Found founderWalletAddress:`, startupData.founderWalletAddress);
+      // First check if the startup itself has the wallet address
+      if (startupData.founderWalletAddress && !isSampleWalletAddress(startupData.founderWalletAddress)) {
+        console.log(`[getStartupWallet] Found valid founderWalletAddress:`, startupData.founderWalletAddress);
         return startupData.founderWalletAddress;
       }
       
-      if (startupData.walletAddress) {
-        console.log(`[getStartupWallet] Found walletAddress:`, startupData.walletAddress);
+      if (startupData.walletAddress && !isSampleWalletAddress(startupData.walletAddress)) {
+        console.log(`[getStartupWallet] Found valid walletAddress:`, startupData.walletAddress);
         return startupData.walletAddress;
       }
       
-      // Check for founder ID to lookup the founder's wallet
+      // Check for the user ID who created this startup
+      const userId = startupData.userId || startupData.createdBy || startupData.uid;
+      
+      // If we have the userId field, prioritize that over founderId
+      if (userId) {
+        console.log(`[getStartupWallet] Looking up creator's wallet with user ID:`, userId);
+        
+        // Look up the user's record by userId (creator)
+        const userRef = ref(database, `users/${userId}`);
+        const userSnapshot = await get(userRef);
+        
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.val();
+          console.log(`[getStartupWallet] Found creator data:`, userData);
+          
+          if (userData.walletAddress && !isSampleWalletAddress(userData.walletAddress)) {
+            console.log(`[getStartupWallet] Found creator's walletAddress:`, userData.walletAddress);
+            return userData.walletAddress;
+          }
+        }
+      }
+      
+      // Check for founder ID as fallback
       const founderId = startupData.founderId || startupData.founder_id;
       
       if (founderId) {
@@ -65,7 +88,7 @@ export const getStartupWallet = async (startupId: string | number): Promise<stri
           const founderData = founderSnapshot.val();
           console.log(`[getStartupWallet] Found founder data:`, founderData);
           
-          if (founderData.walletAddress) {
+          if (founderData.walletAddress && !isSampleWalletAddress(founderData.walletAddress)) {
             console.log(`[getStartupWallet] Found founder's walletAddress:`, founderData.walletAddress);
             return founderData.walletAddress;
           }
@@ -73,7 +96,44 @@ export const getStartupWallet = async (startupId: string | number): Promise<stri
       }
     }
     
-    // APPROACH 3: Use the general database helper (fallback)
+    // APPROACH 3: Look for all users with 'founder' role and match by startup name
+    console.log(`[getStartupWallet] Searching for founders by role and startup name`);
+    const usersRef = ref(database, 'users');
+    const usersSnapshot = await get(usersRef);
+    
+    if (usersSnapshot.exists() && snapshot.exists()) {
+      const startupData = snapshot.val();
+      const startupName = startupData.name?.toLowerCase();
+      
+      if (startupName) {
+        const users = usersSnapshot.val();
+        
+        for (const [userId, userData] of Object.entries(users)) {
+          const user = userData as any;
+          
+          // Check if this is a founder with a wallet address and possibly related to our startup
+          if (
+            user.role === 'founder' && 
+            user.walletAddress && 
+            !isSampleWalletAddress(user.walletAddress) &&
+            (
+              // Extra check: if this founder has created startups with similar names
+              (user.startups && Object.values(user.startups).some((s: any) => 
+                s.name?.toLowerCase().includes(startupName) || startupName.includes(s.name?.toLowerCase())
+              )) ||
+              // Or their username/email contains part of the startup name
+              (user.username && user.username.toLowerCase().includes(startupName.split(' ')[0].toLowerCase())) ||
+              (user.email && user.email.toLowerCase().includes(startupName.split(' ')[0].toLowerCase()))
+            )
+          ) {
+            console.log(`[getStartupWallet] Found potential founder match:`, user.username, user.walletAddress);
+            return user.walletAddress;
+          }
+        }
+      }
+    }
+    
+    // APPROACH 4: Use the general database helper (fallback)
     console.log(`[getStartupWallet] Trying fallback with getStartupById`);
     const startup = await getStartupById(startupIdStr);
     
@@ -81,18 +141,18 @@ export const getStartupWallet = async (startupId: string | number): Promise<stri
       console.log(`[getStartupWallet] Found startup via getStartupById:`, startup);
       
       // Check for wallet addresses in the returned startup object
-      if (startup.founderWalletAddress) {
+      if (startup.founderWalletAddress && !isSampleWalletAddress(startup.founderWalletAddress)) {
         console.log(`[getStartupWallet] Found founderWalletAddress via getStartupById:`, startup.founderWalletAddress);
         return startup.founderWalletAddress;
       }
       
-      if (startup.walletAddress) {
+      if (startup.walletAddress && !isSampleWalletAddress(startup.walletAddress)) {
         console.log(`[getStartupWallet] Found walletAddress via getStartupById:`, startup.walletAddress);
         return startup.walletAddress;
       }
       
       // If we have a founder object with wallet
-      if (startup.founder && startup.founder.walletAddress) {
+      if (startup.founder && startup.founder.walletAddress && !isSampleWalletAddress(startup.founder.walletAddress)) {
         console.log(`[getStartupWallet] Found founder's walletAddress via getStartupById:`, startup.founder.walletAddress);
         return startup.founder.walletAddress;
       }

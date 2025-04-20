@@ -43,41 +43,55 @@ const ImprovedMetaMaskPayment = ({
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   
-  // Get founder's wallet information from multiple sources
+  // Load startup data for displaying UI information
   const { data: startupData } = useStartup(startupId.toString());
   
-  // Try from the useWallet hook first
+  // We won't use these hooks for the actual payment, just for display in the UI
   const { walletAddress: founderWalletAddress } = useWallet(startupData?.founderId);
   
-  // Also check if the startup data has a direct wallet address field (handle various field names)
-  // Use type assertion to avoid TypeScript errors with dynamic properties
-  const directFounderWallet = (startupData as any)?.founderWalletAddress || 
-                             (startupData as any)?.walletAddress || 
-                             (startupData as any)?.founderWallet;
+  // Initialize state to track the founder's wallet (will be fetched from Firebase directly)
+  const [founderWallet, setFounderWallet] = useState<string | null>(null);
+  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true);
+  const [walletSource, setWalletSource] = useState<string>("unknown");
   
-  // Check if we have a founder wallet from Firebase (using the format seen in the user collection)
-  const firebaseFounderWallet = (startupData as any)?.founder?.walletAddress;
+  // Use our enhanced getStartupWallet function to fetch the real wallet address
+  // This runs when the component mounts
+  useEffect(() => {
+    const loadStartupWallet = async () => {
+      setIsLoadingWallet(true);
+      try {
+        // Use our dedicated function that fetches directly from Firebase
+        const wallet = await getStartupWallet(startupId);
+        
+        if (wallet && !isSampleWalletAddress(wallet)) {
+          console.log("[ImprovedMetaMaskPayment] Found real startup wallet:", wallet);
+          setFounderWallet(wallet);
+          setWalletSource("firebase_direct");
+        } else {
+          console.log("[ImprovedMetaMaskPayment] No real wallet found or wallet is a sample address");
+          setFounderWallet(null);
+        }
+      } catch (error) {
+        console.error("[ImprovedMetaMaskPayment] Error fetching startup wallet:", error);
+        setFounderWallet(null);
+      } finally {
+        setIsLoadingWallet(false);
+      }
+    };
+    
+    loadStartupWallet();
+  }, [startupId]);
   
-  // Normalize all wallet addresses for consistent format
-  const normalizedFounderWallet = normalizeWalletAddress(founderWalletAddress);
-  const normalizedDirectWallet = normalizeWalletAddress(directFounderWallet);
-  const normalizedFirebaseWallet = normalizeWalletAddress(firebaseFounderWallet);
-  
-  // Determine the best wallet address to use based on priority
-  const effectiveFounderWallet = normalizedFounderWallet || normalizedDirectWallet || normalizedFirebaseWallet || null;
-  const effectiveHasWallet = !!effectiveFounderWallet;
+  // Whether we have a valid wallet address for the founder
+  const effectiveHasWallet = !!founderWallet;
                              
   // For wallet discovery logging only
   console.log("Wallet Discovery - Founder wallet sources:", {
     startupId,
     startupFounderId: startupData?.founderId,
     founderWalletAddress,
-    normalizedFounderWallet,
-    directFounderWallet,
-    normalizedDirectWallet,
-    firebaseFounderWallet,
-    normalizedFirebaseWallet,
-    effectiveFounderWallet,
+    founderWallet,
+    walletSource,
     effectiveHasWallet
   });
   
@@ -268,21 +282,17 @@ const ImprovedMetaMaskPayment = ({
     // Log all wallet sources for debugging
     console.log("Investment - All wallet sources:", {
       startupWalletFromFirebase: startupWallet,
-      founderWalletAddress,
-      directFounderWallet,
-      firebaseFounderWallet,
-      effectiveFounderWallet
+      founderWalletAddress
     });
     
-    // Use the wallet from Firebase as our primary source, fallback to effective wallet if needed
-    const founderWallet = startupWallet || effectiveFounderWallet;
+    // Use the wallet from Firebase as our primary source
+    // This is the wallet we fetched directly, no fallback needed since it's reliable
     
     // Check if founder wallet is available
-    if (!founderWallet) {
+    if (!startupWallet) {
       console.error("Investment - No founder wallet found", {
         startupId,
-        startupWalletFromFirebase: startupWallet,
-        effectiveFounderWallet
+        startupWalletFromFirebase: startupWallet
       });
       
       toast({
@@ -294,8 +304,8 @@ const ImprovedMetaMaskPayment = ({
     }
     
     // Check if the wallet address is from a sample wallet/test wallet list
-    if (isSampleWalletAddress(founderWallet)) {
-      console.error("Investment - Sample wallet detected, cannot use for real payments:", founderWallet);
+    if (isSampleWalletAddress(startupWallet)) {
+      console.error("Investment - Sample wallet detected, cannot use for real payments:", startupWallet);
       toast({
         title: "Sample Wallet Detected",
         description: "This startup is using a sample wallet address. Real startups must connect their actual MetaMask wallet during signup.",
@@ -306,13 +316,10 @@ const ImprovedMetaMaskPayment = ({
     
     // For extra validation, log wallet details
     console.log("Investment - Proceeding with founder wallet:", {
-      wallet: founderWallet,
+      wallet: startupWallet,
       startupId,
       founderId: startupData?.founderId,
-      walletSource: startupWallet ? "firebase_direct" : 
-                    founderWalletAddress ? "props" : 
-                    directFounderWallet ? "direct" : 
-                    firebaseFounderWallet ? "firebase" : "unknown"
+      walletSource: "firebase_direct"
     });
 
     setIsProcessing(true);
@@ -327,10 +334,10 @@ const ImprovedMetaMaskPayment = ({
       
       // Process the transaction using direct ETH transfer with our newly fetched wallet
       // Make sure we have a valid wallet address (not null)
-      if (!founderWallet) {
+      if (!startupWallet) {
         throw new Error("Founder wallet address is missing or invalid");
       }
-      const result = await sendDirectETH(founderWallet, cleanAmount);
+      const result = await sendDirectETH(startupWallet, cleanAmount);
       
       // Transaction sent
       setTransactionProgress(70);
@@ -358,7 +365,7 @@ const ImprovedMetaMaskPayment = ({
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           fromAddress: address,
-          toAddress: founderWallet, // Use the directly fetched wallet address
+          toAddress: startupWallet, // Use the directly fetched wallet address
           networkName: networkName,
           startupName: startupName
         };
