@@ -149,7 +149,7 @@ const SignIn = () => {
           
           <div className="flex items-center space-x-2">
             <Separator className="flex-1" />
-            <span className="text-xs text-gray-400">OR</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">OR</span>
             <Separator className="flex-1" />
           </div>
           

@@ -1,13 +1,13 @@
 const HowItWorks = () => {
   return (
-    <div className="py-16 bg-white overflow-hidden">
+    <div className="py-16 bg-white dark:bg-gray-900 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="text-base font-semibold text-primary tracking-wide uppercase">Process</h2>
-          <p className="mt-1 text-4xl font-extrabold text-gray-900 sm:text-5xl sm:tracking-tight lg:text-6xl">
+          <h2 className="text-base font-semibold text-primary dark:text-primary tracking-wide uppercase">Process</h2>
+          <p className="mt-1 text-4xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-5xl sm:tracking-tight lg:text-6xl">
             How It Works
           </p>
-          <p className="max-w-xl mt-5 mx-auto text-xl text-gray-500">
+          <p className="max-w-xl mt-5 mx-auto text-xl text-gray-500 dark:text-gray-400">
             Our platform simplifies the investment process for both startups and investors.
           </p>
         </div>
@@ -24,15 +24,15 @@ const HowItWorks = () => {
               </div>
             </div>
             <div className="mt-10 lg:mt-0">
-              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight sm:text-3xl">For Startup Founders</h3>
+              <h3 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight sm:text-3xl">For Startup Founders</h3>
               <div className="mt-10 space-y-10">
                 <div className="relative">
                   <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
                     <span className="text-xl font-bold">1</span>
                   </div>
                   <div className="ml-16">
-                    <h4 className="text-lg leading-6 font-medium text-gray-900">Create Your Profile</h4>
-                    <p className="mt-2 text-base text-gray-500">
+                    <h4 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Create Your Profile</h4>
+                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
                       Sign up, verify your identity, and create a detailed profile for your startup, including your vision, team, and funding requirements.
                     </p>
                   </div>
@@ -43,8 +43,8 @@ const HowItWorks = () => {
                     <span className="text-xl font-bold">2</span>
                   </div>
                   <div className="ml-16">
-                    <h4 className="text-lg leading-6 font-medium text-gray-900">Upload Documents</h4>
-                    <p className="mt-2 text-base text-gray-500">
+                    <h4 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Upload Documents</h4>
+                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
                       Share your pitch deck, financial reports, and legal documents securely through our platform for potential investors to review.
                     </p>
                   </div>
@@ -55,8 +55,8 @@ const HowItWorks = () => {
                     <span className="text-xl font-bold">3</span>
                   </div>
                   <div className="ml-16">
-                    <h4 className="text-lg leading-6 font-medium text-gray-900">Connect & Receive Funding</h4>
-                    <p className="mt-2 text-base text-gray-500">
+                    <h4 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Connect & Receive Funding</h4>
+                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
                       Engage with interested investors through our messaging system, track investments, and manage your funding rounds all in one place.
                     </p>
                   </div>

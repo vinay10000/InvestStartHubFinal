@@ -16,17 +16,17 @@ const getStageColorClasses = (stage: string | undefined) => {
   const normalizedStage = stage?.toLowerCase().trim() || '';
   
   if (normalizedStage.includes('pre-seed') || normalizedStage.includes('preseed')) {
-    return "bg-blue-100 text-blue-800";
+    return "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
   } else if (normalizedStage.includes('seed')) {
-    return "bg-green-100 text-green-800";
+    return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200";
   } else if (normalizedStage.includes('series a')) {
-    return "bg-purple-100 text-purple-800";
+    return "bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200";
   } else if (normalizedStage.includes('series b')) {
-    return "bg-yellow-100 text-yellow-800";
+    return "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200";
   } else if (normalizedStage.includes('series c')) {
-    return "bg-red-100 text-red-800";
+    return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200";
   } else {
-    return "bg-gray-100 text-gray-800";
+    return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
   }
 };
 
@@ -66,14 +66,14 @@ const FeaturedStartups = () => {
   }, []);
 
   return (
-    <div className="bg-gray-50 py-16">
+    <div className="bg-gray-50 dark:bg-gray-900 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="text-base font-semibold text-primary tracking-wide uppercase">Discover</h2>
-          <p className="mt-1 text-4xl font-extrabold text-gray-900 sm:text-5xl sm:tracking-tight">
+          <h2 className="text-base font-semibold text-primary dark:text-primary tracking-wide uppercase">Discover</h2>
+          <p className="mt-1 text-4xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-5xl sm:tracking-tight">
             Featured Startups
           </p>
-          <p className="max-w-xl mt-5 mx-auto text-xl text-gray-500">
+          <p className="max-w-xl mt-5 mx-auto text-xl text-gray-500 dark:text-gray-400">
             Explore innovative startups actively seeking investment. Find your next opportunity today.
           </p>
         </div>
@@ -81,10 +81,10 @@ const FeaturedStartups = () => {
         <div className="mt-12 grid gap-5 max-w-lg mx-auto sm:max-w-none md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
             // Loading skeletons
-            Array(3).fill(0).map((_, index) => (
-              <div key={index} className="flex flex-col rounded-lg shadow-lg overflow-hidden">
+            [...Array(3)].map((_, index) => (
+              <div key={`loading-${index}`} className="flex flex-col rounded-lg shadow-lg overflow-hidden">
                 <Skeleton className="h-48 w-full" />
-                <div className="flex-1 bg-white p-6 flex flex-col justify-between">
+                <div className="flex-1 bg-white dark:bg-gray-800 p-6 flex flex-col justify-between">
                   <div className="flex-1">
                     <Skeleton className="h-6 w-24 mb-2" />
                     <Skeleton className="h-8 w-3/4 mb-3" />
@@ -100,7 +100,7 @@ const FeaturedStartups = () => {
             ))
           ) : startups.length === 0 ? (
             <div className="col-span-full text-center py-10">
-              <p className="text-gray-500">No startups available at this moment. Check back later!</p>
+              <p className="text-gray-500 dark:text-gray-400">No startups available at this moment. Check back later!</p>
             </div>
           ) : (
             startups.map((startup, index) => (
@@ -112,16 +112,16 @@ const FeaturedStartups = () => {
                     alt={`${startup.name} logo`} 
                   />
                 </div>
-                <div className="flex-1 bg-white p-6 flex flex-col justify-between">
+                <div className="flex-1 bg-white dark:bg-gray-800 p-6 flex flex-col justify-between">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-primary">
+                    <p className="text-sm font-medium text-primary dark:text-primary">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.investment_stage)}`}>
                         {startup.investment_stage || "Not Specified"}
                       </span>
                     </p>
                     <a href="#" className="block mt-2">
-                      <p className="text-xl font-semibold text-gray-900">{startup.name}</p>
-                      <p className="mt-3 text-base text-gray-500">
+                      <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">{startup.name}</p>
+                      <p className="mt-3 text-base text-gray-500 dark:text-gray-300">
                         {startup.description}
                       </p>
                     </a>

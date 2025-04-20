@@ -161,11 +161,11 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
                           placeholder="Connect MetaMask to automatically fill" 
                           {...field} 
                           disabled={true}
-                          className={address ? "pr-16 text-green-600 font-medium" : ""}
+                          className={address ? "pr-16 text-green-600 dark:text-green-400 font-medium" : ""}
                         />
                         {address && (
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">Connected</Badge>
+                            <Badge variant="secondary" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Connected</Badge>
                           </div>
                         )}
                       </div>
@@ -227,9 +227,9 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOffIcon className="h-4 w-4 text-gray-400" />
+                      <EyeOffIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     ) : (
-                      <EyeIcon className="h-4 w-4 text-gray-400" />
+                      <EyeIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     )}
                   </button>
                 </div>
@@ -260,9 +260,9 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? (
-                        <EyeOffIcon className="h-4 w-4 text-gray-400" />
+                        <EyeOffIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       ) : (
-                        <EyeIcon className="h-4 w-4 text-gray-400" />
+                        <EyeIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       )}
                     </button>
                   </div>
