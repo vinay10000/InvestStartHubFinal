@@ -21,6 +21,7 @@ import {
   getTransactionsByFounderId as firebaseGetTransactionsByFounderId,
   FirebaseStartup as ImportedFirebaseStartup
 } from "@/firebase/database";
+import SampleWalletCleaner from "@/components/utils/SampleWalletCleaner";
 
 const FounderDashboard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -46,6 +47,13 @@ const FounderDashboard = () => {
   // We'll use Firebase functions directly
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
+  
+  // Check if we're in a development environment for additional tooling options
+  const isDevEnvironment = useMemo(() => {
+    return window.location.hostname.includes('localhost') || 
+           window.location.hostname.includes('replit.dev') || 
+           window.location.hostname.includes('repl.co');
+  }, []);
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
   // Define types for Firebase data
   interface FirebaseStartup {
@@ -644,6 +652,9 @@ const FounderDashboard = () => {
           <TabsTrigger value="startups">My Startups</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          {isDevEnvironment && (
+            <TabsTrigger value="dev-tools">Developer Tools</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="startups">
@@ -815,6 +826,29 @@ const FounderDashboard = () => {
           <h2 className="text-2xl font-bold mb-6">Investment Transactions</h2>
           <TransactionList transactions={transactions} isLoading={transactionsLoading} />
         </TabsContent>
+        
+        {isDevEnvironment && (
+          <TabsContent value="dev-tools">
+            <h2 className="text-2xl font-bold mb-6">Developer Tools</h2>
+            <Card>
+              <CardHeader>
+                <CardTitle>Wallet Management Tools</CardTitle>
+                <CardDescription>These tools are only available in development environments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SampleWalletCleaner />
+                <div className="mt-4 p-4 border-t border-gray-100">
+                  <h3 className="text-lg font-medium mb-2">Note on Wallet Addresses</h3>
+                  <p className="text-sm text-muted-foreground">
+                    The platform now only uses real wallet addresses provided during signup. 
+                    Sample wallets have been removed from the codebase but may still exist in the database.
+                    Use the tool above to clean up any sample wallet data that might still be present.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

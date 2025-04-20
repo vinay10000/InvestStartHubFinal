@@ -24,8 +24,10 @@ import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayme
 import SimpleMetaMaskPayment from "@/components/payments/SimpleMetaMaskPayment";
 import UPIPayment from "@/components/payments/UPIPayment";
 import { getUserWallet } from "@/firebase/walletDatabase";
+import { getStartupWallet, isSampleWalletAddress } from "@/firebase/getStartupWallet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RefreshCw } from "lucide-react";
 
 // Helper function to convert any startup ID to a valid numeric ID for blockchain
 function getNumericStartupId(id: any): number {
