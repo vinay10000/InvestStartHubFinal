@@ -214,24 +214,85 @@ const MetaMaskPayment = ({
   // Combine manual entry with hook data
   const founderInfo = manualFounderInfo || hookFounderInfo;
   
-  // Derive wallet status from the hook's state
+  // Check for wallet in session storage as an additional recovery option
+  const getSessionStorageWallet = (): string | null => {
+    try {
+      // Check if we have a wallet in session storage
+      const sessionWallet = sessionStorage.getItem('founder_wallet');
+      if (sessionWallet && sessionWallet.startsWith('0x')) {
+        console.log('[MetaMaskPayment] Found wallet in session storage:', sessionWallet);
+        return sessionWallet;
+      }
+      
+      // Look for any wallet in storage
+      const sessionKeys = Object.keys(sessionStorage);
+      for (const key of sessionKeys) {
+        const value = sessionStorage.getItem(key);
+        if (value && value.startsWith('0x') && value.length >= 42) {
+          console.log(`[MetaMaskPayment] Found potential wallet in session at key ${key}:`, value);
+          return value;
+        }
+      }
+      
+      return null;
+    } catch (err) {
+      console.warn('[MetaMaskPayment] Error accessing session storage:', err);
+      return null;
+    }
+  };
+  
+  // Try to get the wallet from session storage
+  const sessionWallet = getSessionStorageWallet();
+  
+  // Derive wallet status from all available sources
   const getWalletStatus = (): 'loading' | 'found' | 'not_found' | 'error' => {
-    if (manualFounderInfo?.walletAddress) return 'found'; // If we have manual entry with wallet, always show found
+    // Check for manual entry first
+    if (manualFounderInfo?.walletAddress) {
+      console.log('[MetaMaskPayment] Using manually entered wallet');
+      return 'found'; 
+    }
+    
+    // Still loading from database
     if (isWalletLoading) return 'loading';
     
-    // Check for wallet address in any form
-    if (hasWallet && founderWallet) return 'found';
-    if (founderInfo?.walletAddress) return 'found';
+    // Check our hook data
+    if (hasWallet && founderWallet) {
+      console.log('[MetaMaskPayment] Using wallet from hook (hasWallet)');
+      return 'found';
+    }
     
-    // Detailed logging of wallet checks
-    console.log('[MetaMaskPayment] Wallet check details:', {
-      manualFounderInfo,
-      hasWallet,
-      founderWallet, 
-      founderInfo,
-      isWalletLoading,
-      walletError,
-      startupId
+    if (founderInfo?.walletAddress) {
+      console.log('[MetaMaskPayment] Using wallet from founderInfo');
+      return 'found';
+    }
+    
+    // Check if startup details has wallet
+    if (startupDetailData?.founderWalletAddress) {
+      console.log('[MetaMaskPayment] Using wallet from startup details');
+      return 'found';
+    }
+    
+    // Check session storage
+    if (sessionWallet) {
+      console.log('[MetaMaskPayment] Using wallet from session storage');
+      return 'found';
+    }
+    
+    // Detailed logging for all wallet sources - casting to any to avoid TS errors
+    const startupData = startupDetailData as any;
+    
+    console.log('Wallet Discovery in ImprovedMetaMaskPayment:', {
+      hookProvidedWallet: founderWallet,
+      sessionStorageWallet: sessionWallet,
+      effectiveWalletAddress: founderInfo?.walletAddress || 
+                             startupData?.founderWalletAddress || 
+                             sessionWallet || null,
+      hookFounderWallet: founderInfo?.walletAddress,
+      startupFounderId: startupData?.founderId,
+      currentMetaMaskAddress: address,
+      userWalletAddress: address || sessionWallet || founderInfo?.walletAddress,
+      isMetaMaskConnected: typeof isWalletConnected === 'function' ? isWalletConnected() : false,
+      isMetaMaskInstalled: isInstalled
     });
     
     // Check proper error types and return appropriate status
@@ -244,6 +305,19 @@ const MetaMaskPayment = ({
   
   // Get wallet status as a derived state
   const founderWalletStatus = getWalletStatus();
+  
+  // Store session wallet for future use
+  useEffect(() => {
+    if (sessionWallet && startupId) {
+      try {
+        // Save this wallet to session storage with a specific key
+        sessionStorage.setItem(`founder_wallet_${startupId}`, sessionWallet);
+        console.log(`[MetaMaskPayment] Saved session wallet for startup ${startupId}`);
+      } catch (err) {
+        console.warn('[MetaMaskPayment] Error saving to session storage:', err);
+      }
+    }
+  }, [sessionWallet, startupId]);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -341,76 +415,104 @@ const MetaMaskPayment = ({
       // Use fixed notation with appropriate decimal places (max 18 for Ethereum)
       const cleanAmount = numericAmount.toFixed(Math.min(18, decimalPlaces));
       
-      // Use the founder wallet address from our founderInfo state
-      // This was loaded in the useEffect when startup data changes
-      let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
+      // Try to get founder wallet from all available sources
+      // In order of priority: manual entry, hook data, startup data, session storage
+      let founderWalletAddress: string | undefined;
       
-      console.log("[MetaMaskPayment] Initial wallet check:", {
-        founderWalletAddress, 
-        founderInfo,
-        startupDetailData
-      });
-      
-      // Validate if we have a wallet address
-      if (!founderWalletAddress || founderWalletAddress === "0x") {
-        // Try to get a valid wallet address using our enhanced lookup functions
+      // 1. Check manual entry if available
+      if (manualFounderInfo?.walletAddress && 
+          manualFounderInfo.walletAddress !== "0x" && 
+          manualFounderInfo.walletAddress.startsWith("0x")) {
+        founderWalletAddress = manualFounderInfo.walletAddress;
+        console.log("[MetaMaskPayment] Using manually entered wallet address:", founderWalletAddress);
+      }
+      // 2. Check hook data
+      else if (founderInfo?.walletAddress && 
+               founderInfo.walletAddress !== "0x" && 
+               founderInfo.walletAddress.startsWith("0x")) {
+        founderWalletAddress = founderInfo.walletAddress;
+        console.log("[MetaMaskPayment] Using wallet from hook data:", founderWalletAddress);
+      }
+      // 3. Check startup data
+      else if ((startupDetailData as any)?.founderWalletAddress && 
+               (startupDetailData as any).founderWalletAddress !== "0x" && 
+               (startupDetailData as any).founderWalletAddress.startsWith("0x")) {
+        founderWalletAddress = (startupDetailData as any).founderWalletAddress;
+        console.log("[MetaMaskPayment] Using wallet from startup data:", founderWalletAddress);
+      }
+      // 4. Check session storage
+      else if (sessionWallet && sessionWallet !== "0x" && sessionWallet.startsWith("0x")) {
+        founderWalletAddress = sessionWallet;
+        console.log("[MetaMaskPayment] Using wallet from session storage:", founderWalletAddress);
         
-        // First check if we have a manual entry
-        if (manualFounderInfo?.walletAddress && 
-            manualFounderInfo.walletAddress !== "0x" && 
-            manualFounderInfo.walletAddress.startsWith("0x")) {
-          
-          founderWalletAddress = manualFounderInfo.walletAddress;
-          console.log("[MetaMaskPayment] Using manually entered wallet address:", founderWalletAddress);
-          
-          // Try to get the founder ID for saving this wallet
-          if (startupDetailData?.founderId && ethers.isAddress(founderWalletAddress)) {
-            // Save this wallet to the founder's account
-            import('@/firebase/walletDatabase').then(async walletDb => {
-              // Save to both walletDatabase and Firebase user
+        // Save this wallet to the database for future use
+        if (startupDetailData?.founderId && founderWalletAddress) {
+          // Save using import to avoid bundling issues
+          import('@/firebase/walletDatabase').then(async walletDb => {
+            try {
+              // Save to Firebase user
               await walletDb.saveWalletAddress(
-                startupDetailData.founderId.toString(), 
-                founderWalletAddress as string, 
-                "Founder", 
+                startupDetailData.founderId.toString(),
+                founderWalletAddress as string,
+                startupDetailData.name || "Founder",
                 "founder"
               );
               
-              // Also save to startup record for easier future lookups
+              // Also save to startup record
               await walletDb.saveWalletToStartup(
                 startupId.toString(),
                 founderWalletAddress as string,
                 startupDetailData.name || "Founder"
               );
               
-              console.log("[MetaMaskPayment] Saved wallet to all locations:", {
+              console.log("[MetaMaskPayment] Saved session wallet to database:", {
                 founderId: startupDetailData.founderId,
                 startupId,
                 walletAddress: founderWalletAddress
               });
-            }).catch(err => {
-              // Non-blocking error - we continue with the payment
-              console.error("[MetaMaskPayment] Error saving wallet:", err);
-            });
-          }
-        } 
-        // If no manual entry, check if we can get it from startup data
-        else if (startupDetailData?.founderId) {
-          console.log("[MetaMaskPayment] No manual wallet, checking with founderId:", startupDetailData.founderId);
-          
+            } catch (err) {
+              console.error("[MetaMaskPayment] Error saving session wallet:", err);
+            }
+          });
+        }
+      }
+      // 5. Last resort: try to fetch from database
+      else {
+        console.log("[MetaMaskPayment] Attempting database lookup for wallet...");
+        
+        // Try to get the wallet directly through getWalletByUserId
+        if (startupDetailData?.founderId) {
           try {
-            // Try to get the wallet directly through getWalletByUserId
             const walletDbModule = await import('@/firebase/walletDatabase');
             const walletData = await walletDbModule.getWalletByUserId(startupDetailData.founderId.toString());
             
             if (walletData && walletData.address) {
               founderWalletAddress = walletData.address;
-              console.log("[MetaMaskPayment] Found wallet through getWalletByUserId:", founderWalletAddress);
+              console.log("[MetaMaskPayment] Found wallet through database:", founderWalletAddress);
+              
+              // Store in session storage for future use
+              try {
+                sessionStorage.setItem(`founder_wallet_${startupId}`, founderWalletAddress);
+                console.log("[MetaMaskPayment] Saved database wallet to session storage");
+              } catch (err) {
+                console.warn("[MetaMaskPayment] Failed to save to session storage:", err);
+              }
             }
           } catch (err) {
-            console.error("[MetaMaskPayment] Error trying to get wallet for founderId:", err);
+            console.error("[MetaMaskPayment] Error getting wallet from database:", err);
           }
         }
       }
+      
+      // Important: Log complete wallet discovery process for debugging
+      console.log("[MetaMaskPayment] Wallet discovery complete:", {
+        finalWalletAddress: founderWalletAddress,
+        manualEntry: manualFounderInfo?.walletAddress,
+        hookData: founderInfo?.walletAddress,
+        startupData: (startupDetailData as any)?.founderWalletAddress,
+        sessionStorage: sessionWallet,
+        founderId: startupDetailData?.founderId
+      });
       
       // Final validation - if we still don't have a valid address, show error
       if (!founderWalletAddress || !founderWalletAddress.startsWith("0x") || founderWalletAddress === "0x") {
