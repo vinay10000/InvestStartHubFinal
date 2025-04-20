@@ -74,9 +74,7 @@ const StartupDetails = () => {
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
   const { connect } = useWeb3();
-  const [manualWalletAddress, setManualWalletAddress] = useState("");
   const [isSubmittingWallet, setIsSubmittingWallet] = useState(false);
-  const [hasWalletConnected, setHasWalletConnected] = useState(false);
 
   // Always convert the ID to string to properly handle Firebase IDs
   const safeStartupId = startupId ? startupId.toString() : "";
@@ -379,22 +377,8 @@ const StartupDetails = () => {
     }
   };
 
-  // Validate Ethereum address
-  const isValidEthAddress = (address: string): boolean => {
-    return /^0x[a-fA-F0-9]{40}$/.test(address);
-  };
-
-  // Handle manual wallet connection
-  const handleManualWalletConnect = async () => {
-    if (!manualWalletAddress || !isValidEthAddress(manualWalletAddress)) {
-      toast({
-        title: "Invalid Address",
-        description: "Please enter a valid Ethereum address",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  // Helper function for wallet connection
+  const handleWalletConnection = async () => {
     setIsSubmittingWallet(true);
     try {
       const success = await connect();
@@ -403,8 +387,6 @@ const StartupDetails = () => {
           title: "Success",
           description: "Wallet connected successfully"
         });
-        setHasWalletConnected(true);
-        setManualWalletAddress("");
       } else {
         toast({
           title: "Error",
@@ -471,30 +453,17 @@ const StartupDetails = () => {
           </DialogDescription>
         </DialogHeader>
         
-        {!hasWalletConnected ? (
+        {(!isWalletConnected() && !user?.walletAddress) ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="wallet-address">Ethereum Wallet Address</Label>
-              <Input
-                id="wallet-address"
-                placeholder="0x..."
-                value={manualWalletAddress}
-                onChange={(e) => setManualWalletAddress(e.target.value)}
-                disabled={isSubmittingWallet}
-              />
-              {manualWalletAddress && !isValidEthAddress(manualWalletAddress) && (
-                <p className="text-xs text-red-500">
-                  Please enter a valid Ethereum address (0x...)
-                </p>
-              )}
+            <div className="flex items-center justify-center p-6 bg-slate-50 rounded-lg mb-2">
+              <p className="text-center">Please connect your MetaMask wallet to invest in this startup</p>
             </div>
-            
             <Button 
               className="w-full" 
-              onClick={handleManualWalletConnect}
-              disabled={isSubmittingWallet || !manualWalletAddress || !isValidEthAddress(manualWalletAddress)}
+              onClick={handleWalletConnection}
+              disabled={isSubmittingWallet}
             >
-              {isSubmittingWallet ? "Connecting..." : "Connect Wallet"}
+              {isSubmittingWallet ? "Connecting..." : "Connect MetaMask"}
             </Button>
           </div>
         ) : (

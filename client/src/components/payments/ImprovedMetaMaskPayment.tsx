@@ -170,15 +170,20 @@ const ImprovedMetaMaskPayment = ({
         // Check localStorage for wallet connection status
         const localStorageWalletStatus = localStorage.getItem('wallet_connected');
         const isStoredAsConnected = localStorageWalletStatus === 'true';
+        
+        // Also check if user has a wallet in their profile
+        const userHasWalletInProfile = user && user.walletAddress && user.walletAddress.length > 0;
 
         console.log("[ImprovedMetaMaskPayment] Connection status:", {
           metaMaskConnected,
           localStorageWalletStatus,
-          effectiveWalletAddress
+          effectiveWalletAddress,
+          userWalletAddress: user?.walletAddress,
+          userHasWalletInProfile
         });
 
-        // If we have a stored wallet or MetaMask reports connected, try to connect
-        if (metaMaskConnected || isStoredAsConnected || effectiveWalletAddress) {
+        // If we have a stored wallet, MetaMask reports connected, or user has wallet in profile, try to connect
+        if (metaMaskConnected || isStoredAsConnected || effectiveWalletAddress || userHasWalletInProfile) {
           console.log("[ImprovedMetaMaskPayment] Attempting to auto-connect wallet");
           await connect();
         }
@@ -188,7 +193,7 @@ const ImprovedMetaMaskPayment = ({
     };
 
     attemptAutoConnect();
-  }, [isInstalled, address, connect, isWalletConnected, effectiveWalletAddress]);
+  }, [isInstalled, address, connect, isWalletConnected, effectiveWalletAddress, user]);
   
   // Handle investment process
   const handleInvest = async () => {
