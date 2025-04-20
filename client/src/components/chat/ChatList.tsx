@@ -234,13 +234,13 @@ const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
                                 <AvatarImage src={startup.logo} />
                               ) : null}
                               <AvatarFallback>
-                                {startup.name.substring(0, 2)}
+                                {(startup?.name || "ST").substring(0, 2)}
                               </AvatarFallback>
                             </Avatar>
                             
                             <div className="flex-1 min-w-0">
                               <div className="font-medium">
-                                {startup.name}
+                                {startup?.name || "Startup"}
                               </div>
                               <div className="text-sm text-muted-foreground truncate">
                                 Click to start a conversation

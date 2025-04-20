@@ -16,11 +16,11 @@ import { useFounderWallet } from "@/hooks/useFounderWallet";
 import { useWallet } from "@/hooks/useWallet";
 import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { saveWalletToStartup } from '../../firebase/walletDatabase';
 import { getStartupWallet, isSampleWalletAddress } from '../../firebase/getStartupWallet';
-import { Input } from "@/components/ui/input";
-import { firestore } from "@/firebase/config";
-import { doc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { doc, setDoc, collection, serverTimestamp, addDoc } from 'firebase/firestore';
+import { firestore } from '../../firebase/config';
 import { useQueryClient } from "@tanstack/react-query";
 
 interface ImprovedMetaMaskPaymentProps {
@@ -715,7 +715,7 @@ const ImprovedMetaMaskPayment = ({
   // Create a founder info object for display/reference
   const effectiveFounderInfo = {
     name: startupData?.name || "Founder",
-    walletAddress: effectiveFounderWallet
+    walletAddress: founderWallet || startupWallet || null
   };
   
   // Function to validate Ethereum address
@@ -858,7 +858,7 @@ const ImprovedMetaMaskPayment = ({
           <div className="flex justify-between items-center">
             <span className="text-sm">Wallet</span>
             <span className="text-sm font-mono truncate max-w-[180px]">
-              {truncateAddress(effectiveFounderWallet || "")}
+              {truncateAddress(founderWallet || startupWallet || "")}
             </span>
           </div>
         </div>
