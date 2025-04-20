@@ -185,7 +185,7 @@ const Profile = () => {
                           Install MetaMask
                         </Button>
                       </div>
-                    ) : !isWalletConnected() ? (
+                    ) : !(isWalletConnected() || (user?.walletAddress && user.walletAddress.length > 0)) ? (
                       <div className="text-center p-6 border rounded-lg bg-gray-50">
                         <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
                         <p className="text-gray-600 mb-4">
@@ -201,8 +201,13 @@ const Profile = () => {
                           <h3 className="font-medium mb-2">Connected Wallet</h3>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Address:</span>
-                            <span className="font-mono">{address}</span>
+                            <span className="font-mono">{address || user?.walletAddress}</span>
                           </div>
+                          {!address && user?.walletAddress && (
+                            <div className="mt-2 text-xs text-amber-600">
+                              * MetaMask not active, using wallet from your account
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex justify-end">

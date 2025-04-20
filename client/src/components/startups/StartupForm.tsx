@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +11,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { insertStartupSchema } from "@shared/schema";
 import { Upload, AlertCircle, Image, FileText, BarChart2, FileCheck, Wallet, CheckCircle, FileVideo, Plus, X } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import WalletConnect from "@/components/auth/WalletConnect";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +24,7 @@ const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
   description: z.string().min(10, "Description must be at least 10 characters"),
   pitch: z.string().min(10, "Pitch must be at least 10 characters"),
   fundingGoalEth: z.string().min(1, "Funding goal is required"),
-  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid Ethereum wallet address"),
+  // Wallet address is now automatically obtained during signup
   upiQrCodeFile: z.instanceof(File, { message: "QR code image is required" }).optional(),
   pitchDeckFile: z.instanceof(File, { message: "Pitch deck is required" }).optional(),
   financialReportFile: z.instanceof(File, { message: "Financial report is required" }).optional(),
@@ -78,7 +78,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
       pitch: defaultValues?.pitch || "",
       investmentStage: defaultValues?.investmentStage || "pre-seed",
       fundingGoalEth: defaultValues?.fundingGoalEth || "",
-      walletAddress: defaultValues?.walletAddress || "",
+      // walletAddress no longer needed as it's handled through user profile
       upiId: defaultValues?.upiId || "",
       upiQrCode: defaultValues?.upiQrCode || "",
     },
@@ -585,19 +585,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
   };
 
   // Get user from auth context
-  const { user, connectWallet } = useAuth();
-  
-  // Handle wallet connection
-  const handleWalletConnect = async (address: string) => {
-    try {
-      if (connectWallet) {
-        await connectWallet(address);
-        console.log("Wallet connected successfully:", address);
-      }
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
-    }
-  };
+  const { user } = useAuth();
   
   const handleSubmit = async (data: StartupFormValues) => {
     // Include all files in the submission
@@ -722,26 +710,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="walletAddress"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Founder Wallet Address</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="0x..." 
-                  {...field} 
-                  disabled={isLoading} 
-                />
-              </FormControl>
-              <FormDescription>
-                Your Ethereum wallet address for receiving investments
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Wallet address field removed as it's now obtained from user profile */}
 
         <FormField
           control={form.control}
@@ -1241,27 +1210,32 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
           </CardContent>
         </Card>
 
-        {/* Wallet connection section */}
+        {/* Wallet information section */}
         <div className="mt-8 p-4 border rounded-lg bg-gray-50">
-          <div className="flex items-center justify-between">
+          {user?.walletAddress ? (
             <div>
-              <h3 className="text-lg font-medium">Connect Wallet</h3>
-              <p className="text-sm text-gray-500">
-                You need to connect a wallet to receive cryptocurrency investments
+              <h3 className="text-lg font-medium">Wallet Connected</h3>
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                <span>Your wallet is connected: {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(user.walletAddress.length - 4)}</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                This wallet will be used to receive cryptocurrency investments for your startup
               </p>
             </div>
-            <WalletConnect 
-              onConnect={handleWalletConnect}
-              showBalance={false} 
-              showAddress={user?.walletAddress ? true : false}
-              buttonVariant={user?.walletAddress ? "outline" : "default"}
-              showDialogOnConnect={false}
-            />
-          </div>
-          {user?.walletAddress && (
-            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              <span>Wallet connected: {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(user.walletAddress.length - 4)}</span>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-amber-700">Wallet Required</h3>
+                <p className="text-sm text-gray-500">
+                  You need to connect a wallet first in your profile settings to receive cryptocurrency investments
+                </p>
+              </div>
+              <Link to="/profile">
+                <Button variant="outline">
+                  Go to Profile
+                </Button>
+              </Link>
             </div>
           )}
         </div>
