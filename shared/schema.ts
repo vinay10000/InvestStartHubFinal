@@ -51,6 +51,33 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Startup Media table for images and videos (separate from documents)
+export const startupMedia = pgTable("startup_media", {
+  id: serial("id").primaryKey(),
+  startupId: text("startup_id").notNull(), // Firebase compatibility
+  type: text("type").notNull(), // "image" or "video"
+  title: text("title"),
+  description: text("description"),
+  fileUrl: text("file_url").notNull(),
+  fileId: text("file_id"),
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  fileSize: integer("file_size"),
+  thumbnailUrl: text("thumbnail_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Startup Updates table for founder announcements
+export const startupUpdates = pgTable("startup_updates", {
+  id: serial("id").primaryKey(),
+  startupId: text("startup_id").notNull(), // Firebase compatibility
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  imageFileId: text("image_file_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Transaction table for investments
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
@@ -97,6 +124,16 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
   createdAt: true,
 });
 
+export const insertStartupMediaSchema = createInsertSchema(startupMedia).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStartupUpdateSchema = createInsertSchema(startupUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
   createdAt: true,
@@ -121,6 +158,12 @@ export type Startup = typeof startups.$inferSelect;
 
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+export type InsertStartupMedia = z.infer<typeof insertStartupMediaSchema>;
+export type StartupMedia = typeof startupMedia.$inferSelect;
+
+export type InsertStartupUpdate = z.infer<typeof insertStartupUpdateSchema>;
+export type StartupUpdate = typeof startupUpdates.$inferSelect;
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;

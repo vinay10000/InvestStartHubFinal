@@ -46,6 +46,12 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// For startup media which can be larger
+const mediaUpload = multer({ 
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
+});
+
 // Helper to check if real ImageKit credentials are provided
 const hasRealImageKitCredentials = () => {
   return (
@@ -310,6 +316,111 @@ export function registerImageKitRoutes(app: Express): void {
     } catch (error) {
       log(`Error downloading document: ${error}`, 'imagekit');
       res.status(500).json({ message: 'Failed to download document' });
+    }
+  });
+  
+  // Startup media upload endpoint - handles multiple files up to 20MB each
+  app.post('/api/imagekit/upload-media', mediaUpload.array('files', 10), async (req: Request, res: Response) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      const { startupId } = req.body;
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: 'No files provided' });
+      }
+      
+      if (!startupId) {
+        return res.status(400).json({ message: 'Startup ID is required' });
+      }
+      
+      const uploadResults = [];
+      
+      // Process each file
+      for (const file of files) {
+        // For development mode without actual ImageKit credentials
+        if (!hasRealImageKitCredentials()) {
+          log('Warning: Using local file storage for media upload', 'imagekit');
+          
+          // Generate a unique filename
+          const fileName = `${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`;
+          const uploadDir = path.join(__dirname, '../uploads');
+          const finalPath = path.join(uploadDir, fileName);
+          
+          // Copy the file to the permanent uploads directory
+          if (file.path !== finalPath) {
+            fs.copyFileSync(file.path, finalPath);
+            fs.unlinkSync(file.path);
+          }
+          
+          // Create a media record
+          const mediaRecord = {
+            fileId: fileName,
+            fileName: file.originalname,
+            fileUrl: `/uploads/${fileName}`,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            startupId,
+            createdAt: new Date().toISOString()
+          };
+          
+          uploadResults.push(mediaRecord);
+          continue;
+        }
+        
+        // Upload to ImageKit with folder structure
+        const uploadResponse = await imagekit.upload({
+          file: fs.readFileSync(file.path),
+          fileName: file.originalname,
+          folder: `startups/${startupId}/media`,
+          tags: ['startup-media'],
+          useUniqueFileName: true,
+          customMetadata: {
+            startupId,
+            uploadedAt: new Date().toISOString(),
+            contentType: file.mimetype,
+            originalName: file.originalname
+          }
+        });
+        
+        // Delete the temporary file
+        fs.unlinkSync(file.path);
+        
+        // Create a media record
+        const mediaRecord = {
+          fileId: uploadResponse.fileId,
+          fileName: uploadResponse.name,
+          fileUrl: uploadResponse.url,
+          fileSize: uploadResponse.size,
+          mimeType: file.mimetype,
+          startupId,
+          createdAt: new Date().toISOString()
+        };
+        
+        uploadResults.push(mediaRecord);
+      }
+      
+      // Store the media records in the database
+      // This would typically be handled by inserting into a database table
+      // For now, we'll just return the results
+      
+      res.status(200).json({ 
+        success: true,
+        media: uploadResults 
+      });
+    } catch (error) {
+      log(`Error uploading media files: ${error}`, 'imagekit');
+      
+      // Clean up temporary files if they exist
+      const files = req.files as Express.Multer.File[];
+      if (files) {
+        for (const file of files) {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        }
+      }
+      
+      res.status(500).json({ message: 'Failed to upload media files' });
     }
   });
 }

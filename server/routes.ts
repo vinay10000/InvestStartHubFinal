@@ -330,6 +330,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to fetch documents', error: error instanceof Error ? error.message : String(error) });
     }
   });
+  
+  // Get startup media files
+  app.get('/api/startups/:id/media', async (req: Request, res: Response) => {
+    try {
+      // Handle both numeric IDs and Firebase string IDs
+      const startupIdParam = req.params.id;
+      const startupId = startupIdParam;
+      
+      console.log(`Getting media for startup ID: ${startupId} (type: ${typeof startupId})`);
+      
+      // This would typically fetch from a database table
+      // For now, we'll return an empty array (media will be handled through Firebase/client-side)
+      // In a real implementation, this would fetch from storage.getMediaByStartupId(startupId)
+      res.status(200).json({ media: [] });
+    } catch (error) {
+      console.error('Error fetching media:', error);
+      res.status(500).json({ message: 'Failed to fetch media', error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  
+  // Get startup updates
+  app.get('/api/startups/:id/updates', async (req: Request, res: Response) => {
+    try {
+      // Handle both numeric IDs and Firebase string IDs
+      const startupIdParam = req.params.id;
+      const startupId = startupIdParam;
+      
+      console.log(`Getting updates for startup ID: ${startupId} (type: ${typeof startupId})`);
+      
+      // This would typically fetch from a database table
+      // For now, we'll return an empty array (updates will be handled through Firebase/client-side)
+      // In a real implementation, this would fetch from storage.getUpdatesByStartupId(startupId)
+      res.status(200).json({ updates: [] });
+    } catch (error) {
+      console.error('Error fetching updates:', error);
+      res.status(500).json({ message: 'Failed to fetch updates', error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  
+  // Create startup update
+  app.post('/api/startups/updates', async (req: Request, res: Response) => {
+    try {
+      const { startupId, title, content, category } = req.body;
+      
+      if (!startupId || !title || !content) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      console.log(`Creating update for startup ID: ${startupId}`);
+      
+      // This would typically insert into a database table
+      // For now, we'll create a mock response
+      const updateId = Date.now().toString();
+      const update = {
+        id: updateId,
+        startupId,
+        title,
+        content,
+        category: category || 'news',
+        createdAt: new Date().toISOString()
+      };
+      
+      res.status(201).json({ update });
+    } catch (error) {
+      console.error('Error creating update:', error);
+      res.status(500).json({ message: 'Failed to create update', error: error instanceof Error ? error.message : String(error) });
+    }
+  });
 
   // Investment/Transaction routes
   app.post('/api/investments', async (req: Request, res: Response) => {

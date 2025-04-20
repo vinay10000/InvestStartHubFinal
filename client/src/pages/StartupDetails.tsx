@@ -6,6 +6,8 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useChat } from "@/hooks/useChat";
 import { useToast } from "@/hooks/use-toast";
 import { useWeb3 } from "@/hooks/useWeb3";
+import { useStartupMedia } from "@/hooks/useStartupMedia";
+import { useStartupUpdates } from "@/hooks/useStartupUpdates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +15,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInvestmentStageColor } from "@/lib/utils";
-import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode, BarChart2 } from "lucide-react";
+import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode, BarChart2, Image, Video, Bell } from "lucide-react";
 import DocumentUpload from "@/components/startups/DocumentUpload";
 import StartupDocumentUpload from "@/components/startups/StartupDocumentUpload";
 import DocumentViewer from "@/components/startups/DocumentViewer";
 import StartupForm from "@/components/startups/StartupForm";
+import StartupMediaUpload from "@/components/startups/StartupMediaUpload";
+import StartupMediaViewer from "@/components/startups/StartupMediaViewer";
+import StartupUpdates from "@/components/startups/StartupUpdates";
 import { FirebaseStartup, FirebaseDocument } from "@/firebase/database";
 import { Document } from "@/services/documentService";
 import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayment";
@@ -74,6 +79,7 @@ const StartupDetails = () => {
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isMediaUploadDialogOpen, setIsMediaUploadDialogOpen] = useState(false);
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"metamask" | "upi">("metamask");
   const { connect } = useWeb3();
@@ -86,6 +92,12 @@ const StartupDetails = () => {
   // Only fetch if we have a valid ID
   const { data: startupData, isLoading: startupLoading } = useStartup(safeStartupId);
   const { data: documentsData, isLoading: documentsLoading } = getDocumentsByStartupId(safeStartupId);
+  const { getStartupMedia } = useStartupMedia();
+  const { getStartupUpdates } = useStartupUpdates();
+  
+  // Fetch media and updates
+  const { data: mediaData, isLoading: mediaLoading } = getStartupMedia(safeStartupId);
+  const { data: updatesData, isLoading: updatesLoading } = getStartupUpdates(safeStartupId);
   
   const updateStartupMutation = useUpdateStartup();
   const createChatMutation = createChat();
@@ -448,7 +460,7 @@ const StartupDetails = () => {
   // Update the investment dialog content
   const renderInvestmentDialog = () => (
     <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Invest in {startup?.name}</DialogTitle>
           <DialogDescription>
@@ -522,18 +534,20 @@ const StartupDetails = () => {
                       Edit
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px]">
+                  <DialogContent className="sm:max-w-[700px] lg:max-w-[900px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Edit Startup</DialogTitle>
                       <DialogDescription>
                         Update your startup profile information
                       </DialogDescription>
                     </DialogHeader>
-                    <StartupForm 
-                      onSubmit={handleEditStartup} 
-                      isLoading={updateStartupMutation.isPending} 
-                      defaultValues={startup}
-                    />
+                    <div className="pr-1 overflow-y-auto">
+                      <StartupForm 
+                        onSubmit={handleEditStartup} 
+                        isLoading={updateStartupMutation.isPending} 
+                        defaultValues={startup}
+                      />
+                    </div>
                   </DialogContent>
                 </Dialog>
                 
@@ -544,17 +558,42 @@ const StartupDetails = () => {
                       Add Documents
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[700px]">
+                  <DialogContent className="sm:max-w-[700px] lg:max-w-[900px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Upload Documents</DialogTitle>
                       <DialogDescription>
                         Upload essential documents for investors to review
                       </DialogDescription>
                     </DialogHeader>
-                    <StartupDocumentUpload 
-                      startupId={startupId ? startupId.toString() : ""} 
-                      onComplete={handleUploadComplete}
-                    />
+                    <div className="pr-1 overflow-y-auto">
+                      <StartupDocumentUpload 
+                        startupId={startupId ? startupId.toString() : ""} 
+                        onComplete={handleUploadComplete}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                <Dialog open={isMediaUploadDialogOpen} onOpenChange={setIsMediaUploadDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Media
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px] lg:max-w-[900px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Upload Media</DialogTitle>
+                      <DialogDescription>
+                        Upload photos and videos to showcase your startup (maximum size: 20MB per file)
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="pr-1 overflow-y-auto">
+                      <StartupMediaUpload 
+                        startupId={startupId ? startupId.toString() : ""} 
+                        onComplete={() => setIsMediaUploadDialogOpen(false)}
+                      />
+                    </div>
                   </DialogContent>
                 </Dialog>
               </>
@@ -706,56 +745,158 @@ const StartupDetails = () => {
           </Card>
         )}
 
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Documents
-              </CardTitle>
-              {isFounder && (
-                <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Documents
-                </Button>
-              )}
-            </div>
-            <CardDescription>
-              Essential documents for investor due diligence
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {documentsLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : documents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-6 text-center">
-                <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-medium mb-2">No documents available</h3>
-                <p className="text-muted-foreground text-center">
-                  {isFounder 
-                    ? "Upload key documents like pitch deck and financial reports to share with potential investors." 
-                    : "The founder hasn't uploaded any documents yet."}
-                </p>
-                {isFounder && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setIsUploadDialogOpen(true)}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Upload Documents
-                  </Button>
+        <Tabs defaultValue="documents" className="mb-8">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="documents" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Documents
+            </TabsTrigger>
+            <TabsTrigger value="media" className="flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              Media
+            </TabsTrigger>
+            <TabsTrigger value="updates" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Updates
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="documents">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Documents
+                  </CardTitle>
+                  {isFounder && (
+                    <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Documents
+                    </Button>
+                  )}
+                </div>
+                <CardDescription>
+                  Essential documents for investor due diligence
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {documentsLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : documents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-center">
+                    <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-medium mb-2">No documents available</h3>
+                    <p className="text-muted-foreground text-center">
+                      {isFounder 
+                        ? "Upload key documents like pitch deck and financial reports to share with potential investors." 
+                        : "The founder hasn't uploaded any documents yet."}
+                    </p>
+                    {isFounder && (
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setIsUploadDialogOpen(true)}
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Upload Documents
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <DocumentViewer documents={documents} isLoading={false} />
                 )}
-              </div>
-            ) : (
-              <DocumentViewer documents={documents} isLoading={false} />
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="media">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Image className="h-5 w-5" />
+                    Media Gallery
+                  </CardTitle>
+                  {isFounder && (
+                    <Button variant="outline" size="sm" onClick={() => setIsMediaUploadDialogOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Media
+                    </Button>
+                  )}
+                </div>
+                <CardDescription>
+                  Photos and videos showcasing the startup
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {mediaLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                  </div>
+                ) : mediaData?.media && mediaData.media.length > 0 ? (
+                  <StartupMediaViewer media={mediaData.media} isLoading={false} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 text-center">
+                    <Image className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-medium mb-2">No media available</h3>
+                    <p className="text-muted-foreground text-center">
+                      {isFounder 
+                        ? "Upload photos and videos to showcase your startup to potential investors." 
+                        : "The founder hasn't uploaded any media yet."}
+                    </p>
+                    {isFounder && (
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setIsMediaUploadDialogOpen(true)}
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Upload Media
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="updates">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Startup Updates
+                  </CardTitle>
+                </div>
+                <CardDescription>
+                  Latest news and progress updates from the team
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {updatesLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : (
+                  <StartupUpdates 
+                    startupId={safeStartupId} 
+                    isFounder={isFounder}
+                    updates={updatesData?.updates || []}
+                    isLoading={false}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

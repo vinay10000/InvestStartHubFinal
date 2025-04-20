@@ -21,12 +21,13 @@ const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
   description: z.string().min(10, "Description must be at least 10 characters"),
   pitch: z.string().min(10, "Pitch must be at least 10 characters"),
   fundingGoalEth: z.string().min(1, "Funding goal is required"),
+  // Financial metrics
+  companyValuation: z.string().min(1, "Company valuation is required"),
+  ebidtaValue: z.string().min(1, "EBIDTA value is required"),
+  monthlyBurnRate: z.string().min(1, "Monthly burn rate is required"),
+  profitPercentage: z.string().min(1, "Profit percentage is required"),
   // Wallet address is now automatically obtained during signup
   upiQrCodeFile: z.instanceof(File, { message: "QR code image is required" }).optional(),
-  // Media fields
-  logoFile: z.instanceof(File, { message: "Logo image is required" }).optional(),
-  mediaFiles: z.array(z.instanceof(File)).optional(),
-  videoFile: z.instanceof(File).optional(),
 });
 
 type StartupFormValues = z.infer<typeof startupFormSchema>;
@@ -41,17 +42,9 @@ interface StartupFormProps {
 
 const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) => {
   const [upiQrCodeFile, setUpiQrCodeFile] = useState<File | null>(null);
-  // Media state variables
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  // Preview states
+  // Preview states for UPI QR Code only
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(defaultValues?.upiQrCode || null);
-  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(defaultValues?.logoUrl || null);
-  const [mediaPreviewUrls, setMediaPreviewUrls] = useState<string[]>([]);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
-  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const form = useForm<StartupFormValues>({
     resolver: zodResolver(startupFormSchema),
@@ -61,6 +54,10 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
       pitch: defaultValues?.pitch || "",
       investmentStage: defaultValues?.investmentStage || "pre-seed",
       fundingGoalEth: defaultValues?.fundingGoalEth || "",
+      companyValuation: defaultValues?.companyValuation || "",
+      ebidtaValue: defaultValues?.ebidtaValue || "",
+      monthlyBurnRate: defaultValues?.monthlyBurnRate || "",
+      profitPercentage: defaultValues?.profitPercentage || "",
       // walletAddress no longer needed as it's handled through user profile
       upiId: defaultValues?.upiId || "",
       upiQrCode: defaultValues?.upiQrCode || "",
@@ -132,268 +129,12 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
       reader.readAsDataURL(file);
     }
   };
-  
-  // Media file handlers
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (max 5MB for logo)
-      if (file.size > 5 * 1024 * 1024) {
-        setMediaError("Logo file size should be less than 5MB");
-        return;
-      }
-      
-      // Check file type (only allow images)
-      if (!file.type.startsWith('image/')) {
-        setMediaError("Only image files are allowed for logo");
-        return;
-      }
-      
-      setMediaError(null);
-      setLogoFile(file);
-      form.setValue("logoFile", file);
-      
-      // Create a preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  const handleMediaFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const selectedFiles: File[] = [];
-      const newPreviewUrls: string[] = [];
-      let hasError = false;
-      
-      // Process each file
-      Array.from(files).forEach(file => {
-        // Check file size (max 10MB per image)
-        if (file.size > 10 * 1024 * 1024) {
-          setMediaError("Each image file size should be less than 10MB");
-          hasError = true;
-          return;
-        }
-        
-        // Check file type (only allow images)
-        if (!file.type.startsWith('image/')) {
-          setMediaError("Only image files are allowed for gallery images");
-          hasError = true;
-          return;
-        }
-        
-        // Add to selected files
-        selectedFiles.push(file);
-        
-        // Create preview URLs
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newPreviewUrls.push(reader.result as string);
-          // When all files are processed, update state
-          if (newPreviewUrls.length === selectedFiles.length) {
-            setMediaPreviewUrls([...mediaPreviewUrls, ...newPreviewUrls]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-      
-      if (!hasError) {
-        setMediaError(null);
-        // Limit to max 5 images
-        const allMediaFiles = [...mediaFiles, ...selectedFiles].slice(0, 5);
-        setMediaFiles(allMediaFiles);
-        form.setValue("mediaFiles", allMediaFiles);
-      }
-    }
-  };
-  
-  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (max 20MB for video)
-      if (file.size > 20 * 1024 * 1024) {
-        setMediaError("Video file size should be less than 20MB");
-        return;
-      }
-      
-      // Check file type
-      if (!file.type.startsWith('video/') && 
-          file.type !== 'application/mp4' && 
-          !file.name.toLowerCase().endsWith('.mp4') &&
-          !file.name.toLowerCase().endsWith('.webm')) {
-        setMediaError("Only video files are allowed (MP4, WebM)");
-        return;
-      }
-      
-      setMediaError(null);
-      setVideoFile(file);
-      form.setValue("videoFile", file);
-      
-      // Create a preview thumbnail if possible
-      if (URL.createObjectURL) {
-        const videoUrl = URL.createObjectURL(file);
-        setVideoPreviewUrl(videoUrl);
-      }
-    }
-  };
-  
-  // Handle logo drag and drop
-  const handleLogoDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
-  const handleLogoDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      
-      // Check file size (max 5MB for logo)
-      if (file.size > 5 * 1024 * 1024) {
-        setMediaError("Logo file size should be less than 5MB");
-        return;
-      }
-      
-      // Check file type (only allow images)
-      if (!file.type.startsWith('image/')) {
-        setMediaError("Only image files are allowed for logo");
-        return;
-      }
-      
-      setMediaError(null);
-      setLogoFile(file);
-      form.setValue("logoFile", file);
-      
-      // Create a preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  // Handle media files drag and drop
-  const handleMediaDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
-  const handleMediaDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const files = e.dataTransfer.files;
-      const selectedFiles: File[] = [];
-      const newPreviewUrls: string[] = [];
-      let hasError = false;
-      
-      // Process each file
-      Array.from(files).forEach(file => {
-        // Check file size (max 10MB per image)
-        if (file.size > 10 * 1024 * 1024) {
-          setMediaError("Each image file size should be less than 10MB");
-          hasError = true;
-          return;
-        }
-        
-        // Check file type (only allow images)
-        if (!file.type.startsWith('image/')) {
-          setMediaError("Only image files are allowed for gallery images");
-          hasError = true;
-          return;
-        }
-        
-        // Add to selected files
-        selectedFiles.push(file);
-        
-        // Create preview URLs
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newPreviewUrls.push(reader.result as string);
-          // When all files are processed, update state
-          if (newPreviewUrls.length === selectedFiles.length) {
-            setMediaPreviewUrls([...mediaPreviewUrls, ...newPreviewUrls]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-      
-      if (!hasError) {
-        setMediaError(null);
-        // Limit to max 5 images total
-        const allMediaFiles = [...mediaFiles, ...selectedFiles].slice(0, 5);
-        setMediaFiles(allMediaFiles);
-        form.setValue("mediaFiles", allMediaFiles);
-      }
-    }
-  };
-  
-  // Handle video drag and drop
-  const handleVideoDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
-  const handleVideoDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      
-      // Check file size (max 20MB for video)
-      if (file.size > 20 * 1024 * 1024) {
-        setMediaError("Video file size should be less than 20MB");
-        return;
-      }
-      
-      // Check file type
-      if (!file.type.startsWith('video/') && 
-          file.type !== 'application/mp4' && 
-          !file.name.toLowerCase().endsWith('.mp4') &&
-          !file.name.toLowerCase().endsWith('.webm')) {
-        setMediaError("Only video files are allowed (MP4, WebM)");
-        return;
-      }
-      
-      setMediaError(null);
-      setVideoFile(file);
-      form.setValue("videoFile", file);
-      
-      // Create a preview thumbnail if possible
-      if (URL.createObjectURL) {
-        const videoUrl = URL.createObjectURL(file);
-        setVideoPreviewUrl(videoUrl);
-      }
-    }
-  };
-  
-  // Remove a media image from the list
-  const handleRemoveMedia = (index: number) => {
-    const updatedFiles = [...mediaFiles];
-    const updatedPreviews = [...mediaPreviewUrls];
-    
-    updatedFiles.splice(index, 1);
-    updatedPreviews.splice(index, 1);
-    
-    setMediaFiles(updatedFiles);
-    setMediaPreviewUrls(updatedPreviews);
-    form.setValue("mediaFiles", updatedFiles);
-  };
 
   // Get user from auth context
   const { user } = useAuth();
   
   const handleSubmit = async (data: StartupFormValues) => {
-    // Include only the UPI QR code file in the submission
-    // No document files like pitch deck, financial report, or investor agreement
+    // Only include UPI QR code file, no media files
     await onSubmit({
       ...data,
       upiQrCodeFile: upiQrCodeFile || undefined,
@@ -508,6 +249,101 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
           )}
         />
 
+        {/* Financial Metrics */}
+        <FormField
+          control={form.control}
+          name="companyValuation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>COMPANY VALUATION (USD)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="1000" 
+                  min="0" 
+                  placeholder="Enter company valuation in USD" 
+                  {...field} 
+                  disabled={isLoading} 
+                />
+              </FormControl>
+              <FormDescription>
+                Current valuation of your startup
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="ebidtaValue"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>EBIDTA VALUE (USD)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="1000" 
+                  placeholder="Enter EBIDTA value in USD" 
+                  {...field} 
+                  disabled={isLoading} 
+                />
+              </FormControl>
+              <FormDescription>
+                Earnings Before Interest, Depreciation, Taxes, and Amortization
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="monthlyBurnRate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>MONTHLY BURN RATE (USD)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="100" 
+                  min="0" 
+                  placeholder="Enter monthly burn rate in USD" 
+                  {...field} 
+                  disabled={isLoading} 
+                />
+              </FormControl>
+              <FormDescription>
+                Monthly cash expenditure
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="profitPercentage"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>PROFIT PERCENTAGE (%)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="Enter profit percentage" 
+                  {...field} 
+                  disabled={isLoading} 
+                />
+              </FormControl>
+              <FormDescription>
+                Current profit margin as percentage
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Wallet address field removed as it's now obtained from user profile */}
 
         <FormField
@@ -606,205 +442,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
           )}
         />
 
-        {/* Media Upload Section */}
-        <FormLabel className="text-lg font-medium mt-8 mb-4 block">Startup Media</FormLabel>
-        <Card className="border-dashed">
-          <CardContent className="p-6">
-            <Tabs defaultValue="logo" className="w-full">
-              <TabsList className="grid grid-cols-3 mb-4">
-                <TabsTrigger value="logo">Logo</TabsTrigger>
-                <TabsTrigger value="images">Images</TabsTrigger>
-                <TabsTrigger value="video">Video</TabsTrigger>
-              </TabsList>
-              
-              {/* Logo Upload */}
-              <TabsContent value="logo">
-                <FormField
-                  control={form.control}
-                  name="logoFile"
-                  render={({ field: { value, onChange, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div 
-                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
-                          onDragOver={handleLogoDragOver}
-                          onDrop={handleLogoDrop}
-                        >
-                          {logoPreviewUrl ? (
-                            <div className="flex flex-col items-center">
-                              <img src={logoPreviewUrl} alt="Logo Preview" className="w-40 h-40 object-contain mb-2" />
-                              <p className="text-sm font-medium">{logoFile?.name || "Current Logo"}</p>
-                            </div>
-                          ) : (
-                            <>
-                              <Image className="h-8 w-8 text-gray-400" />
-                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                              <p className="text-xs text-gray-500">JPG, PNG, SVG (Max 5MB)</p>
-                            </>
-                          )}
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleLogoFileChange}
-                            disabled={isLoading}
-                            className="hidden"
-                            id="logo-upload"
-                            {...fieldProps}
-                          />
-                          <label htmlFor="logo-upload" className="mt-2 cursor-pointer">
-                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
-                              {logoPreviewUrl ? "Change Logo" : "Upload Logo"}
-                            </div>
-                          </label>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Upload your startup logo (recommended size: 512x512px)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-              
-              {/* Images Upload */}
-              <TabsContent value="images">
-                <FormField
-                  control={form.control}
-                  name="mediaFiles"
-                  render={({ field: { value, onChange, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div 
-                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
-                          onDragOver={handleMediaDragOver}
-                          onDrop={handleMediaDrop}
-                        >
-                          {mediaPreviewUrls.length > 0 ? (
-                            <div className="w-full">
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                                {mediaPreviewUrls.map((url, index) => (
-                                  <div key={index} className="relative group">
-                                    <img src={url} alt={`Image ${index+1}`} className="w-full h-24 object-cover rounded" />
-                                    <button
-                                      type="button"
-                                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => handleRemoveMedia(index)}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                ))}
-                                {mediaPreviewUrls.length < 5 && (
-                                  <label htmlFor="images-upload" className="border-2 border-dashed border-gray-300 rounded flex items-center justify-center h-24 cursor-pointer">
-                                    <Plus className="w-8 h-8 text-gray-400" />
-                                  </label>
-                                )}
-                              </div>
-                              {mediaPreviewUrls.length < 5 && (
-                                <p className="text-xs text-center text-gray-500 mb-2">
-                                  {5 - mediaPreviewUrls.length} more image{mediaPreviewUrls.length === 4 ? '' : 's'} can be added
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              <Image className="h-8 w-8 text-gray-400" />
-                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                              <p className="text-xs text-gray-500">JPG, PNG, GIF, etc. (Max 10MB each)</p>
-                            </>
-                          )}
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleMediaFilesChange}
-                            disabled={isLoading || mediaPreviewUrls.length >= 5}
-                            className="hidden"
-                            id="images-upload"
-                            multiple
-                            {...fieldProps}
-                          />
-                          {mediaPreviewUrls.length === 0 && (
-                            <label htmlFor="images-upload" className="mt-2 cursor-pointer">
-                              <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
-                                Upload Images
-                              </div>
-                            </label>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Upload up to 5 images showcasing your startup (products, team, offices, etc.)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-              
-              {/* Video Upload */}
-              <TabsContent value="video">
-                <FormField
-                  control={form.control}
-                  name="videoFile"
-                  render={({ field: { value, onChange, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div 
-                          className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2"
-                          onDragOver={handleVideoDragOver}
-                          onDrop={handleVideoDrop}
-                        >
-                          {videoFile ? (
-                            <div className="flex flex-col items-center">
-                              {videoPreviewUrl ? (
-                                <video 
-                                  className="w-full h-48 object-contain mb-2" 
-                                  controls
-                                  src={videoPreviewUrl}
-                                />
-                              ) : (
-                                <FileVideo className="h-16 w-16 text-primary mb-2" />
-                              )}
-                              <p className="text-sm font-medium">{videoFile.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              <FileVideo className="h-8 w-8 text-gray-400" />
-                              <p className="text-sm text-gray-600">Click to browse or drag and drop</p>
-                              <p className="text-xs text-gray-500">MP4, WebM (Max 20MB)</p>
-                            </>
-                          )}
-                          <Input
-                            type="file"
-                            accept="video/*,.mp4,.webm"
-                            onChange={handleVideoFileChange}
-                            disabled={isLoading}
-                            className="hidden"
-                            id="video-upload"
-                            {...fieldProps}
-                          />
-                          <label htmlFor="video-upload" className="mt-2 cursor-pointer">
-                            <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 h-10 px-4 py-2 bg-primary text-primary-foreground">
-                              {videoFile ? "Change Video" : "Upload Video"}
-                            </div>
-                          </label>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Upload a short pitch video or product demo (max 20MB)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+
 
         {/* Wallet information section */}
         <div className="mt-8 p-4 border rounded-lg bg-gray-50">
