@@ -30,6 +30,7 @@ interface FirebaseMessage {
   fileName?: string;
   fileType?: string;
   readBy?: string[]; // Array of user IDs who read the message
+  reactions?: Record<string, string[]>; // Map of reaction emoji to array of user IDs
 }
 
 const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: ChatInterfaceProps) => {
@@ -254,7 +255,7 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
             break;
             
           case 'read_receipt':
-            // Handle read receipts if needed
+            // Handle read receipts
             if (data.messageId) {
               // Update the read status in the UI
               setMessages(prev => 
@@ -266,6 +267,46 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
                       } 
                     : msg
                 )
+              );
+            }
+            break;
+            
+          case 'reaction':
+            // Handle message reactions
+            if (data.messageId && data.emoji) {
+              setMessages(prev => 
+                prev.map(msg => {
+                  if (msg.id === data.messageId) {
+                    const reactions = { ...(msg.reactions || {}) };
+                    const currentReaction = [...(reactions[data.emoji] || [])];
+                    
+                    if (data.added) {
+                      // Add reaction if not already there
+                      if (!currentReaction.includes(data.userId)) {
+                        currentReaction.push(data.userId);
+                      }
+                    } else {
+                      // Remove reaction
+                      const index = currentReaction.indexOf(data.userId);
+                      if (index !== -1) {
+                        currentReaction.splice(index, 1);
+                      }
+                    }
+                    
+                    // Update the reactions object
+                    if (currentReaction.length > 0) {
+                      reactions[data.emoji] = currentReaction;
+                    } else {
+                      delete reactions[data.emoji];
+                    }
+                    
+                    return {
+                      ...msg,
+                      reactions
+                    };
+                  }
+                  return msg;
+                })
               );
             }
             break;
@@ -481,6 +522,66 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
     }
   };
   
+  // Handle message reactions
+  const handleReaction = async (messageId: string, emoji: string) => {
+    if (!user || !chatId) return;
+    
+    try {
+      // Get the current message
+      const messageRef = ref(database, `chats/${chatId}/messages/${messageId}`);
+      const snapshot = await get(messageRef);
+      
+      if (snapshot.exists()) {
+        const message = snapshot.val();
+        const reactions: Record<string, string[]> = message.reactions || {};
+        const currentReaction: string[] = reactions[emoji] || [];
+        
+        // Check if user has already reacted with this emoji
+        const userIdStr = String(user.id);
+        const hasReacted = currentReaction.includes(userIdStr);
+        
+        // Toggle reaction: add if not present, remove if present
+        let updatedReactions: Record<string, string[]>;
+        if (hasReacted) {
+          // Remove user's reaction
+          updatedReactions = {
+            ...reactions,
+            [emoji]: currentReaction.filter((id: string) => id !== userIdStr)
+          };
+          
+          // Remove empty reaction arrays
+          if (updatedReactions[emoji].length === 0) {
+            delete updatedReactions[emoji];
+          }
+        } else {
+          // Add user's reaction
+          updatedReactions = {
+            ...reactions,
+            [emoji]: [...currentReaction, userIdStr]
+          };
+        }
+        
+        // Update in Firebase
+        await update(messageRef, { reactions: updatedReactions });
+        
+        // Notify via WebSocket
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.send(JSON.stringify({
+            type: 'reaction',
+            messageId,
+            userId: userIdStr,
+            chatId,
+            emoji,
+            added: !hasReacted,
+            timestamp: Date.now()
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error handling reaction:", error);
+    }
+  };
+  
   return (
     <Card className="h-[80vh] flex flex-col">
       <CardHeader className="border-b">
@@ -540,7 +641,7 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
                         </Avatar>
                       )}
                       <div 
-                        className={`max-w-[70%] rounded-lg p-3 ${
+                        className={`max-w-[70%] rounded-lg p-3 group ${
                           isCurrentUser 
                             ? "bg-primary text-primary-foreground" 
                             : "bg-muted"
@@ -597,6 +698,45 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
                           </div>
                         )}
                         
+                        {/* Message reactions */}
+                        {message.reactions && Object.keys(message.reactions).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {Object.entries(message.reactions).map(([emoji, users]: [string, string[]]) => (
+                              <div 
+                                key={emoji} 
+                                className={`
+                                  text-xs rounded-full px-1.5 py-0.5 
+                                  ${users.includes(String(user?.id)) 
+                                    ? 'bg-primary text-primary-foreground' 
+                                    : 'bg-muted hover:bg-primary/10'
+                                  } 
+                                  cursor-pointer inline-flex items-center
+                                `}
+                                onClick={() => handleReaction(message.id, emoji)}
+                              >
+                                <span>{emoji}</span>
+                                <span className="ml-1">{users.length}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Reaction buttons */}
+                        <div 
+                          className="flex items-center space-x-1 mt-1 -mb-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {['👍', '❤️', '😂'].map((emoji) => (
+                            <button
+                              key={emoji}
+                              className="text-xs hover:bg-primary/10 rounded-full px-1.5 py-0.5"
+                              onClick={() => handleReaction(message.id, emoji)}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        
                         {/* Message footer */}
                         <div className="flex items-center justify-between text-xs opacity-70 mt-1">
                           <span>
@@ -606,19 +746,31 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
                             }) : ''}
                           </span>
                           
-                          {/* Read receipt */}
-                          {isCurrentUser && message.readBy && message.readBy.includes(String(otherUserId)) && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <CheckCircle2 className="h-3 w-3 ml-1 text-primary" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Read</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
+                          {/* Message status indicator */}
+                          <div className="flex items-center">
+                            {isCurrentUser && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="ml-1">
+                                      {message.readBy && message.readBy.includes(String(otherUserId)) ? (
+                                        <CheckCircle2 className="h-3 w-3 text-primary" />
+                                      ) : (
+                                        <CheckCircle2 className="h-3 w-3 text-muted-foreground/60" />
+                                      )}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>
+                                      {message.readBy && message.readBy.includes(String(otherUserId)) 
+                                        ? "Read" 
+                                        : "Sent"}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

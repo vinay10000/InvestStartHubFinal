@@ -267,7 +267,8 @@ const MetaMaskPayment = ({
     }
     
     // Check if startup details has wallet
-    if (startupDetailData?.founderWalletAddress) {
+    // Using a type assertion since the FirebaseStartup interface may not include all properties
+    if ((startupDetailData as any)?.founderWalletAddress) {
       console.log('[MetaMaskPayment] Using wallet from startup details');
       return 'found';
     }

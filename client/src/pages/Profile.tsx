@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWeb3 } from "@/hooks/useWeb3";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Wallet } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, Wallet, Upload, Camera, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { uploadFile } from "@/services/imagekit";
+import { useToast } from "@/hooks/use-toast";
 
 const profileSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters long"),
@@ -25,6 +27,9 @@ const Profile = () => {
   const { user, updateProfile, disconnectWallet } = useAuth();
   const { isInstalled, address, connect, isWalletConnected } = useWeb3();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -76,6 +81,68 @@ const Profile = () => {
       window.location.reload();
     }
   };
+  
+  // Handle profile picture upload
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0]) return;
+    
+    const file = event.target.files[0];
+    
+    // Validate file type (only allow images)
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (JPEG, PNG, etc.)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Profile picture must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setIsUploading(true);
+      
+      // Upload to ImageKit using our service
+      const uploadResponse = await uploadFile(
+        file,
+        `profile/${user?.id || 'anonymous'}`,
+        `profile_${user?.id || 'temp'}_${Date.now()}`
+      );
+      
+      // Update user profile with the new picture URL
+      await updateProfile({
+        profilePicture: uploadResponse.url
+      });
+      
+      toast({
+        title: "Profile picture updated",
+        description: "Your profile picture has been updated successfully",
+      });
+      
+      // Clear input value to allow uploading the same file again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload profile picture. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -87,11 +154,38 @@ const Profile = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarFallback className="text-xl">
-                  {user ? getInitials(user.username) : "U"}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-24 w-24 mb-4">
+                  {user?.profilePicture && (
+                    <AvatarImage src={user.profilePicture} alt={user.username} />
+                  )}
+                  <AvatarFallback className="text-xl">
+                    {user ? getInitials(user.username) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+                
+                {/* Profile picture upload button */}
+                <div
+                  className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground rounded-full p-1.5 cursor-pointer hover:scale-110 transition-transform"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </div>
+                
+                {/* Hidden file input */}
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleProfilePictureUpload}
+                  disabled={isUploading}
+                />
+              </div>
               <h2 className="text-xl font-bold">{user?.username}</h2>
               <p className="text-gray-600">{user?.email}</p>
               <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">

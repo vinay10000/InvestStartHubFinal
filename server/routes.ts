@@ -492,6 +492,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
             break;
+            
+          case 'reaction':
+            // Handle message reactions (add or remove)
+            if (data.messageId && data.userId && data.emoji !== undefined) {
+              connections.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'reaction',
+                    messageId: data.messageId,
+                    userId: data.userId,
+                    emoji: data.emoji,
+                    added: data.added,
+                    chatId: data.chatId,
+                    timestamp: Date.now()
+                  }));
+                }
+              });
+            }
+            break;
         }
       } catch (error) {
         console.error('WebSocket message error:', error);
