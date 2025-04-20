@@ -19,6 +19,7 @@ import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import WalletConnection from "@/pages/WalletConnection";
 import WalletSetup from "@/pages/WalletSetup";
+import WalletDiagnostics from "@/pages/WalletDiagnostics";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
@@ -148,6 +149,13 @@ function Router() {
       <Route path="/wallet-setup">
         <ProtectedRoute>
           <WalletSetup />
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Wallet Diagnostics Tool - Restricted to admin/founder */}
+      <Route path="/wallet-diagnostics">
+        <ProtectedRoute>
+          <WalletDiagnostics />
         </ProtectedRoute>
       </Route>
       

@@ -54,11 +54,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Authentication endpoint
   app.post('/api/auth/google', async (req: Request, res: Response) => {
     try {
-      const { uid, email, displayName, photoURL } = req.body;
+      const { uid, email, displayName, photoURL, role } = req.body;
       
       if (!uid || !email) {
         return res.status(400).json({ message: 'User ID and email are required' });
       }
+      
+      // Generate a unique sameId for founders
+      const sameId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      console.log('Generated sameId for new user:', sameId);
       
       // Check if user already exists with this Firebase UID
       const users = await storage.getAllUsers();
@@ -75,18 +79,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: displayName || email.split('@')[0], // Use display name or extract username from email
           email,
           password: `firebase_${uid}_google`, // Special password format for Google Firebase users
-          role: "investor", // Default role for Google sign-ins
+          role: role || "investor", // Use provided role or default to investor
           profilePicture: photoURL || "",
           walletAddress: "",
+          // Add sameId for founders
+          sameId: role === "founder" ? sameId : undefined
         };
         
         user = await storage.createUser(newUser);
         console.log('Created new user from Google auth:', email, 'with Firebase UID:', uid);
+        
+        // If this is a founder, we need to remember the sameId for later when they create startups
+        if (role === "founder") {
+          console.log('New founder created with sameId:', sameId);
+        }
       } else if (!user.password.includes(`firebase_${uid}`)) {
         // Update existing user to include Firebase UID if it doesn't already have it
-        const updatedUser = await storage.updateUser(user.id, {
+        // Also update the sameId if this is a founder and they don't have one yet
+        const updates: Partial<User> = {
           password: `firebase_${uid}_google`
-        });
+        };
+        
+        // Add sameId for founders if they don't have one yet
+        if (role === "founder" && !user.sameId) {
+          updates.sameId = sameId;
+          console.log('Adding sameId to existing founder:', sameId);
+        }
+        
+        const updatedUser = await storage.updateUser(user.id, updates);
         
         if (updatedUser) {
           user = updatedUser;
@@ -180,11 +200,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Creating startup with data:', req.body);
       
+      // Generate a unique sameId to link founder and startup
+      const sameId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      console.log('Generated sameId:', sameId);
+      
       // Parse the request body with more error details
       try {
-        const startupData = insertStartupSchema.parse(req.body);
+        // Add the sameId to the startup data
+        const startupData = insertStartupSchema.parse({
+          ...req.body,
+          sameId: sameId
+        });
+        
         console.log('Startup data validated successfully:', startupData);
         const startup = await storage.createStartup(startupData);
+        
+        // Also update the founder's user record with the same sameId
+        const founderId = parseInt(req.body.founderId);
+        if (!isNaN(founderId)) {
+          try {
+            // Update the founder's user record with the sameId
+            console.log('Updating founder with sameId:', founderId, sameId);
+            const updatedUser = await storage.updateUser(founderId, { sameId });
+            
+            if (updatedUser) {
+              console.log('Founder updated with sameId:', updatedUser.id);
+            } else {
+              console.warn('Could not update founder with sameId');
+            }
+          } catch (userUpdateError) {
+            console.error('Error updating founder with sameId:', userUpdateError);
+            // Don't fail the whole operation if this part fails
+          }
+        }
+        
         res.status(201).json({ startup });
       } catch (validationError) {
         if (validationError instanceof z.ZodError) {
@@ -406,16 +455,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize WebSocket server on the same HTTP server but using a specific path
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
+  // Log when the WebSocket server is initialized
+  console.log('WebSocket server initialized on path: /ws');
+  
   // Store active connections
   const connections = new Map<string, WebSocket>();
+  
+  // Handle WebSocket error event
+  wss.on('error', (error) => {
+    console.error('WebSocket server error:', error);
+  });
   
   // Handle WebSocket connections
   wss.on('connection', (ws: WebSocket) => {
     console.log('New WebSocket connection established');
     
+    // Add error handler for this connection
+    ws.on('error', (error) => {
+      console.error('WebSocket connection error:', error);
+    });
+    
+    // Add connection health check
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping(); // Send ping to keep connection alive
+        console.log('Ping sent to client');
+      }
+    }, 30000); // 30 second interval
+    
+    // Clear interval when connection is closed
+    ws.on('close', () => {
+      clearInterval(pingInterval);
+      console.log('WebSocket connection closed, ping interval cleared');
+      
+      // Remove from connections map
+      connections.forEach((client, id) => {
+        if (client === ws) {
+          connections.delete(id);
+          console.log(`Removed connection ${id} from active connections`);
+        }
+      });
+    });
+    
     // Generate unique connection ID
     const connectionId = Date.now().toString();
     connections.set(connectionId, ws);
+    
+    // Log active connections count
+    console.log(`Active WebSocket connections: ${connections.size}`);
     
     // Send welcome message
     ws.send(JSON.stringify({
@@ -511,17 +598,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
             break;
+            
+          case 'wallet_diagnostics':
+            // Handle wallet diagnostics requests
+            if (data.startupId) {
+              // Acknowledge receipt of diagnostics request
+              ws.send(JSON.stringify({
+                type: 'wallet_diagnostics_started',
+                startupId: data.startupId,
+                timestamp: Date.now()
+              }));
+              
+              // This would typically call a function to run diagnostics
+              // For now, we'll just simulate a response
+              setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    type: 'wallet_diagnostics_result',
+                    startupId: data.startupId,
+                    status: 'completed',
+                    result: {
+                      walletFound: Math.random() > 0.3, // Simulate success/failure
+                      methodsAttempted: ['direct', 'sameId', 'founderLookup'],
+                      timeElapsed: Math.floor(Math.random() * 1000) + 500
+                    },
+                    timestamp: Date.now()
+                  }));
+                }
+              }, 1500); // Simulate processing time
+            }
+            break;
+            
+          case 'ping':
+            // Simple ping/pong to verify connection is alive
+            ws.send(JSON.stringify({
+              type: 'pong',
+              timestamp: Date.now()
+            }));
+            break;
         }
       } catch (error) {
         console.error('WebSocket message error:', error);
+        
+        // Send error response
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error processing message',
+            timestamp: Date.now()
+          }));
+        }
       }
     });
     
-    // Handle disconnection
-    ws.on('close', () => {
-      console.log('WebSocket connection closed:', connectionId);
-      connections.delete(connectionId);
-    });
+    // Note: The close event handler is already defined above with the pingInterval cleanup
   });
   
   return httpServer;

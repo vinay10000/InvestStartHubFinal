@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, LogOut, User, MessageSquare } from "lucide-react";
+import { Menu, LogOut, User, MessageSquare, Wallet, Wrench } from "lucide-react";
 import NotificationIcon from "../chat/NotificationIcon";
 import ThemeToggle from "../theme/ThemeToggle";
 
@@ -140,6 +140,15 @@ const Header = () => {
                     <DropdownMenuItem onClick={() => navigate("/chat")}>
                       <span>Messages</span>
                     </DropdownMenuItem>
+                    
+                    {/* Only show wallet diagnostics for founders and admins */}
+                    {(user.role === "founder" || user.role === "admin") && (
+                      <DropdownMenuItem onClick={() => navigate("/wallet-diagnostics")}>
+                        <Wrench className="mr-2 h-4 w-4" />
+                        <span>Wallet Diagnostics</span>
+                      </DropdownMenuItem>
+                    )}
+                    
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
@@ -234,6 +243,16 @@ const Header = () => {
                               Messages
                             </span>
                           </Link>
+                          
+                          {/* Only show wallet diagnostics for founders and admins in mobile menu */}
+                          {(user.role === "founder" || user.role === "admin") && (
+                            <Link href="/wallet-diagnostics">
+                              <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
+                                Wallet Diagnostics
+                              </span>
+                            </Link>
+                          )}
+                          
                           <button 
                             className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                             onClick={() => {

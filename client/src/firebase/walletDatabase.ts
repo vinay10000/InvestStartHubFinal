@@ -464,6 +464,112 @@ export const migrateWalletToFirebaseUid = async (
 };
 
 /**
+ * Retrieves a founder's wallet address directly from the Firebase users collection
+ * This function specifically targets the user record structure shown in the example:
+ * {
+ *   uid: "BMiH7YZcOUTW3CvLCiQzswOhsF32",
+ *   walletAddress: "0x72f597d583ece34c3ab5244bbede639c846d1261",
+ *   ...
+ * }
+ */
+export const getFounderWalletAddress = async (founderId: string): Promise<string | null> => {
+  try {
+    console.log(`[Wallet DB] Getting founder wallet address for user ID: ${founderId}`);
+    
+    // Get the user record directly from Firebase
+    const userRef = ref(database, `users/${founderId}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      console.log(`[Wallet DB] Found user data:`, userData);
+      
+      // Check if walletAddress exists directly in the user object
+      if (userData.walletAddress && userData.walletAddress.startsWith('0x')) {
+        console.log(`[Wallet DB] Found wallet address in user data: ${userData.walletAddress}`);
+        return userData.walletAddress;
+      }
+    }
+    
+    console.log(`[Wallet DB] No wallet address found for founder ID ${founderId}`);
+    return null;
+  } catch (error) {
+    console.error('[Wallet DB] Error getting founder wallet address:', error);
+    return null;
+  }
+};
+
+/**
+ * Gets a founder's wallet address using the sameId field that connects users and startups
+ * This function first looks up the startup by its ID, then uses the sameId to find the
+ * matching founder record, and finally returns the founder's wallet address.
+ */
+export const getFounderWalletBySameId = async (startupId: string): Promise<string | null> => {
+  try {
+    console.log(`[Wallet DB] Looking up founder wallet using sameId for startup: ${startupId}`);
+    
+    // Import database functions dynamically to avoid circular dependencies
+    const { getStartupById, getUserByUid } = await import('@/firebase/database');
+    
+    // Step 1: Get the startup details
+    const startup = await getStartupById(startupId);
+    
+    if (!startup) {
+      console.log(`[Wallet DB] No startup found with ID: ${startupId}`);
+      return null;
+    }
+    
+    console.log(`[Wallet DB] Found startup:`, startup);
+    
+    // Step 2: Check if startup has a sameId
+    if (!startup.sameId) {
+      console.log(`[Wallet DB] Startup doesn't have a sameId`);
+      
+      // Fallback: try using founderId directly
+      if (startup.founderId) {
+        console.log(`[Wallet DB] Trying direct founderId lookup: ${startup.founderId}`);
+        return getFounderWalletAddress(startup.founderId);
+      }
+      
+      return null;
+    }
+    
+    // Step 3: Look up users with the same sameId
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (!snapshot.exists()) {
+      console.log(`[Wallet DB] No users found in database`);
+      return null;
+    }
+    
+    // Step 4: Find user with matching sameId
+    let founderUser: any = null;
+    snapshot.forEach(childSnapshot => {
+      const user = childSnapshot.val();
+      if (user.sameId === startup.sameId) {
+        console.log(`[Wallet DB] Found matching user with sameId:`, user);
+        founderUser = user;
+        // Return true to break out of the forEach loop
+        return true;
+      }
+    });
+    
+    // Step 5: Return the wallet address if found
+    if (founderUser && founderUser.walletAddress && founderUser.walletAddress.startsWith('0x')) {
+      console.log(`[Wallet DB] Found founder wallet address through sameId: ${founderUser.walletAddress}`);
+      return founderUser.walletAddress;
+    }
+    
+    console.log(`[Wallet DB] Could not find founder wallet address using sameId`);
+    return null;
+  } catch (error) {
+    console.error('[Wallet DB] Error getting founder wallet by sameId:', error);
+    return null;
+  }
+};
+
+/**
  * Deletes a wallet address from a user's account
  */
 export const deleteWallet = async (

@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   role: text("role").notNull(), // "founder" or "investor"
   walletAddress: text("wallet_address"),
   profilePicture: text("profile_picture"),
+  sameId: text("same_id"), // Added to link founders with their startups
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -29,6 +30,7 @@ export const startups = pgTable("startups", {
   websiteUrl: text("website_url"),
   upiId: text("upi_id"),
   upiQrCode: text("upi_qr_code"),
+  sameId: text("same_id"), // Added to link startups with their founders
   // Media fields
   mediaUrls: text("media_urls").array(), // For storing multiple image URLs
   videoUrl: text("video_url"), // For storing a single video URL

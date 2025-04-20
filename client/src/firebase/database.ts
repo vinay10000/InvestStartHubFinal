@@ -15,6 +15,7 @@ export interface FirebaseUser {
   createdAt?: string;
   online?: boolean;
   lastActive?: string;
+  sameId?: string; // Unique ID that links users with their startups
 }
 
 // Get user by uid
@@ -100,6 +101,7 @@ export interface FirebaseStartup {
   upi_id?: string | null;
   upi_qr_code?: string | null;
   createdAt?: string;
+  sameId?: string; // Unique ID that links startups with their founders
 }
 
 // Create a new startup
@@ -408,6 +410,44 @@ export const deleteStartup = async (startupId: string): Promise<boolean> => {
   } catch (error) {
     console.error("Error deleting startup:", error);
     return false;
+  }
+};
+
+// Get startup by sameId
+export const getStartupBySameId = async (sameId: string): Promise<FirebaseStartup | null> => {
+  try {
+    console.log("[database] Looking up startup with sameId:", sameId);
+    
+    // Get all startups and filter
+    const startupsRef = ref(database, 'startups');
+    const snapshot = await get(startupsRef);
+    
+    if (snapshot.exists()) {
+      let matchedStartup: FirebaseStartup | null = null;
+      
+      snapshot.forEach((childSnapshot) => {
+        const startup = childSnapshot.val() as FirebaseStartup;
+        
+        // Check if sameId matches
+        if (startup.sameId === sameId) {
+          console.log("[database] Found startup with matching sameId:", startup);
+          matchedStartup = {
+            ...startup,
+            id: childSnapshot.key // Ensure the ID is set to the Firebase key
+          };
+          // Exit the loop early
+          return true;
+        }
+      });
+      
+      return matchedStartup;
+    }
+    
+    console.log("[database] No startups found with matching sameId:", sameId);
+    return null;
+  } catch (error) {
+    console.error("Error getting startup by sameId:", error);
+    return null;
   }
 };
 
