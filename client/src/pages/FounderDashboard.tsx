@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Building2, FileText, DollarSign, Users } from "lucide-react";
+import { Plus, Building2, FileText, DollarSign, Users, BarChart2, PieChart } from "lucide-react";
+import InvestmentAnalytics from "@/components/dashboard/InvestmentAnalytics";
 import StartupForm from "@/components/startups/StartupForm";
 import StartupCard from "@/components/startups/StartupCard";
 import DocumentUpload from "@/components/startups/DocumentUpload";
@@ -563,25 +564,25 @@ const FounderDashboard = () => {
   // No longer need to transform API startups as we're using Firebase directly
     
   // Now we're only using adapted Firebase data for UI components
-  const transactions = firebaseTransactions;
+  // Use firebaseTransactions directly
 
   // Calculate metrics safely
   const totalInvestors = useMemo(() => {
     const investorIds: Record<string, boolean> = {};
-    transactions.forEach(t => {
+    firebaseTransactions.forEach(t => {
       if (t.investorId) {
         const id = String(t.investorId);
         investorIds[id] = true;
       }
     });
     return Object.keys(investorIds).length;
-  }, [transactions]);
+  }, [firebaseTransactions]);
   
   const totalRevenue = useMemo(() => {
-    return transactions
+    return firebaseTransactions
       .filter(t => t.status === "completed")
       .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-  }, [transactions]);
+  }, [firebaseTransactions]);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -639,7 +640,7 @@ const FounderDashboard = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Transactions</p>
                 <h3 className="text-2xl font-bold">
-                  {transactionsLoading ? <Skeleton className="h-8 w-16" /> : transactions.length}
+                  {transactionsLoading ? <Skeleton className="h-8 w-16" /> : firebaseTransactions.length}
                 </h3>
               </div>
             </div>
@@ -650,12 +651,21 @@ const FounderDashboard = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
         <TabsList>
           <TabsTrigger value="startups">My Startups</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-1">
+            <BarChart2 className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           {isDevEnvironment && (
             <TabsTrigger value="dev-tools">Developer Tools</TabsTrigger>
           )}
         </TabsList>
+        
+        <TabsContent value="analytics">
+          <h2 className="text-2xl font-bold mb-6">Funding Analytics</h2>
+          <InvestmentAnalytics userId={userId.toString()} isFounderView={true} />
+        </TabsContent>
         
         <TabsContent value="startups">
           <div className="flex justify-between items-center mb-6">
@@ -824,7 +834,7 @@ const FounderDashboard = () => {
         
         <TabsContent value="transactions">
           <h2 className="text-2xl font-bold mb-6">Investment Transactions</h2>
-          <TransactionList transactions={transactions} isLoading={transactionsLoading} />
+          <TransactionList transactions={firebaseTransactions} isLoading={transactionsLoading} />
         </TabsContent>
         
         {isDevEnvironment && (

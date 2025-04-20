@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInvestmentStageColor } from "@/lib/utils";
-import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode } from "lucide-react";
+import { MessageSquare, FileText, DollarSign, Pencil, PlusCircle, Wallet, QrCode, BarChart2 } from "lucide-react";
 import DocumentUpload from "@/components/startups/DocumentUpload";
 import StartupDocumentUpload from "@/components/startups/StartupDocumentUpload";
 import DocumentViewer from "@/components/startups/DocumentViewer";
@@ -28,6 +28,7 @@ import { getStartupWallet, isSampleWalletAddress } from "@/firebase/getStartupWa
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RefreshCw } from "lucide-react";
+import InvestmentAnalytics from "@/components/dashboard/InvestmentAnalytics";
 
 // Helper function to convert any startup ID to a valid numeric ID for blockchain
 function getNumericStartupId(id: any): number {
@@ -595,6 +596,28 @@ const StartupDetails = () => {
             
             <h2 className="text-xl font-bold mb-2">Pitch</h2>
             <p className="text-gray-700">{pitch}</p>
+          </CardContent>
+        </Card>
+        
+        {/* Investment Analytics */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChart2 className="h-6 w-6 mr-2 text-primary" />
+              {isFounder ? "Funding Analytics" : "Investment Overview"}
+            </CardTitle>
+            <CardDescription>
+              {isFounder 
+                ? "Track your startup's funding progress and investor engagement" 
+                : "View investment performance and transaction history"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InvestmentAnalytics 
+              startupId={safeStartupId}
+              userId={user?.id?.toString()}
+              isFounderView={isFounder}
+            />
           </CardContent>
         </Card>
 

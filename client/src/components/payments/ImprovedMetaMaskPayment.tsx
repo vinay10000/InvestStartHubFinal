@@ -715,7 +715,7 @@ const ImprovedMetaMaskPayment = ({
   // Create a founder info object for display/reference
   const effectiveFounderInfo = {
     name: startupData?.name || "Founder",
-    walletAddress: founderWallet || startupWallet || null
+    walletAddress: founderWallet || null
   };
   
   // Function to validate Ethereum address
@@ -858,7 +858,7 @@ const ImprovedMetaMaskPayment = ({
           <div className="flex justify-between items-center">
             <span className="text-sm">Wallet</span>
             <span className="text-sm font-mono truncate max-w-[180px]">
-              {truncateAddress(founderWallet || startupWallet || "")}
+              {truncateAddress(founderWallet || "")}
             </span>
           </div>
         </div>
