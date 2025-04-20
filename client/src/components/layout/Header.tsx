@@ -73,12 +73,8 @@ const Header = () => {
                 <span className="text-primary font-bold text-xl cursor-pointer">StartupConnect</span>
               </Link>
             </div>
+            {/* Removed Home link from navbar as requested */}
             <nav className="hidden sm:ml-6 sm:flex sm:space-x-8" aria-label="Global">
-              <Link href="/">
-                <span className={`${location === "/" ? "border-primary text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}>
-                  Home
-                </span>
-              </Link>
             </nav>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
@@ -179,11 +175,7 @@ const Header = () => {
               </SheetTrigger>
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 mt-4">
-                  <Link href="/">
-                    <span className={`${location === "/" ? "bg-primary-50 border-primary-500 text-primary-700" : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"} block pl-3 pr-4 py-2 border-l-4 text-base font-medium cursor-pointer`} onClick={() => setIsOpen(false)}>
-                      Home
-                    </span>
-                  </Link>
+                  {/* Removed Home link from mobile menu as requested */}
                   
                   {loading ? (
                     // Mobile loading state

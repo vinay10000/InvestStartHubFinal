@@ -350,6 +350,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // In-memory storage for startup updates until we add it to the database model
+  const startupUpdates: { id: string; startupId: string; title: string; content: string; category: string; createdAt: string }[] = [];
+  
   // Get startup updates
   app.get('/api/startups/:id/updates', async (req: Request, res: Response) => {
     try {
@@ -359,10 +362,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Getting updates for startup ID: ${startupId} (type: ${typeof startupId})`);
       
-      // This would typically fetch from a database table
-      // For now, we'll return an empty array (updates will be handled through Firebase/client-side)
-      // In a real implementation, this would fetch from storage.getUpdatesByStartupId(startupId)
-      res.status(200).json({ updates: [] });
+      // Filter updates for this startup
+      const updates = startupUpdates.filter(update => update.startupId === startupId);
+      
+      res.status(200).json({ updates });
     } catch (error) {
       console.error('Error fetching updates:', error);
       res.status(500).json({ message: 'Failed to fetch updates', error: error instanceof Error ? error.message : String(error) });
@@ -380,8 +383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Creating update for startup ID: ${startupId}`);
       
-      // This would typically insert into a database table
-      // For now, we'll create a mock response
+      // Create new update
       const updateId = Date.now().toString();
       const update = {
         id: updateId,
@@ -391,6 +393,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: category || 'news',
         createdAt: new Date().toISOString()
       };
+      
+      // Store the update in our in-memory array
+      startupUpdates.push(update);
+      console.log(`Added update to memory storage. Total updates: ${startupUpdates.length}`);
       
       res.status(201).json({ update });
     } catch (error) {

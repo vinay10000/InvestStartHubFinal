@@ -205,18 +205,29 @@ const StartupDetails = () => {
     
     try {
       // Log the initial values for debugging
-      console.log("Chat creation - Initial values:", {
+      console.log("Chat redirect - Initial values:", {
         startupId: startup.id,
-        startupIdType: typeof startup.id,
+        startupName: startup.name,
         founderId,
-        founderIdType: typeof founderId,
         userId: user.id,
-        userIdType: typeof user.id,
         userRole: user.role
       });
       
+      // If user is an investor, directly redirect to chat with the founder
+      if (user.role === 'investor' && founderId) {
+        toast({
+          title: "Opening chat...",
+          description: `Connecting you with the founder of ${startup.name}`,
+        });
+        
+        // For direct connection, use the founder's ID as the chat identifier
+        // This ensures we always go to the same founder's chat when clicking from their startup
+        setLocation(`/chat/founder/${founderId}`);
+        return;
+      }
+      
+      // Original chat creation logic for backward compatibility and other roles
       // Get startup ID - always convert to number for consistency with the API
-      // Use a default value of 1 if we can't parse the ID (to avoid server errors)
       let startupIdNumber: number = 1;
       
       if (startup.id !== undefined && startup.id !== null) {
@@ -229,7 +240,6 @@ const StartupDetails = () => {
             startupIdNumber = parsed;
           } else {
             // If it's a Firebase ID (non-numeric string), generate a numeric hash
-            // Simple hash function to convert string to number
             const stringToNumber = (str: string): number => {
               let hash = 0;
               for (let i = 0; i < str.length; i++) {
@@ -240,7 +250,6 @@ const StartupDetails = () => {
             };
             
             startupIdNumber = stringToNumber(startup.id);
-            console.log("Generated numeric ID for Firebase startup ID:", startupIdNumber);
           }
         }
       }
@@ -268,7 +277,6 @@ const StartupDetails = () => {
             };
             
             founderIdNumber = stringToNumber(user.id);
-            console.log("Generated numeric ID for founder:", founderIdNumber);
           }
         }
       } else if (founderId !== undefined && founderId !== null) {
@@ -291,7 +299,6 @@ const StartupDetails = () => {
             };
             
             founderIdNumber = stringToNumber(founderId);
-            console.log("Generated numeric ID for founder string ID:", founderIdNumber);
           }
         }
       }
@@ -319,30 +326,9 @@ const StartupDetails = () => {
             };
             
             investorIdNumber = stringToNumber(user.id);
-            console.log("Generated numeric ID for investor:", investorIdNumber);
-          }
-        }
-      } else if (user.id !== undefined && user.id !== null) {
-        // For consistency, if we're not an investor but need an investor ID
-        if (typeof user.id === 'number') {
-          investorIdNumber = user.id;
-        } else if (typeof user.id === 'string') {
-          const parsed = parseInt(user.id);
-          if (!isNaN(parsed)) {
-            investorIdNumber = parsed;
-          } else {
-            // Use default investor ID
-            console.log("Using default investor ID (2) as we couldn't parse:", user.id);
           }
         }
       }
-      
-      // Log the values we're going to use
-      console.log("Chat creation - Using values:", {
-        startupIdNumber,
-        founderIdNumber,
-        investorIdNumber
-      });
       
       // Create final chat data with correct types
       const chatData = {
@@ -363,12 +349,6 @@ const StartupDetails = () => {
       // Get the chat ID and Firebase ID if available
       const chatId = result.chat.id;
       const firebaseId = result.chat.firebaseId;
-      
-      console.log("Chat created successfully:", {
-        chatId,
-        firebaseId,
-        result
-      });
       
       toast({
         title: "Chat created!",

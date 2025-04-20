@@ -116,9 +116,21 @@ const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
   // Format chat name for display
   const getChatName = (chat: FirebaseChat) => {
     if (isFounder) {
-      return chat.investorName || `Investor ${chat.investorId.substring(0, 5)}...`;
+      if (chat.investorName) {
+        return chat.investorName;
+      } else if (chat.investorId) {
+        return `Investor ${chat.investorId.substring(0, 5)}...`;
+      } else {
+        return "Investor";
+      }
     } else {
-      return chat.startupName || `Startup ${chat.startupId.substring(0, 5)}...`;
+      if (chat.startupName) {
+        return chat.startupName;
+      } else if (chat.startupId) {
+        return `Startup ${chat.startupId.substring(0, 5)}...`;
+      } else {
+        return "Startup";
+      }
     }
   };
   

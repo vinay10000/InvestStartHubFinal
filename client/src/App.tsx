@@ -20,6 +20,7 @@ import Profile from "@/pages/Profile";
 import WalletConnection from "@/pages/WalletConnection";
 import WalletSetup from "@/pages/WalletSetup";
 import WalletDiagnostics from "@/pages/WalletDiagnostics";
+import ImageKitTest from "@/pages/ImageKitTest";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
@@ -122,13 +123,19 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/chat">
+      <Route path="/chat/founder/:founderId">
+        <ProtectedRoute>
+          <Chat isDirectFounderChat={true} />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/chat/:id">
         <ProtectedRoute>
           <Chat />
         </ProtectedRoute>
       </Route>
       
-      <Route path="/chat/:id">
+      <Route path="/chat">
         <ProtectedRoute>
           <Chat />
         </ProtectedRoute>
@@ -156,6 +163,13 @@ function Router() {
       <Route path="/wallet-diagnostics">
         <ProtectedRoute>
           <WalletDiagnostics />
+        </ProtectedRoute>
+      </Route>
+      
+      {/* ImageKit test page */}
+      <Route path="/imagekit-test">
+        <ProtectedRoute>
+          <ImageKitTest />
         </ProtectedRoute>
       </Route>
       

@@ -20,6 +20,7 @@ const startupFormSchema = insertStartupSchema.omit({ founderId: true }).extend({
   name: z.string().min(3, "Startup name must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   pitch: z.string().min(10, "Pitch must be at least 10 characters"),
+  category: z.string().min(1, "Startup category is required"),
   fundingGoalEth: z.string().min(1, "Funding goal is required"),
   // Financial metrics
   companyValuation: z.string().min(1, "Company valuation is required"),
@@ -52,6 +53,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
       name: defaultValues?.name || "",
       description: defaultValues?.description || "",
       pitch: defaultValues?.pitch || "",
+      category: defaultValues?.category || "",
       investmentStage: defaultValues?.investmentStage || "pre-seed",
       fundingGoalEth: defaultValues?.fundingGoalEth || "",
       companyValuation: defaultValues?.companyValuation || "",
@@ -191,6 +193,44 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
                   className="min-h-[80px]"
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Startup Category</FormLabel>
+              <FormControl>
+                <Select 
+                  value={field.value} 
+                  onValueChange={field.onChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select startup category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LogisticsTech">LogisticsTech</SelectItem>
+                    <SelectItem value="AI/ML">AI/ML Startups</SelectItem>
+                    <SelectItem value="Blockchain">Blockchain</SelectItem>
+                    <SelectItem value="IoT">IoT (Internet of Things)</SelectItem>
+                    <SelectItem value="Mobility/EV">Mobility/EV Startups</SelectItem>
+                    <SelectItem value="SocialImpact">Social Impact</SelectItem>
+                    <SelectItem value="CreatorEconomy">Creator Economy</SelectItem>
+                    <SelectItem value="Marketplace">Marketplace Platforms</SelectItem>
+                    <SelectItem value="AR/VR">AR/VR Startups</SelectItem>
+                    <SelectItem value="Robotics">Robotics</SelectItem>
+                    <SelectItem value="FinTech">FinTech</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormDescription>
+                Select the category that best describes your startup
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

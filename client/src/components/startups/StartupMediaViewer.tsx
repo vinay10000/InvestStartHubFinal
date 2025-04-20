@@ -121,20 +121,41 @@ export default function StartupMediaViewer({ media, isLoading }: StartupMediaVie
               <X className="h-4 w-4" />
             </Button>
           </DialogHeader>
-          <div className="flex justify-center items-center">
+          <div className="flex flex-col justify-center items-center">
             {selectedMedia && isImage(selectedMedia.mimeType) ? (
-              <img 
-                src={selectedMedia.fileUrl} 
-                alt={selectedMedia.fileName}
-                className="max-w-full max-h-[70vh] object-contain"
-              />
+              <>
+                <a 
+                  href={selectedMedia.fileUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-primary underline mb-4"
+                >
+                  Open image in new tab (full size)
+                </a>
+                <img 
+                  src={selectedMedia.fileUrl} 
+                  alt={selectedMedia.fileName}
+                  className="max-w-full max-h-[70vh] object-contain"
+                />
+              </>
             ) : selectedMedia && isVideo(selectedMedia.mimeType) ? (
-              <video 
-                src={selectedMedia.fileUrl}
-                className="max-w-full max-h-[70vh]"
-                controls
-                autoPlay
-              />
+              <>
+                <a 
+                  href={selectedMedia.fileUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-primary underline mb-4"
+                >
+                  Open video in new tab (default player)
+                </a>
+                <video 
+                  src={selectedMedia.fileUrl}
+                  className="max-w-full max-h-[70vh]"
+                  controls
+                  autoPlay
+                  preload="metadata"
+                />
+              </>
             ) : (
               <div className="text-center p-8">
                 <p>This file type cannot be previewed</p>
