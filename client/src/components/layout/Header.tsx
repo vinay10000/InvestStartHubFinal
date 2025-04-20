@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu, LogOut, User, MessageSquare } from "lucide-react";
 import NotificationIcon from "../chat/NotificationIcon";
+import ThemeToggle from "../theme/ThemeToggle";
 
 const Header = () => {
   const [location, navigate] = useLocation();
@@ -63,7 +64,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-background shadow-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
@@ -89,6 +90,7 @@ const Header = () => {
               </div>
             ) : user ? (
               <div className="flex items-center space-x-4">
+                <ThemeToggle />
                 <Link href={getDashboardPath()}>
                   <Button variant="ghost">Dashboard</Button>
                 </Link>
@@ -102,6 +104,8 @@ const Header = () => {
                 
                 {/* Notification Icon */}
                 <NotificationIcon />
+
+                {/* Theme Toggle */}
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -145,7 +149,8 @@ const Header = () => {
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="flex space-x-4">
+              <div className="flex items-center space-x-4">
+                <ThemeToggle />
                 <Link href="/signin">
                   <Button variant="ghost">Sign In</Button>
                 </Link>
@@ -243,6 +248,9 @@ const Header = () => {
                     </>
                   ) : (
                     <div className="pt-4 flex flex-col space-y-3">
+                      <div className="flex justify-center pb-2">
+                        <ThemeToggle />
+                      </div>
                       <Link href="/signin">
                         <Button variant="outline" className="w-full" onClick={() => setIsOpen(false)}>Sign in</Button>
                       </Link>

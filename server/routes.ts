@@ -402,5 +402,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Initialize WebSocket server on the same HTTP server but using a specific path
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store active connections
+  const connections = new Map<string, WebSocket>();
+  
+  // Handle WebSocket connections
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('New WebSocket connection established');
+    
+    // Generate unique connection ID
+    const connectionId = Date.now().toString();
+    connections.set(connectionId, ws);
+    
+    // Send welcome message
+    ws.send(JSON.stringify({
+      type: 'connection_established',
+      connectionId,
+      timestamp: Date.now()
+    }));
+    
+    // Handle messages
+    ws.on('message', async (message: string) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('Received WebSocket message:', data);
+        
+        // Handle different message types
+        switch (data.type) {
+          case 'chat_message':
+            // Store message in database
+            if (data.chatId && data.senderId && data.content) {
+              try {
+                const messageData = insertMessageSchema.parse({
+                  chatId: parseInt(data.chatId),
+                  senderId: parseInt(data.senderId),
+                  content: data.content
+                });
+                
+                const savedMessage = await storage.createMessage(messageData);
+                
+                // Broadcast to all connected clients
+                connections.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'new_message',
+                      message: savedMessage,
+                      timestamp: Date.now()
+                    }));
+                  }
+                });
+              } catch (error) {
+                console.error('Error processing chat message:', error);
+              }
+            }
+            break;
+            
+          case 'typing_indicator':
+            // Broadcast typing indicator to all clients
+            if (data.chatId && data.senderId) {
+              connections.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'typing_indicator',
+                    chatId: data.chatId,
+                    senderId: data.senderId,
+                    isTyping: data.isTyping,
+                    timestamp: Date.now()
+                  }));
+                }
+              });
+            }
+            break;
+            
+          case 'read_receipt':
+            // Mark message as read and broadcast receipt
+            if (data.messageId && data.userId) {
+              connections.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'read_receipt',
+                    messageId: data.messageId,
+                    userId: data.userId,
+                    timestamp: Date.now()
+                  }));
+                }
+              });
+            }
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+    
+    // Handle disconnection
+    ws.on('close', () => {
+      console.log('WebSocket connection closed:', connectionId);
+      connections.delete(connectionId);
+    });
+  });
+  
   return httpServer;
 }

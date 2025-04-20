@@ -14,6 +14,7 @@ import FounderDashboard from "@/pages/FounderDashboard";
 import InvestorDashboard from "@/pages/InvestorDashboard";
 import StartupDetails from "@/pages/StartupDetails";
 import Transactions from "@/pages/Transactions";
+import TransactionDetails from "@/pages/TransactionDetails";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import WalletConnection from "@/pages/WalletConnection";
@@ -111,6 +112,12 @@ function Router() {
       <Route path="/transactions">
         <ProtectedRoute>
           <Transactions />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/transactions/:id">
+        <ProtectedRoute>
+          <TransactionDetails />
         </ProtectedRoute>
       </Route>
       
