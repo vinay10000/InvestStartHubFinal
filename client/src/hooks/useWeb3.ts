@@ -177,6 +177,12 @@ export const useWeb3 = () => {
   
   // Connect wallet function
   const connect = useCallback(async () => {
+    // If we already have an address, just return success without reconnecting
+    if (address) {
+      console.log("[useWeb3] Connect - Wallet already connected with address:", address);
+      return true;
+    }
+    
     if (!isInstalled) {
       toast({
         title: 'MetaMask Required',
@@ -270,7 +276,7 @@ export const useWeb3 = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isInstalled, toast]);
+  }, [isInstalled, toast, address]);
   
   // Switch network function
   const changeNetwork = useCallback(async (newChainIdStr: string) => {

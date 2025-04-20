@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { QrCode, CheckCircle2, Loader2, ClipboardCopy, Copy } from "lucide-react";
+import { QrCode, CheckCircle2, Loader2, ClipboardCopy, Copy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -11,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSimpleAuth } from "@/hooks/useSimpleAuth";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { firestore } from "@/firebase/config";
+import { useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   amount: z.string()
@@ -40,12 +43,39 @@ const UPIPayment = ({
   upiQrCode,
   onPaymentComplete 
 }: UPIPaymentProps) => {
-  const { createTransaction } = useTransactions();
+  const { createTransaction, getTransactionsByInvestorId, refreshTransactions } = useTransactions();
   const { user } = useSimpleAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Get query client for invalidations
+  const queryClient = useQueryClient();
+  
+  // Add effect for real-time updates when a transaction is created
+  useEffect(() => {
+    if (!user || !completed || !transactionId) return;
+    
+    // Set up interval to refresh transaction status
+    const intervalId = setInterval(() => {
+      try {
+        setRefreshing(true);
+        // Use the dedicated refresh function
+        refreshTransactions();
+        console.log("[UPI] Refreshed transaction status every 10 seconds");
+      } catch (error) {
+        console.error("Error refreshing transaction status:", error);
+      } finally {
+        setRefreshing(false);
+      }
+    }, 10000); // Refresh every 10 seconds
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [user, completed, transactionId, refreshTransactions]);
   
   // Form setup
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,7 +102,7 @@ const UPIPayment = ({
     
     try {
       // Record transaction in our backend with additional details
-      await createTransaction.mutateAsync({
+      const result = await createTransaction.mutateAsync({
         startupId,
         investorId: user.id.toString(),
         amount: values.amount, // Use string directly as our schema expects
@@ -80,6 +110,9 @@ const UPIPayment = ({
         transactionId: values.referenceId,
         status: "pending" // Will be verified by admin
       });
+      
+      // Store transaction reference for refreshing
+      setTransactionId(values.referenceId);
       
       // Notify user
       toast({
@@ -89,6 +122,22 @@ const UPIPayment = ({
       
       // Set completed state
       setCompleted(true);
+      
+      // Also create entry in Firestore for real-time updates
+      try {
+        await addDoc(collection(firestore, "transactions"), {
+          startupId,
+          investorId: user.id.toString(),
+          amount: values.amount,
+          paymentMethod: "upi",
+          transactionId: values.referenceId,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+        console.log("[UPI] Created duplicate transaction in Firestore for real-time tracking");
+      } catch (firestoreError) {
+        console.error("[UPI] Failed to create Firestore transaction record:", firestoreError);
+      }
       
       // Call the callback if provided
       if (onPaymentComplete) {
@@ -141,6 +190,24 @@ const UPIPayment = ({
               You will be notified once your payment is confirmed.
             </p>
           </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setRefreshing(true);
+              // Use the dedicated refresh function from the hook
+              refreshTransactions();
+              setTimeout(() => setRefreshing(false), 1000);
+            }}
+            disabled={refreshing}
+          >
+            {refreshing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Refresh Transactions
+          </Button>
         </CardContent>
         <CardFooter>
           <Button 

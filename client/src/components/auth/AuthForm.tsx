@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Wallet, Loader2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { useWeb3 } from "@/hooks/useWeb3";
+import { Badge } from "@/components/ui/badge";
 
 // Form schema for sign in
 const signInSchema = z.object({
@@ -38,6 +40,11 @@ interface AuthFormProps {
 const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [connectingWallet, setConnectingWallet] = useState(false);
+  
+  // Only initialize web3 hook for signup since we don't need it for signin
+  const { isInstalled, address, connect, isWalletConnected } = type === "signup" ? useWeb3() : 
+    { isInstalled: false, address: null, connect: () => Promise.resolve(false), isWalletConnected: () => false };
 
   const formSchema = type === "signin" ? signInSchema : signUpSchema;
   
@@ -48,13 +55,52 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
       : { username: "", email: "", walletAddress: "", password: "", confirmPassword: "" },
   });
 
+  // Update the form value when wallet connects
+  useEffect(() => {
+    if (type === "signup" && address) {
+      form.setValue("walletAddress", address);
+    }
+  }, [address, type, form]);
+  
+  // Handle MetaMask connection
+  const handleConnectWallet = async () => {
+    // If already connected, don't try to connect again
+    if (address) {
+      console.log("Wallet already connected:", address);
+      return;
+    }
+    
+    if (!isInstalled) {
+      window.open("https://metamask.io/download/", "_blank");
+      return;
+    }
+    
+    setConnectingWallet(true);
+    try {
+      const success = await connect();
+      
+      if (success && address) {
+        console.log("Successfully connected wallet:", address);
+        form.setValue("walletAddress", address);
+      } else {
+        console.log("Failed to connect wallet or no address returned");
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+    } finally {
+      setConnectingWallet(false);
+    }
+  };
+
   const handleSubmit = async (data: SignInFormValues | SignUpFormValues) => {
     if (type === "signin") {
       const { username, password } = data as SignInFormValues;
       await onSubmit("", password, username); // Email is not used for sign in
     } else {
       const { email, password, username, walletAddress } = data as SignUpFormValues;
-      await onSubmit(email, password, username, walletAddress);
+      // Use the connected wallet address from the state if available, otherwise use form value
+      const effectiveWalletAddress = address || walletAddress;
+      await onSubmit(email, password, username, effectiveWalletAddress);
     }
   };
 
@@ -106,15 +152,54 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
               name="walletAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Wallet Address</FormLabel>
+                  <FormLabel>Ethereum Wallet</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="text" 
-                      placeholder="Enter your Ethereum wallet address (0x...)" 
-                      {...field} 
-                      disabled={isLoading}
-                    />
+                    <div className="flex space-x-2">
+                      <div className="relative flex-1">
+                        <Input 
+                          type="text" 
+                          placeholder="Connect MetaMask to automatically fill" 
+                          {...field} 
+                          disabled={true}
+                          className={address ? "pr-16 text-green-600 font-medium" : ""}
+                        />
+                        {address && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">Connected</Badge>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant={address ? "outline" : "default"}
+                        onClick={handleConnectWallet}
+                        disabled={isLoading || connectingWallet}
+                        className="whitespace-nowrap"
+                      >
+                        {connectingWallet ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : address ? (
+                          <>
+                            <Wallet className="mr-2 h-4 w-4" />
+                            Connected
+                          </>
+                        ) : (
+                          <>
+                            <Wallet className="mr-2 h-4 w-4" />
+                            Connect MetaMask
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </FormControl>
+                  {!address && (
+                    <p className="text-sm text-muted-foreground mt-1.5">
+                      Connect your MetaMask wallet to verify your Ethereum address
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

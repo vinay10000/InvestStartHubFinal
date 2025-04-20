@@ -138,6 +138,20 @@ export const useTransactions = () => {
     },
   });
 
+  // Function to manually refresh all transaction-related queries
+  const refreshTransactions = () => {
+    console.log("[Transactions] Manually refreshing all transaction queries");
+    queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
+    queryClient.invalidateQueries({ queryKey: ["firebase/transactions"] });
+    
+    toast({
+      title: "Refreshed",
+      description: "Transaction data has been refreshed",
+    });
+    
+    return true;
+  };
+
   return {
     getAllTransactions,
     getTransactionsByInvestorId,
@@ -145,5 +159,6 @@ export const useTransactions = () => {
     getTransactionsByStartupId,
     createTransaction,
     verifyTransaction,
+    refreshTransactions,
   };
 };

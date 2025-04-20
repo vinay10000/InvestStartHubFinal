@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { Wallet, AlertTriangle, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
+import { Wallet, AlertTriangle, CheckCircle2, Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,7 +19,8 @@ import { Progress } from "@/components/ui/progress";
 import { saveWalletToStartup } from '../../firebase/walletDatabase';
 import { Input } from "@/components/ui/input";
 import { firestore } from "@/firebase/config";
-import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ImprovedMetaMaskPaymentProps {
   startupId: string | number;
@@ -34,10 +35,12 @@ const ImprovedMetaMaskPayment = ({
 }: ImprovedMetaMaskPaymentProps) => {
   const { isInstalled, address, connect, isWalletConnected, balance, chainId, sendDirectETH } = useWeb3();
   const { investInStartup } = useContractInteraction();
-  const { createTransaction } = useTransactions();
+  const { createTransaction, getTransactionsByInvestorId, refreshTransactions } = useTransactions();
   const { user } = useAuth();
   const { toast } = useToast();
   const { useStartup } = useStartups();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
   
   // Get founder's wallet information from multiple sources
   const { data: startupData } = useStartup(startupId.toString());
@@ -46,9 +49,10 @@ const ImprovedMetaMaskPayment = ({
   const { walletAddress: founderWalletAddress } = useWallet(startupData?.founderId);
   
   // Also check if the startup data has a direct wallet address field (handle various field names)
-  const directFounderWallet = startupData?.founderWalletAddress || 
-                             (startupData as any)?.founderWalletAddress || 
-                             (startupData as any)?.walletAddress;
+  // Use type assertion to avoid TypeScript errors with dynamic properties
+  const directFounderWallet = (startupData as any)?.founderWalletAddress || 
+                             (startupData as any)?.walletAddress || 
+                             (startupData as any)?.founderWallet;
                              
   // For wallet discovery logging only
   console.log("Wallet Discovery - Founder wallet sources:", {
@@ -121,6 +125,28 @@ const ImprovedMetaMaskPayment = ({
   useEffect(() => {
     setNetworkName(getNetworkName(chainId));
   }, [chainId]);
+  
+  // Add effect for real-time updates when a transaction is processed
+  useEffect(() => {
+    if (!user || !txHash) return;
+    
+    // Set up interval to refresh transaction status
+    const intervalId = setInterval(() => {
+      try {
+        setRefreshing(true);
+        // Use the dedicated refresh function
+        refreshTransactions();
+        console.log("[MetaMask] Refreshed transaction status every 10 seconds");
+      } catch (error) {
+        console.error("[MetaMask] Error refreshing transaction status:", error);
+      } finally {
+        setRefreshing(false);
+      }
+    }, 10000); // Refresh every 10 seconds
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [user, txHash, refreshTransactions]);
   
   // Update the useEffect for wallet connection state
   useEffect(() => {
@@ -221,13 +247,33 @@ const ImprovedMetaMaskPayment = ({
     
     // Check if founder wallet is available
     if (!effectiveFounderWallet) {
+      console.error("Investment - Founder wallet not found", {
+        startupId,
+        founderWalletAddress,
+        directFounderWallet,
+        manualFounderWallet,
+        resolvedFounderWallet
+      });
+      
+      // The founder wallet display is handled in the component UI based on effectiveHasWallet state
       toast({
         title: "Founder Wallet Not Found",
-        description: "The startup founder hasn't connected their wallet yet. Please try again later when the founder has setup their wallet in their profile.",
+        description: "Unable to locate a wallet address for this startup's founder. Please try again later.",
         variant: "destructive"
       });
       return;
     }
+    
+    // For extra validation, log wallet details
+    console.log("Investment - Proceeding with founder wallet:", {
+      wallet: effectiveFounderWallet,
+      startupId,
+      founderId: startupData?.founderId,
+      walletSource: founderWalletAddress ? "props" : 
+                    directFounderWallet ? "direct" : 
+                    manualFounderWallet ? "manual" : 
+                    resolvedFounderWallet ? "resolved" : "unknown"
+    });
 
     setIsProcessing(true);
     setTransactionProgress(10);
@@ -285,6 +331,24 @@ const ImprovedMetaMaskPayment = ({
         const userRef = doc(firestore, "users", user.id.toString());
         const userTransactionsRef = collection(userRef, "transactions");
         await setDoc(doc(userTransactionsRef, transactionId), transactionData);
+        
+        // Record transaction in our backend for API access
+        try {
+          const result = await createTransaction.mutateAsync({
+            startupId: startupId.toString(),
+            investorId: user.id.toString(),
+            amount: cleanAmount, 
+            paymentMethod: "metamask",
+            transactionId: transactionId,
+            status: "completed" // MetaMask transactions are considered completed immediately
+          });
+          console.log("[MetaMask] Created transaction in backend:", result);
+          
+          // Force immediate query invalidation
+          queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
+        } catch (backendError) {
+          console.error("[MetaMask] Failed to create backend transaction record:", backendError);
+        }
         
         // Complete transaction
         setTransactionProgress(100);
@@ -594,9 +658,40 @@ const ImprovedMetaMaskPayment = ({
     );
   }
   
+  // Import the ensureStartupHasWallet function for wallet resolution
+  const { ensureStartupHasWallet } = require('@/firebase/sampleWallets');
+  const [resolvedFounderWallet, setResolvedFounderWallet] = useState<string | null>(null);
+  
+  // Ensure we have a wallet for this startup - this is critical
+  useEffect(() => {
+    const resolveWallet = async () => {
+      try {
+        // First check if we already have a wallet from regular sources
+        if (founderWalletAddress || directFounderWallet || manualFounderWallet) {
+          setResolvedFounderWallet(founderWalletAddress || directFounderWallet || manualFounderWallet);
+          return;
+        }
+        
+        if (startupId) {
+          // If no wallet is available, use our wallet resolver to ensure one exists
+          console.log("No wallet found through regular channels, using ensureStartupHasWallet");
+          const walletAddress = await ensureStartupHasWallet(startupId);
+          if (walletAddress) {
+            console.log(`Resolved wallet for startup ${startupId}: ${walletAddress}`);
+            setResolvedFounderWallet(walletAddress);
+          }
+        }
+      } catch (error) {
+        console.error("Error resolving founder wallet:", error);
+      }
+    };
+    
+    resolveWallet();
+  }, [startupId, founderWalletAddress, directFounderWallet, manualFounderWallet]);
+  
   // Use the wallet info passed from props or provided by useFounderWallet hook
-  // Combine all possible wallet sources
-  const effectiveFounderWallet = founderWalletAddress || directFounderWallet || manualFounderWallet;
+  // Combine all possible wallet sources including our resolved wallet
+  const effectiveFounderWallet = founderWalletAddress || directFounderWallet || manualFounderWallet || resolvedFounderWallet;
   const effectiveFounderInfo = {
     name: startupData?.name || "Founder",
     walletAddress: effectiveFounderWallet
@@ -659,14 +754,34 @@ const ImprovedMetaMaskPayment = ({
               Your transaction will be verified on the blockchain. This process may take a few minutes.
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => window.open(`https://etherscan.io/tx/${txHash}`, "_blank")}
-          >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            View on Etherscan
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={() => window.open(`https://etherscan.io/tx/${txHash}`, "_blank")}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View on Etherscan
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setRefreshing(true);
+                // Use the dedicated refresh function from the hook
+                refreshTransactions();
+                setTimeout(() => setRefreshing(false), 1000);
+              }}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Refresh Transactions
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

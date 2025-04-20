@@ -173,30 +173,30 @@ function GlobalWalletChecker() {
   return null;
 }
 
-// Wallet database initialization component
+// Wallet database initialization component with optimized startup
 function WalletDatabaseInitializer() {
   const [initialized, setInitialized] = useState(false);
   
   useEffect(() => {
     const initializeWallets = async () => {
       try {
-        // Check if wallets already exist in Firebase
+        // Import the wallet tools we need
+        const { checkWalletsInFirebase } = await import('./firebase/sampleWallets');
+        
+        // First just check if wallets exist - lightweight operation
         const walletsExist = await checkWalletsInFirebase();
+        console.log(`Wallet database initialized, found wallets: ${walletsExist}`);
         
-        if (!walletsExist) {
-          console.log("No wallet addresses found in Firebase, adding sample data");
-          // Add sample wallet addresses to Firebase
-          const success = await addSampleWalletsToFirebase();
-          if (success) {
-            console.log("Successfully added sample wallet addresses to Firebase");
-          } else {
-            console.error("Failed to add sample wallet addresses to Firebase");
-          }
-        } else {
-          console.log("Wallet addresses already exist in Firebase");
-        }
-        
+        // Set initialized immediately so we don't block app startup
         setInitialized(true);
+        
+        // Wallet data will be created dynamically during signup with MetaMask
+        // No need to pre-load sample wallet data
+        console.log("Wallet initialization complete - no sample wallets will be loaded");
+        
+        // We don't need to run background operations anymore
+        // Users will connect their real wallets during signup
+        
       } catch (error) {
         console.error("Error initializing wallet database:", error);
         setInitialized(true); // Set initialized to true even if error to prevent re-attempts

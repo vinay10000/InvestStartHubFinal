@@ -74,10 +74,11 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use 127.0.0.1 instead of 0.0.0.0 or localhost to avoid ENOTSUP
-  const port = Number(process.env.PORT) || 3000;
+  // Use 0.0.0.0 for Replit to make the server accessible externally
+  // Default to port 5000 for Replit workflows
+  const port = Number(process.env.PORT) || 5000;
 
-  server.listen(port, "127.0.0.1", () => {
-    log(`🚀 Server running on http://127.0.0.1:${port}`);
+  server.listen(port, "0.0.0.0", () => {
+    log(`🚀 Server running on http://0.0.0.0:${port}`);
   });
 })();
