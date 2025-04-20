@@ -21,7 +21,6 @@ import WalletSetup from "@/pages/WalletSetup";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
-import { addSampleWalletsToFirebase, checkWalletsInFirebase } from "@/firebase/sampleWallets";
 
 // AutoRedirect component to handle automatic redirection after login
 function AutoRedirect() {
@@ -173,38 +172,11 @@ function GlobalWalletChecker() {
   return null;
 }
 
-// Wallet database initialization component with optimized startup
+// Real wallet integration component (replaced sample wallet initialization)
 function WalletDatabaseInitializer() {
-  const [initialized, setInitialized] = useState(false);
-  
   useEffect(() => {
-    const initializeWallets = async () => {
-      try {
-        // Import the wallet tools we need
-        const { checkWalletsInFirebase } = await import('./firebase/sampleWallets');
-        
-        // First just check if wallets exist - lightweight operation
-        const walletsExist = await checkWalletsInFirebase();
-        console.log(`Wallet database initialized, found wallets: ${walletsExist}`);
-        
-        // Set initialized immediately so we don't block app startup
-        setInitialized(true);
-        
-        // Wallet data will be created dynamically during signup with MetaMask
-        // No need to pre-load sample wallet data
-        console.log("Wallet initialization complete - no sample wallets will be loaded");
-        
-        // We don't need to run background operations anymore
-        // Users will connect their real wallets during signup
-        
-      } catch (error) {
-        console.error("Error initializing wallet database:", error);
-        setInitialized(true); // Set initialized to true even if error to prevent re-attempts
-      }
-    };
-    
-    // Initialize wallet database
-    initializeWallets();
+    // Log that we're using real wallet connections only
+    console.log("Wallet initialization complete - using real wallets from startup signups");
   }, []);
   
   return null;

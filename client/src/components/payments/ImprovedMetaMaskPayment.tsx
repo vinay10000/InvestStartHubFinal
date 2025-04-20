@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useWeb3 } from "@/hooks/useWeb3";
 import { useContractInteraction } from "@/hooks/useContractInteraction";
-import { formatCurrency, truncateAddress } from "@/lib/utils";
+import { formatCurrency, truncateAddress, normalizeWalletAddress } from "@/lib/utils";
 import { sendDirectETH } from "@/lib/directTransfer";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,14 +53,31 @@ const ImprovedMetaMaskPayment = ({
   const directFounderWallet = (startupData as any)?.founderWalletAddress || 
                              (startupData as any)?.walletAddress || 
                              (startupData as any)?.founderWallet;
+  
+  // Check if we have a founder wallet from Firebase (using the format seen in the user collection)
+  const firebaseFounderWallet = (startupData as any)?.founder?.walletAddress;
+  
+  // Normalize all wallet addresses for consistent format
+  const normalizedFounderWallet = normalizeWalletAddress(founderWalletAddress);
+  const normalizedDirectWallet = normalizeWalletAddress(directFounderWallet);
+  const normalizedFirebaseWallet = normalizeWalletAddress(firebaseFounderWallet);
+  
+  // Determine the best wallet address to use based on priority
+  const effectiveFounderWallet = normalizedFounderWallet || normalizedDirectWallet || normalizedFirebaseWallet || null;
+  const effectiveHasWallet = !!effectiveFounderWallet;
                              
   // For wallet discovery logging only
   console.log("Wallet Discovery - Founder wallet sources:", {
     startupId,
     startupFounderId: startupData?.founderId,
     founderWalletAddress,
+    normalizedFounderWallet,
     directFounderWallet,
-    possibleFounderWallet: founderWalletAddress || directFounderWallet || null
+    normalizedDirectWallet,
+    firebaseFounderWallet,
+    normalizedFirebaseWallet,
+    effectiveFounderWallet,
+    effectiveHasWallet
   });
   
   // Get the current user's wallet - ensure userId is a string or undefined
@@ -257,7 +274,7 @@ const ImprovedMetaMaskPayment = ({
         founderWalletAddress,
         directFounderWallet,
         manualFounderWallet,
-        resolvedFounderWallet
+        firebaseFounderWallet
       });
       
       // The founder wallet display is handled in the component UI based on effectiveHasWallet state
@@ -277,7 +294,7 @@ const ImprovedMetaMaskPayment = ({
       walletSource: founderWalletAddress ? "props" : 
                     directFounderWallet ? "direct" : 
                     manualFounderWallet ? "manual" : 
-                    resolvedFounderWallet ? "resolved" : "unknown"
+                    firebaseFounderWallet ? "firebase" : "unknown"
     });
 
     setIsProcessing(true);
@@ -663,45 +680,14 @@ const ImprovedMetaMaskPayment = ({
     );
   }
   
-  // Import the ensureStartupHasWallet function for wallet resolution
-  const { ensureStartupHasWallet } = require('@/firebase/sampleWallets');
-  const [resolvedFounderWallet, setResolvedFounderWallet] = useState<string | null>(null);
+  // We're now using the enhanced wallet discovery mechanism from the top of the component
+  // No need for additional wallet resolution logic here
   
-  // Ensure we have a wallet for this startup - this is critical
-  useEffect(() => {
-    const resolveWallet = async () => {
-      try {
-        // First check if we already have a wallet from regular sources
-        if (founderWalletAddress || directFounderWallet || manualFounderWallet) {
-          setResolvedFounderWallet(founderWalletAddress || directFounderWallet || manualFounderWallet);
-          return;
-        }
-        
-        if (startupId) {
-          // If no wallet is available, use our wallet resolver to ensure one exists
-          console.log("No wallet found through regular channels, using ensureStartupHasWallet");
-          const walletAddress = await ensureStartupHasWallet(startupId);
-          if (walletAddress) {
-            console.log(`Resolved wallet for startup ${startupId}: ${walletAddress}`);
-            setResolvedFounderWallet(walletAddress);
-          }
-        }
-      } catch (error) {
-        console.error("Error resolving founder wallet:", error);
-      }
-    };
-    
-    resolveWallet();
-  }, [startupId, founderWalletAddress, directFounderWallet, manualFounderWallet]);
-  
-  // Use the wallet info passed from props or provided by useFounderWallet hook
-  // Combine all possible wallet sources including our resolved wallet
-  const effectiveFounderWallet = founderWalletAddress || directFounderWallet || manualFounderWallet || resolvedFounderWallet;
+  // Create a founder info object for display/reference
   const effectiveFounderInfo = {
     name: startupData?.name || "Founder",
     walletAddress: effectiveFounderWallet
   };
-  const effectiveHasWallet = !!effectiveFounderWallet;
   
   // Function to validate Ethereum address
   const isValidEthAddress = (address: string): boolean => {

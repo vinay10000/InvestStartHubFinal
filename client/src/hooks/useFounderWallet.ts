@@ -187,102 +187,12 @@ export const useFounderWallet = (startupId: string | number | null) => {
           // Continue with flow - this is just a fallback
         }
         
-        // PRIORITY 5: Check sample wallets data (from sampleWallets.ts)
-        try {
-          if (startupId) {
-            console.log("[useFounderWallet] Checking sample wallets for startup ID:", startupId);
-            
-            // Import from sample wallets without direct import to avoid circular dependencies
-            const database = getDatabase(app);
-            const sampleWalletsRef = ref(database, 'wallets');
-            const snapshot = await get(sampleWalletsRef);
-            
-            if (snapshot.exists()) {
-              const wallets = snapshot.val();
-              console.log(`[useFounderWallet] Found ${Object.keys(wallets).length} wallets in database`);
-              
-              // First try to find a wallet matching the startup ID
-              for (const address in wallets) {
-                const wallet = wallets[address];
-                const startupIdStr = startupId.toString();
-                const startupIdNum = isNaN(parseInt(startupIdStr)) ? -1 : parseInt(startupIdStr);
-                
-                if (wallet.startupId === startupId || 
-                    wallet.startupId === startupIdStr ||
-                    wallet.startupId === startupIdNum) {
-                  
-                  console.log(`[useFounderWallet] Found matching wallet by startupId:`, wallet);
-                  setFounderWallet(address);
-                  setFounderInfo({
-                    id: founderId,
-                    name: wallet.username || "Founder",
-                    walletAddress: address
-                  });
-                  setIsLoading(false);
-                  clearTimeout(timeoutId);
-                  return;
-                }
-              }
-              
-              // Next try to find a wallet matching the founder ID
-              for (const address in wallets) {
-                const wallet = wallets[address];
-                if (wallet.userId === founderId || 
-                    wallet.userId === founderId.toString() ||
-                    wallet.userId === parseInt(founderId.toString())) {
-                  
-                  console.log(`[useFounderWallet] Found matching wallet by founderId:`, wallet);
-                  setFounderWallet(address);
-                  setFounderInfo({
-                    id: founderId,
-                    name: wallet.username || "Founder",
-                    walletAddress: address
-                  });
-                  setIsLoading(false);
-                  clearTimeout(timeoutId);
-                  return;
-                }
-              }
-            }
-          }
-        } catch (sampleWalletError) {
-          console.error("[useFounderWallet] Error checking sample wallets:", sampleWalletError);
-          // Continue with flow - this is just a fallback
-        }
+        // NO LONGER CHECKING SAMPLE WALLETS
+        // Using only real wallet addresses provided by founders during signup
+        console.log("[useFounderWallet] Not checking sample wallets - using only real founder wallets");
         
-        // PRIORITY 6: Use default testing fallback wallet for development
-        // This ensures we always have a wallet for testing (non-production only)
-        if ((window.location.hostname.includes('localhost') || 
-            window.location.hostname.includes('replit.dev') || 
-            window.location.hostname.includes('repl.co')) && 
-            startupId) {
-          
-          console.log("[useFounderWallet] Using default testing wallet as fallback");
-          const fallbackWallet = "0x71c7656ec7ab88b098defb751b7401b5f6d8976f"; // Known test wallet
-          setFounderWallet(fallbackWallet);
-          setFounderInfo({
-            id: founderId,
-            name: startupData.name ? `${startupData.name} Founder` : "Founder",
-            walletAddress: fallbackWallet
-          });
-          
-          // Save this wallet to the startup for future use
-          try {
-            const database = getDatabase(app);
-            const startupRef = ref(database, `startups/${startupId.toString()}`);
-            await update(startupRef, {
-              founderWalletAddress: fallbackWallet,
-              founderName: startupData.name ? `${startupData.name} Founder` : "Founder"
-            });
-            console.log(`[useFounderWallet] Saved fallback wallet to startup ${startupId}`);
-          } catch (saveError) {
-            console.error("[useFounderWallet] Could not save fallback wallet:", saveError);
-          }
-          
-          setIsLoading(false);
-          clearTimeout(timeoutId);
-          return;
-        }
+        // NO LONGER USING FALLBACK WALLET
+        // We will require founders to connect their real wallets during signup
         
         // If all methods fail, return error
         console.warn("[useFounderWallet] No wallet found for founder after all attempts:", founderId);

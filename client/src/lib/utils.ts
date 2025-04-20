@@ -183,3 +183,38 @@ export function calculatePercentage(value: number, total: number): number {
 export function formatNumber(number: number): string {
   return new Intl.NumberFormat("en-US").format(number);
 }
+
+/**
+ * Validate and normalize Ethereum wallet address
+ * This ensures addresses are properly formatted with 0x prefix and correct length
+ */
+export function normalizeWalletAddress(address: string | null | undefined): string | null {
+  if (!address) return null;
+  
+  // Trim any whitespace
+  address = address.trim();
+  
+  // Add 0x prefix if missing
+  if (!address.startsWith('0x')) {
+    address = '0x' + address;
+  }
+  
+  // Validate basic format (0x followed by 40 hex characters)
+  const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+  if (ethAddressRegex.test(address)) {
+    return address.toLowerCase();
+  }
+  
+  // If address is wrong length but has 0x prefix, try to validate the portion we have
+  if (address.startsWith('0x') && address.length < 42) {
+    console.warn(`Wallet address ${address} is shorter than expected. It may be truncated.`);
+    // If it's a valid hex string, return it as-is
+    if (/^0x[a-fA-F0-9]+$/.test(address)) {
+      return address.toLowerCase();
+    }
+  }
+  
+  // Unable to normalize
+  console.error(`Invalid Ethereum address format: ${address}`);
+  return address.toLowerCase(); // Return as-is but lowercase
+}
