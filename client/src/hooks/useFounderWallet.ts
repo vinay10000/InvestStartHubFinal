@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { 
   getUserWallet, 
+  getWalletByUserId,
   WalletData
 } from '@/firebase/walletDatabase';
-import { getUserByUid } from '@/firebase/database';
+import { getUserByUid, getStartupById } from '@/firebase/database';
 import { useStartups } from '@/hooks/useStartups';
 import { getDatabase, ref, get, update } from 'firebase/database';
 import { app } from '@/firebase/config';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Hook to get a founder's wallet address for a specific startup
@@ -108,23 +110,49 @@ export const useFounderWallet = (startupId: string | number | null) => {
         // PRIORITY 3: Try multiple methods to find the wallet address IN PARALLEL
         console.log("[useFounderWallet] Fetching wallet using multiple sources for ID:", founderId);
         
-        // Create promises for both lookup methods
+        // Use the enhanced wallet lookup system
+        const walletByUserIdPromise = getWalletByUserId(founderId.toString())
+          .catch((err: Error) => {
+            console.error("[useFounderWallet] Error fetching with getWalletByUserId:", err);
+            return null;
+          });
+          
+        // Also try the numeric format as a fallback
         const walletDbPromise = getUserWallet(parseInt(founderId.toString()) || 999)
           .catch((err: Error) => {
             console.error("[useFounderWallet] Error fetching from wallet DB:", err);
             return null;
           });
           
+        // And try the user profile as a third method
         const userProfilePromise = getUserByUid(founderId.toString())
           .catch((err: Error) => {
             console.error("[useFounderWallet] Error fetching from user profile:", err);
             return null;
           });
           
-        // Wait for both to complete
-        const [walletData, userData] = await Promise.all([walletDbPromise, userProfilePromise]);
+        // Wait for all three methods to complete
+        const [walletByUserId, walletData, userData] = await Promise.all([
+          walletByUserIdPromise, 
+          walletDbPromise, 
+          userProfilePromise
+        ]);
         
-        // Check wallet database result
+        // First try the new enhanced lookup method
+        if (walletByUserId && walletByUserId.address) {
+          console.log("[useFounderWallet] Found wallet using getWalletByUserId:", walletByUserId.address);
+          setFounderWallet(walletByUserId.address);
+          setFounderInfo({
+            id: founderId,
+            name: walletByUserId.username || "Founder",
+            walletAddress: walletByUserId.address
+          });
+          setIsLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        // Next try the legacy wallet database result
         if (walletData && walletData.address) {
           console.log("[useFounderWallet] Found wallet address in wallet database:", walletData.address);
           setFounderWallet(walletData.address);
@@ -138,7 +166,7 @@ export const useFounderWallet = (startupId: string | number | null) => {
           return;
         }
         
-        // Check user profile result
+        // Finally try the user profile result
         if (userData && userData.walletAddress) {
           console.log("[useFounderWallet] Found wallet address in user profile:", userData.walletAddress);
           setFounderWallet(userData.walletAddress);

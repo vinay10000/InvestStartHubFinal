@@ -85,7 +85,7 @@ const MetaMaskPayment = ({
   // Add state for manual wallet info entry
   const [manualFounderInfo, setManualFounderInfo] = useState<any>(null);
   
-  // Use our dedicated hook to fetch founder wallet information
+  // Use our enhanced dedicated hook to fetch founder wallet information
   const { 
     founderWallet, 
     founderInfo: hookFounderInfo, 
@@ -93,6 +93,9 @@ const MetaMaskPayment = ({
     error: walletError,
     hasWallet
   } = useFounderWallet(startupId);
+  
+  // Also fetch startup data directly to ensure we have the founderId
+  const { data: startupDetailData } = useStartup(startupId.toString());
   
   // Add a quick timeout to prevent infinite loading and automatically prompt for manual entry
   useEffect(() => {
@@ -342,34 +345,69 @@ const MetaMaskPayment = ({
       // This was loaded in the useEffect when startup data changes
       let founderWalletAddress: string | undefined = founderInfo?.walletAddress;
       
+      console.log("[MetaMaskPayment] Initial wallet check:", {
+        founderWalletAddress, 
+        founderInfo,
+        startupDetailData
+      });
+      
       // Validate if we have a wallet address
       if (!founderWalletAddress || founderWalletAddress === "0x") {
-        // Try to get a valid wallet address from founderInfo.id if we have one
-        if (founderInfo?.id) {
-          console.log("[MetaMaskPayment] Attempting to use founder ID to find wallet:", founderInfo.id);
+        // Try to get a valid wallet address using our enhanced lookup functions
+        
+        // First check if we have a manual entry
+        if (manualFounderInfo?.walletAddress && 
+            manualFounderInfo.walletAddress !== "0x" && 
+            manualFounderInfo.walletAddress.startsWith("0x")) {
           
-          // If we have a manual entry mode with ID, use it
-          if (manualFounderInfo?.walletAddress && 
-              manualFounderInfo.walletAddress !== "0x" && 
-              manualFounderInfo.walletAddress.startsWith("0x")) {
-            founderWalletAddress = manualFounderInfo.walletAddress;
-            console.log("[MetaMaskPayment] Using manually entered wallet address:", founderWalletAddress);
+          founderWalletAddress = manualFounderInfo.walletAddress;
+          console.log("[MetaMaskPayment] Using manually entered wallet address:", founderWalletAddress);
+          
+          // Try to get the founder ID for saving this wallet
+          if (startupDetailData?.founderId && ethers.isAddress(founderWalletAddress)) {
+            // Save this wallet to the founder's account
+            import('@/firebase/walletDatabase').then(async walletDb => {
+              // Save to both walletDatabase and Firebase user
+              await walletDb.saveWalletAddress(
+                startupDetailData.founderId.toString(), 
+                founderWalletAddress as string, 
+                "Founder", 
+                "founder"
+              );
+              
+              // Also save to startup record for easier future lookups
+              await walletDb.saveWalletToStartup(
+                startupId.toString(),
+                founderWalletAddress as string,
+                startupDetailData.name || "Founder"
+              );
+              
+              console.log("[MetaMaskPayment] Saved wallet to all locations:", {
+                founderId: startupDetailData.founderId,
+                startupId,
+                walletAddress: founderWalletAddress
+              });
+            }).catch(err => {
+              // Non-blocking error - we continue with the payment
+              console.error("[MetaMaskPayment] Error saving wallet:", err);
+            });
+          }
+        } 
+        // If no manual entry, check if we can get it from startup data
+        else if (startupDetailData?.founderId) {
+          console.log("[MetaMaskPayment] No manual wallet, checking with founderId:", startupDetailData.founderId);
+          
+          try {
+            // Try to get the wallet directly through getWalletByUserId
+            const walletDbModule = await import('@/firebase/walletDatabase');
+            const walletData = await walletDbModule.getWalletByUserId(startupDetailData.founderId.toString());
             
-            // Try to get the startup data to get the founder ID for saving this wallet
-            const { useStartup } = useStartups();
-            const { data: startupData } = useStartup(startupId.toString());
-            
-            // If we have the startup data and founder ID, migrate the wallet
-            if (startupData?.founderId && ethers.isAddress(founderWalletAddress)) {
-              // Migrate any numeric wallet ID to this Firebase UID
-              migrateWalletToFirebaseUid("92", startupData.founderId.toString(), founderWalletAddress)
-                .then(success => {
-                  console.log(`[MetaMaskPayment] Migration result for ID 92 to ${startupData.founderId}:`, success);
-                })
-                .catch(err => {
-                  console.log("[MetaMaskPayment] Migration attempt error:", err.message);
-                });
+            if (walletData && walletData.address) {
+              founderWalletAddress = walletData.address;
+              console.log("[MetaMaskPayment] Found wallet through getWalletByUserId:", founderWalletAddress);
             }
+          } catch (err) {
+            console.error("[MetaMaskPayment] Error trying to get wallet for founderId:", err);
           }
         }
       }
@@ -377,7 +415,7 @@ const MetaMaskPayment = ({
       // Final validation - if we still don't have a valid address, show error
       if (!founderWalletAddress || !founderWalletAddress.startsWith("0x") || founderWalletAddress === "0x") {
         console.error("[MetaMaskPayment] No valid founder wallet address found for startup:", startupId);
-        throw new Error("Founder has not connected a valid wallet address. Please contact the founder or choose another payment method.");
+        throw new Error("Founder hasn't connected their wallet yet. Please ask the founder to connect their wallet in their profile, or use the manual wallet entry option.");
       }
       
       // Ensure startupId is a valid number for blockchain

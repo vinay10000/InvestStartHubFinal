@@ -194,6 +194,81 @@ export const getUserWallet = async (userId: number): Promise<WalletData | null> 
 };
 
 /**
+ * Gets a wallet for a given user ID (string version, can handle both Firebase UIDs and numeric IDs)
+ */
+export const getWalletByUserId = async (userId: string): Promise<WalletData | null> => {
+  try {
+    console.log(`[Wallet DB] Getting wallet for user ID (string) ${userId}`);
+    
+    // First try to get wallet directly from Firebase user data
+    const userWalletRef = ref(database, `users/${userId}/wallet`);
+    const snapshot = await get(userWalletRef);
+    
+    if (snapshot.exists()) {
+      const walletData = snapshot.val();
+      console.log(`[Wallet DB] Found wallet in users/${userId}/wallet:`, walletData);
+      
+      if (walletData.address) {
+        // Fetch full wallet data from main wallets collection
+        const walletRef = ref(database, `wallets/${walletData.address.toLowerCase()}`);
+        const walletSnapshot = await get(walletRef);
+        
+        if (walletSnapshot.exists()) {
+          return walletSnapshot.val() as WalletData;
+        }
+        
+        // If wallet exists in user data but not in main collection,
+        // construct a basic wallet object to return
+        return {
+          address: walletData.address.toLowerCase(),
+          userId: parseInt(userId) || 0,
+          username: 'User',
+          isPermanent: walletData.isPermanent || false,
+          timestamp: walletData.timestamp || Date.now()
+        };
+      }
+    }
+    
+    // Also try looking for walletAddress directly in the user object
+    const userRef = ref(database, `users/${userId}`);
+    const userSnapshot = await get(userRef);
+    
+    if (userSnapshot.exists()) {
+      const userData = userSnapshot.val();
+      console.log(`[Wallet DB] Found user data in users/${userId}:`, userData);
+      
+      if (userData.walletAddress) {
+        console.log(`[Wallet DB] Found walletAddress in user data:`, userData.walletAddress);
+        
+        // Check if it's already in the wallets collection
+        const walletRef = ref(database, `wallets/${userData.walletAddress.toLowerCase()}`);
+        const walletSnapshot = await get(walletRef);
+        
+        if (walletSnapshot.exists()) {
+          return walletSnapshot.val() as WalletData;
+        }
+        
+        // If not in wallets collection, create a temporary wallet object
+        return {
+          address: userData.walletAddress.toLowerCase(),
+          userId: parseInt(userId) || 0,
+          username: userData.username || 'User',
+          isPermanent: true,
+          timestamp: Date.now()
+        };
+      }
+    }
+    
+    // No wallet found for this user
+    console.log(`[Wallet DB] No wallet found for user ID ${userId}`);
+    return null;
+  } catch (error) {
+    console.error('[Wallet DB] Error getting user wallet by string ID:', error);
+    return null;
+  }
+};
+
+/**
  * Gets wallet data by address
  */
 export const getWalletByAddress = async (address: string): Promise<WalletData | null> => {
