@@ -13,6 +13,26 @@ import { firestore, database } from "./config";
 // Import schemas from shared
 import { User, Startup, Document, Transaction } from "@shared/schema";
 
+// Create a serverTimestamp function that emulates Firebase's
+export const serverTimestamp = () => new Date();
+
+// Export Firebase Firestore API equivalent functions
+export {
+  firestore,
+  doc,
+  collection,
+  setDoc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp
+};
+
 // Create mock Firestore functions that will use our mock objects
 // These match the Firebase/Firestore API but will work with our mocks
 const collection = (db: any, path: string) => ({
@@ -20,12 +40,38 @@ const collection = (db: any, path: string) => ({
   db
 });
 
-const doc = (db: any, collectionPath: string, docId: string) => ({
-  id: docId,
-  path: `${collectionPath}/${docId}`,
-  db,
-  collection: collectionPath
-});
+// Overloaded function to handle both Firebase's doc(collection, id) and doc(firestore, collectionPath, id) formats
+function doc(collectionRef: any, docId?: string): any;
+function doc(firestoreInstance: any, collectionPath: string, docId: string): any;
+function doc(arg1: any, arg2?: any, arg3?: any): any {
+  // Case 1: doc(collectionRef, docId)
+  if (arg3 === undefined && arg2 !== undefined) {
+    return {
+      id: arg2,
+      path: `${arg1.path}/${arg2}`,
+      db: arg1.db,
+      collection: arg1.path
+    };
+  }
+  // Case 2: doc(firestore, collectionPath, docId)
+  else if (arg3 !== undefined) {
+    return {
+      id: arg3,
+      path: `${arg2}/${arg3}`,
+      db: arg1,
+      collection: arg2
+    };
+  }
+  // Just reference a collection
+  else {
+    return {
+      id: null,
+      path: arg1,
+      db: null,
+      collection: arg1
+    };
+  }
+}
 
 const setDoc = async (docRef: any, data: any) => {
   console.log(`[Firestore Mock] setDoc called on ${docRef.path}`, data);

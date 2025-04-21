@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { auth } from '@/firebase/config';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from '@/firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,10 @@ const TestAuth = () => {
         <CardHeader>
           <CardTitle>Authentication Test Page</CardTitle>
           <CardDescription>
-            This page helps verify that Firebase authentication is working properly
+            This page helps verify that authentication is working properly.
+            <div className="mt-2 text-amber-500 font-medium">
+              Note: Authentication is now handled by MongoDB instead of Firebase
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

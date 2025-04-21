@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Trash, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getDatabase, ref, get, remove, update } from 'firebase/database';
-import { app } from '@/firebase/config';
+// Import from our local mock implementation instead of Firebase SDK
+import { getDatabase, ref, get, remove, update } from '@/firebase/firebase';
 import { isSampleWalletAddress } from '@/firebase/getStartupWallet';
 
-// Initialize Firebase Realtime Database
-const database = getDatabase(app);
+// Initialize Firebase Realtime Database using our mock
+const database = getDatabase();
 
 const SampleWalletCleaner = () => {
   const [isScanning, setIsScanning] = useState(false);

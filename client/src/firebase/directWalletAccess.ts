@@ -1,5 +1,9 @@
-import { ref, get, set, query, orderByChild, equalTo } from 'firebase/database';
-import { database } from './config';
+// Import our local mock implementations instead of Firebase SDK
+import { ref, get, set, query, orderByChild, equalTo } from './firebase';
+import { getDatabase } from './firebase';
+
+// Initialize database using our mock
+const database = getDatabase();
 
 /**
  * A direct and simplified approach to access wallet addresses from Firebase

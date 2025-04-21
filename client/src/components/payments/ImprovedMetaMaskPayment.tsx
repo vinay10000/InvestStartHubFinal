@@ -18,8 +18,8 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { doc, setDoc, collection, serverTimestamp, addDoc } from 'firebase/firestore';
-import { firestore } from '../../firebase/config';
+// Import from our local mock implementations instead of Firebase SDK
+import { doc, setDoc, collection, serverTimestamp, addDoc, firestore } from '@/firebase/firestore';
 // Import wallet utilities with MongoDB and Firestore fallbacks
 import { getStartupWallet } from '../../utils/getStartupWalletNew';
 import { useQueryClient } from "@tanstack/react-query";

@@ -6,6 +6,35 @@ import * as firestoreWalletUtils from './wallet-utils';
 const router = express.Router();
 
 /**
+ * Get wallet status (check if wallets exist in MongoDB)
+ */
+router.get('/status', async (req: Request, res: Response) => {
+  try {
+    // Check if we have wallets in MongoDB
+    const walletsExist = await mongoWalletUtils.checkWalletsExist();
+    return res.json({ walletsExist });
+  } catch (error) {
+    console.error(`[wallet-routes] Error checking wallet status:`, error);
+    return res.status(500).json({ message: 'Error checking wallet status' });
+  }
+});
+
+/**
+ * Initialize wallet addresses in MongoDB
+ * Useful during startup to ensure wallet data is in MongoDB
+ */
+router.post('/initialize', async (req: Request, res: Response) => {
+  try {
+    // Initialize wallets in MongoDB
+    const result = await mongoWalletUtils.initializeWalletAddresses();
+    return res.json({ success: result });
+  } catch (error) {
+    console.error(`[wallet-routes] Error initializing wallets:`, error);
+    return res.status(500).json({ message: 'Error initializing wallets' });
+  }
+});
+
+/**
  * Get wallet address by user ID
  * First tries MongoDB, falls back to Firestore if no wallet found
  */

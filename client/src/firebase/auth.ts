@@ -1,17 +1,31 @@
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  GoogleAuthProvider,
-  signInWithPopup,
+// Import types from Firebase auth but implement with our mock
+import type { 
   UserCredential,
-  onAuthStateChanged,
-  User as FirebaseUser,
-  updateProfile
+  User as FirebaseUser
 } from "firebase/auth";
+
+// Import our auth mock 
 import { auth } from "./config";
 import { apiRequest } from "@/lib/queryClient";
 import { getUserByUid, updateUser } from "./database";
+
+// Export auth functions that are used by components
+export { auth };
+
+// Create a mock of onAuthStateChanged function
+export const onAuthStateChanged = (auth: any, callback: (user: any) => void): (() => void) => {
+  console.log("[Auth Mock] onAuthStateChanged registered");
+  
+  // Call the callback immediately with the current user (or null)
+  setTimeout(() => {
+    callback(auth.currentUser);
+  }, 100);
+  
+  // Mock unsubscribe function
+  return () => {
+    console.log("[Auth Mock] onAuthStateChanged unsubscribed");
+  };
+};
 
 // Create a default avatar URL based on initials
 const createDefaultAvatar = (name: string) => {
@@ -24,7 +38,7 @@ const createDefaultAvatar = (name: string) => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&color=fff&size=256`;
 };
 
-// Sign up with email/password
+// Sign up with email/password - MongoDB version
 export const signUpWithEmail = async (
   email: string, 
   password: string, 
@@ -35,54 +49,78 @@ export const signUpWithEmail = async (
   try {
     console.log(`⭐ IMPORTANT: Creating new user account for ${email} with ROLE "${role.toUpperCase()}"`);
     
-    // Create firebase auth user first
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    // Force role to lowercase for consistency
+    // Normalize role
     const normalizedRole = role.toLowerCase();
     
     // Generate a default profile picture
     const profilePicture = createDefaultAvatar(username);
     
-    // Set display name and photoURL in Firebase Auth
-    await updateProfile(user, {
-      displayName: username,
-      photoURL: profilePicture
-    });
-    
-    console.log("Updated user profile in Firebase Auth with displayName and photoURL");
-    
-    // Create user in Firebase Realtime Database with normalized role
-    await updateUser(user.uid, {
+    // Create user in MongoDB via API instead of Firebase
+    const response = await apiRequest("POST", "/api/register", {
       username,
       email,
-      role: normalizedRole, // Use normalized role here
+      password,
+      role: normalizedRole,
       walletAddress: walletAddress || "",
-      profilePicture,
+      profilePicture
     });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to register user");
+    }
+    
+    // Get the user data from the response
+    const userData = await response.json();
+    
+    // Create a fake UserCredential object to match Firebase's API
+    const mockUser = {
+      uid: userData.id.toString(),
+      email: userData.email,
+      displayName: userData.username,
+      photoURL: userData.profilePicture,
+      emailVerified: false,
+      isAnonymous: false,
+      metadata: {
+        creationTime: new Date().toString(),
+        lastSignInTime: new Date().toString()
+      },
+      providerData: [],
+      refreshToken: "",
+      tenantId: null,
+      delete: () => Promise.resolve(),
+      getIdToken: () => Promise.resolve("mock-token"),
+      getIdTokenResult: () => Promise.resolve({
+        token: "mock-token",
+        authTime: new Date().toString(),
+        issuedAtTime: new Date().toString(),
+        expirationTime: new Date(Date.now() + 3600000).toString(),
+        claims: { role: normalizedRole }
+      }),
+      reload: () => Promise.resolve(),
+      toJSON: () => ({ uid: userData.id.toString() })
+    };
+    
+    // Set current user in auth object
+    auth.currentUser = mockUser;
+    
+    // Create mock UserCredential
+    const userCredential = {
+      user: mockUser,
+      providerId: null,
+      operationType: "signIn" as const
+    };
     
     if (walletAddress) {
       console.log("User created with wallet address:", walletAddress);
       localStorage.setItem('wallet_connected', 'true');
     }
     
-    console.log("User created successfully in Firebase:", user.uid, "with role:", normalizedRole);
+    console.log("User created successfully in MongoDB:", userData.id, "with role:", normalizedRole);
     
     // Store normalized role in localStorage for immediate availability across components
     localStorage.setItem('user_role', normalizedRole);
     console.log("⭐ IMPORTANT: Saved user role to localStorage during signup:", normalizedRole);
-    
-    // Make sure to check the role is saved correctly
-    const storedRole = localStorage.getItem('user_role');
-    if (storedRole !== normalizedRole) {
-      console.error("Role mismatch in localStorage. Expected:", normalizedRole, "Got:", storedRole);
-      // Try setting it again
-      localStorage.setItem('user_role', normalizedRole);
-    }
-    
-    // Force a refresh of the auth token to ensure updated claims
-    await user.getIdToken(true);
     
     return userCredential;
   } catch (error) {
@@ -91,7 +129,7 @@ export const signUpWithEmail = async (
   }
 };
 
-// Sign in with email/password
+// Sign in with email/password - MongoDB version
 export const signInWithEmail = async (
   email: string, 
   password: string
@@ -99,144 +137,120 @@ export const signInWithEmail = async (
   try {
     console.log(`Signing in user with email ${email}`);
     
-    // Sign in with Firebase using email
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    const user = credential.user;
+    // Sign in using MongoDB API instead of Firebase
+    const response = await apiRequest("POST", "/api/login", {
+      username: email, // The server accepts either username or email in this field
+      password
+    });
     
-    console.log("User authenticated successfully with Firebase:", user.uid);
-    
-    // Check if user exists in Firebase Realtime Database
-    const userData = await getUserByUid(user.uid);
-    
-    if (!userData) {
-      console.log("User exists in Firebase Auth but not in Realtime DB, creating record...");
-      
-      // Generate a username from the email or display name
-      const username = user.displayName || email.split('@')[0];
-      
-      // Generate a default profile picture if needed
-      const profilePicture = user.photoURL || createDefaultAvatar(username);
-      
-      // Create user in Realtime Database if it doesn't exist
-      // Default role for new users
-      const defaultRole = "investor";
-      
-      await updateUser(user.uid, {
-        username,
-        email,
-        role: defaultRole,
-        walletAddress: "",
-        profilePicture,
-      });
-      
-      // Store default role in localStorage
-      localStorage.setItem('user_role', defaultRole);
-      console.log("Created new user record with default role in localStorage:", defaultRole);
-      
-      // Update the user's profile in Firebase Auth if needed
-      if (!user.displayName || !user.photoURL) {
-        await updateProfile(user, {
-          displayName: username,
-          photoURL: profilePicture
-        });
-      }
-    } else {
-      // Store existing user's role in localStorage
-      if (userData.role) {
-        localStorage.setItem('user_role', userData.role);
-        console.log("Saved existing user role to localStorage during sign-in:", userData.role);
-      }
-      
-      // Update user's last login time
-      await updateUser(user.uid, {
-        lastActive: new Date().toISOString()
-      });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to login");
     }
     
-    // Force refresh the token to ensure we have updated claims
-    await user.getIdToken(true);
+    // Get the user data from the response
+    const userData = await response.json();
     
-    return credential;
+    console.log("User authenticated successfully with MongoDB:", userData.id);
+    
+    // Create a fake UserCredential object to match Firebase's API
+    const mockUser = {
+      uid: userData.id.toString(),
+      email: userData.email,
+      displayName: userData.username,
+      photoURL: userData.profilePicture || createDefaultAvatar(userData.username),
+      emailVerified: false,
+      isAnonymous: false,
+      metadata: {
+        creationTime: userData.createdAt || new Date().toString(),
+        lastSignInTime: new Date().toString()
+      },
+      providerData: [],
+      refreshToken: "",
+      tenantId: null,
+      delete: () => Promise.resolve(),
+      getIdToken: () => Promise.resolve("mock-token"),
+      getIdTokenResult: () => Promise.resolve({
+        token: "mock-token",
+        authTime: new Date().toString(),
+        issuedAtTime: new Date().toString(),
+        expirationTime: new Date(Date.now() + 3600000).toString(),
+        claims: { role: userData.role }
+      }),
+      reload: () => Promise.resolve(),
+      toJSON: () => ({ uid: userData.id.toString() })
+    };
+    
+    // Set current user in auth object
+    auth.currentUser = mockUser;
+    
+    // Create mock UserCredential
+    const userCredential = {
+      user: mockUser,
+      providerId: null,
+      operationType: "signIn" as const
+    };
+    
+    // Store user's role in localStorage
+    if (userData.role) {
+      localStorage.setItem('user_role', userData.role);
+      console.log("Saved user role to localStorage during sign-in:", userData.role);
+    }
+    
+    // Store wallet connection status if user has a wallet
+    if (userData.walletAddress) {
+      localStorage.setItem('wallet_connected', 'true');
+    }
+    
+    return userCredential;
   } catch (error) {
     console.error("Error in signin process:", error);
     throw error;
   }
 };
 
-// Sign in with Google
+// Mock Google auth provider
+class MockGoogleAuthProvider {
+  scopes: string[] = [];
+  customParameters: Record<string, string> = {};
+  
+  addScope(scope: string) {
+    this.scopes.push(scope);
+    return this;
+  }
+  
+  setCustomParameters(params: Record<string, string>) {
+    this.customParameters = params;
+    return this;
+  }
+  
+  static credential() {
+    return {};
+  }
+}
+
+// Mock Google sign-in function - MongoDB version
 export const signInWithGoogle = async (): Promise<UserCredential> => {
   try {
     console.log("Starting Google sign-in process");
     
-    const provider = new GoogleAuthProvider();
+    // This is a mock implementation that simply redirects to email/password login
+    // since Google OAuth requires a real Google account.
+    // In real implementation, we'd call MongoDB with Google OAuth token
     
-    // Add scopes for additional profile info
-    provider.addScope('profile');
-    provider.addScope('email');
+    alert("Google Sign-in is not available in the migrated MongoDB version.\nPlease use email/password login instead.");
     
-    // Set custom parameters for better UX
-    provider.setCustomParameters({
-      prompt: 'select_account'
-    });
-    
-    // Sign in with popup
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    
-    console.log("Google sign-in successful for:", user.email);
-    
-    if (user.email) {
-      // Check if user exists in Firebase Realtime Database
-      const dbUser = await getUserByUid(user.uid);
-      
-      if (!dbUser) {
-        console.log("Creating new Firebase user for Google sign-in");
-        
-        // Generate a username from the display name or email
-        const username = user.displayName || user.email.split('@')[0];
-        
-        // Use Google photo URL or generate default avatar
-        const profilePicture = user.photoURL || createDefaultAvatar(username);
-        
-        // Create a new user in Firebase Realtime Database
-        await updateUser(user.uid, {
-          username,
-          email: user.email,
-          role: "investor", // Default role for Google sign-ins
-          walletAddress: "",
-          profilePicture,
-        });
-        
-        // Store default role in localStorage
-        localStorage.setItem('user_role', "investor");
-        console.log("Created new Firebase user from Google sign-in:", user.uid, "with default role: investor");
-      } else {
-        console.log("Found existing Firebase user:", user.uid);
-        
-        // Store existing user's role in localStorage
-        if (dbUser.role) {
-          localStorage.setItem('user_role', dbUser.role);
-          console.log("Saved existing user role to localStorage during Google sign-in:", dbUser.role);
-        }
-        
-        // Update the last active time in the database
-        await updateUser(user.uid, { 
-          lastActive: new Date().toISOString()
-        });
-      }
-    }
-    
-    // Force refresh the token to ensure we have updated claims
-    await user.getIdToken(true);
-    
-    return result;
+    throw new Error("Google sign-in not available in MongoDB version");
   } catch (error) {
     console.error("Error in Google sign-in process:", error);
     throw error;
   }
 };
 
-// Sign out
+// Export mock Google provider for components that need it
+export const GoogleAuthProvider = MockGoogleAuthProvider;
+
+// Sign out - MongoDB version
 export const signOut = async (): Promise<void> => {
   try {
     console.log("Attempting to sign out user");
@@ -244,12 +258,10 @@ export const signOut = async (): Promise<void> => {
     // Update online status to false before signing out
     const currentUser = auth.currentUser;
     if (currentUser) {
-      console.log("Updating online status for user:", currentUser.uid);
+      console.log("Updating last active status for user:", currentUser.uid);
       
-      // Update Realtime Database status
-      await updateUser(currentUser.uid, { 
-        lastActive: new Date().toISOString()
-      });
+      // Call the MongoDB logout API
+      await apiRequest("POST", "/api/logout", {});
     }
     
     // Clear localStorage values related to authentication
@@ -257,9 +269,10 @@ export const signOut = async (): Promise<void> => {
     localStorage.removeItem('user_role');
     console.log("Cleared wallet_connected and user_role from localStorage during sign-out");
     
-    // Sign out from Firebase
-    console.log("Signing out from Firebase");
-    return firebaseSignOut(auth);
+    // Clear current user
+    auth.currentUser = null;
+    
+    return Promise.resolve();
   } catch (error) {
     console.error("Error during sign out:", error);
     // Clear localStorage values before attempting sign-out again
@@ -267,8 +280,10 @@ export const signOut = async (): Promise<void> => {
     localStorage.removeItem('user_role');
     console.log("Cleared localStorage during sign-out error recovery");
     
-    // Still try to sign out even if the status update failed
-    return firebaseSignOut(auth);
+    // Make sure user is cleared even if the logout API call failed
+    auth.currentUser = null;
+    
+    return Promise.resolve();
   }
 };
 

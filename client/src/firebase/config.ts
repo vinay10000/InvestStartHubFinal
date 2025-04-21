@@ -260,6 +260,8 @@ const storage: any = {
 
 // Mock for Realtime database with common methods
 const database: any = {
+  // Essential property to prevent null reference errors
+  _instanceStarted: true,
   ref: (path: string = '') => ({
     path,
     key: path.split('/').pop() || null,
@@ -286,11 +288,27 @@ const database: any = {
       val: () => null,
       forEach: () => false
     }),
-    get: async () => ({
-      exists: () => false,
-      val: () => null,
-      forEach: () => false
-    }),
+    get: async () => {
+      // Create a snapshot with both exists as a method and property
+      const snapshot: any = {
+        val: function() { return null; },
+        forEach: function(callback: any) { return false; },
+        key: null,
+        ref: { path: path }
+      };
+      // Define exists both as a property and method
+      snapshot.exists = false;  // As a boolean property
+      
+      // Then override with method
+      const originalExists = snapshot.exists;
+      snapshot.exists = function() { return false; };
+      
+      // Store the boolean value for checks that don't call the function
+      snapshot._existsValue = false;
+      // Add exists as a boolean property as well
+      snapshot._exists = false;
+      return snapshot;
+    },
     orderByChild: () => ({
       equalTo: () => ({
         once: async () => ({

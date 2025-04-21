@@ -1,4 +1,5 @@
-import { getDatabase, ref, get } from 'firebase/database';
+// Import our local mock implementations instead of Firebase SDK
+import { getDatabase, ref, get } from './firebase';
 import { app } from './config';
 import { getStartupById } from './database';
 
@@ -18,8 +19,8 @@ interface ExtendedStartupData {
   [key: string]: any;
 }
 
-// Initialize Firebase Realtime Database
-const database = getDatabase(app);
+// Initialize Firebase Realtime Database with our mock
+const database = getDatabase();
 
 /**
  * Directly fetch the wallet address for a startup from Firebase

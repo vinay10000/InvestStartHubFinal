@@ -6,6 +6,49 @@
  */
 import { getDB, WALLET_COLLECTION, STARTUP_WALLET_COLLECTION, useMongoConnection } from './mongo';
 
+/**
+ * Function to initialize wallet addresses in MongoDB
+ * Called by the wallet API routes during application startup
+ */
+export async function initializeWalletAddresses(): Promise<boolean> {
+  try {
+    console.log('[mongo-wallet] Starting wallet address initialization process');
+    await initKnownWalletAddresses();
+    return true;
+  } catch (error) {
+    console.error('[mongo-wallet] Error initializing wallet addresses:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if wallets exist in MongoDB
+ * Used by the frontend to determine if wallet initialization is needed
+ */
+export async function checkWalletsExist(): Promise<boolean> {
+  const releaseConnection = useMongoConnection();
+  
+  try {
+    const db = getDB();
+    
+    // Check if we have any wallet addresses in the wallet collection
+    const userWalletCount = await db.collection(WALLET_COLLECTION).countDocuments({});
+    
+    // Check if we have any startup wallet addresses
+    const startupWalletCount = await db.collection(STARTUP_WALLET_COLLECTION).countDocuments({});
+    
+    console.log(`[mongo-wallet] Wallet check: found ${userWalletCount} user wallets and ${startupWalletCount} startup wallets in MongoDB`);
+    
+    // Return true if we have at least one wallet of either type
+    return userWalletCount > 0 || startupWalletCount > 0;
+  } catch (error) {
+    console.error('[mongo-wallet] Error checking wallet existence:', error);
+    return false;
+  } finally {
+    releaseConnection();
+  }
+}
+
 // Known wallet addresses for initialization - only used to seed the database
 const KNOWN_WALLETS: Record<string, string> = {
   // Critical startup founder UIDs - real founders with real wallets

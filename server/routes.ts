@@ -26,7 +26,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up MongoDB authentication with Passport
   setupAuth(app);
   
-  // Register wallet routes both at standard endpoint and MongoDB-specific endpoint
+  // Register wallet routes at multiple endpoints for compatibility
+  app.use('/api/wallet', walletRoutes); // New MongoDB-based endpoint
   app.use('/api/wallets', walletRoutes); // Standard endpoint that the frontend expects
   app.use('/api/mongodb/wallets', walletRoutes); // Keep this for backward compatibility
   
