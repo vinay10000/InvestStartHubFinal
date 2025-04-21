@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/MongoAuthContext";
 import { useStartups } from "@/hooks/useStartups";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,12 @@ import StartupCard from "@/components/startups/StartupCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "@/components/transactions/TransactionList";
-import { FirebaseStartup as DBFirebaseStartup, FirebaseTransaction as DBFirebaseTransaction } from "@/firebase/database";
+// Removed Firebase database imports, using MongoDB models instead
 
 const InvestorDashboard = () => {
-  const { user, loading: authLoading } = useAuth();
-  // Handle extracting the user ID from the auth context
-  // Firebase UID should be available as user.uid added in AuthContext
-  const userId = user ? (user.uid || user.id || "") : "";
+  const { user, isLoading: authLoading } = useAuth();
+  // Handle extracting the user ID from the MongoDB auth context
+  const userId = user ? user.id.toString() : "";
   console.log("Current auth state (investor):", { user, userId, authLoading, userDetails: JSON.stringify(user) });
   
   const { useAllStartups } = useStartups();
@@ -59,55 +58,15 @@ const InvestorDashboard = () => {
   const [firebaseStartups, setFirebaseStartups] = useState<FirebaseStartup[]>([]);
   const [firebaseTransactions, setFirebaseTransactions] = useState<FirebaseTransaction[]>([]);
 
-  // Load startups and transactions from Firebase Realtime Database
+  // Load startups and transactions directly from MongoDB instead of Firebase
   useEffect(() => {
-    const fetchAllStartups = async () => {
-      try {
-        const { getStartups } = await import('@/firebase/database');
-        const startups = await getStartups();
-        console.log("Fetched startups from Firebase Realtime Database:", startups);
-        
-        // Ensure all startups have an id
-        const validStartups = startups
-          .filter(startup => startup !== null)
-          .map(startup => ({
-            ...startup,
-            id: startup.id || crypto.randomUUID() // Ensure id is never undefined
-          })) as FirebaseStartup[];
-          
-        setFirebaseStartups(validStartups);
-      } catch (error) {
-        console.error("Error fetching startups from Firebase Realtime Database:", error);
-      }
-    };
+    // No need to fetch separately anymore, we'll use the API calls below
+    // Setting state to empty arrays since we don't use Firebase anymore
+    setFirebaseStartups([]);
+    setFirebaseTransactions([]);
     
-    const fetchTransactions = async () => {
-      if (userId && typeof userId === 'string' && userId.length > 20) {
-        try {
-          const { getTransactionsByInvestorId } = await import('@/firebase/database');
-          const transactions = await getTransactionsByInvestorId(userId);
-          console.log("Fetched transactions from Firebase Realtime Database:", transactions);
-          
-          // Ensure all transactions have an id
-          const validTransactions = transactions
-            .filter(transaction => transaction !== null)
-            .map(transaction => ({
-              ...transaction,
-              id: transaction.id || crypto.randomUUID(), // Ensure id is never undefined
-              startupId: String(transaction.startupId || ""),
-              investorId: String(transaction.investorId || "")
-            })) as FirebaseTransaction[];
-            
-          setFirebaseTransactions(validTransactions);
-        } catch (error) {
-          console.error("Error fetching transactions from Firebase Realtime Database:", error);
-        }
-      }
-    };
-    
-    fetchAllStartups();
-    fetchTransactions();
-  }, [userId]);
+    console.log("Using MongoDB data directly instead of Firebase");
+  }, []);
   
   // Only fetch transactions when we have a valid userId
   const { data: startupsData, isLoading: startupsLoading } = useAllStartups();

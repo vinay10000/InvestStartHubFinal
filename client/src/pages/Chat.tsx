@@ -1,27 +1,28 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/MongoAuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare } from "lucide-react";
-import { database } from "@/firebase/config";
-import { ref, onValue, get, set, push } from "firebase/database";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ChatList from "@/components/chat/ChatList";
 import { toast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
-interface FirebaseChat {
-  id: string;
-  founderId: string;
-  investorId: string;
-  startupId: string;
+interface MongoChat {
+  id: number;
+  founderId: number;
+  investorId: number;
+  startupId?: number;
   startupName?: string;
   founderName?: string;
   investorName?: string;
   founderAvatar?: string;
   investorAvatar?: string;
   lastMessage?: string;
-  timestamp?: number;
+  createdAt: string;
+  updatedAt?: string;
   founderUnread?: number;
   investorUnread?: number;
 }
@@ -34,14 +35,50 @@ const Chat = ({ isDirectFounderChat = false }: ChatProps) => {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams();
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [activeChat, setActiveChat] = useState<FirebaseChat | null>(null);
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [activeChat, setActiveChat] = useState<MongoChat | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Query for getting user's chats
+  const { data: chats, isLoading: isChatsLoading } = useQuery({
+    queryKey: ["/api/chats"],
+    enabled: !!user,
+  });
+  
+  // Get a specific chat
+  const { data: chatData, isLoading: isChatLoading } = useQuery({
+    queryKey: ["/api/chats", activeChatId],
+    enabled: !!activeChatId && !!user,
+  });
+  
+  // Mutation for creating a new chat
+  const createChatMutation = useMutation({
+    mutationFn: async (chatData: any) => {
+      const response = await apiRequest("POST", "/api/chats", chatData);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create chat");
+      }
+      return await response.json();
+    },
+    onSuccess: (newChat) => {
+      setActiveChatId(newChat.id);
+      setLocation(`/chat/${newChat.id}`);
+    },
+    onError: (error: Error) => {
+      console.error("Error creating chat:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create chat",
+        variant: "destructive",
+      });
+    }
+  });
   
   // Check if user is authenticated
   useEffect(() => {
     if (!user) {
-      setLocation("/login");
+      setLocation("/signin");
       return;
     }
     
@@ -53,7 +90,7 @@ const Chat = ({ isDirectFounderChat = false }: ChatProps) => {
         console.log("Direct founder chat requested with founder ID:", founderId);
         
         // Find or create a chat with this founder
-        findOrCreateChatWithFounder(founderId);
+        findOrCreateChatWithFounder(parseInt(founderId, 10));
       } else {
         console.error("No founder ID provided for direct chat");
         toast({
@@ -68,33 +105,28 @@ const Chat = ({ isDirectFounderChat = false }: ChatProps) => {
     // Handle normal chat route with ID parameter
     else if (params.id && !isDirectFounderChat) {
       console.log("Setting active chat from URL parameter:", params.id);
-      setActiveChatId(params.id);
+      setActiveChatId(parseInt(params.id, 10));
     }
   }, [user, params, isDirectFounderChat, setLocation]);
   
   // Function to find existing chat or create a new one with founder
-  const findOrCreateChatWithFounder = async (founderId: string) => {
+  const findOrCreateChatWithFounder = async (founderId: number) => {
     if (!user) return;
     
     setLoading(true);
     
     try {
       // First, try to find an existing chat between the investor and this founder
-      const chatsRef = ref(database, 'chats');
-      const snapshot = await get(chatsRef);
-      
-      if (snapshot.exists()) {
-        const chats = snapshot.val();
-        
+      if (chats && chats.length > 0) {
         // Find a chat that connects this investor with the specific founder
-        const existingChatId = Object.keys(chats).find(chatId => {
-          const chat = chats[chatId];
-          return chat.founderId === founderId && chat.investorId === user.uid;
-        });
+        const existingChat = chats.find((chat: any) => 
+          chat.founderId === founderId && chat.investorId === user.id
+        );
         
-        if (existingChatId) {
-          console.log("Found existing chat:", existingChatId);
-          setActiveChatId(existingChatId);
+        if (existingChat) {
+          console.log("Found existing chat:", existingChat.id);
+          setActiveChatId(existingChat.id);
+          setLocation(`/chat/${existingChat.id}`);
           setLoading(false);
           return;
         }
@@ -103,30 +135,16 @@ const Chat = ({ isDirectFounderChat = false }: ChatProps) => {
       // If no existing chat found, create a new one
       console.log("No existing chat found, creating a new one with founder:", founderId);
       
-      // Create a new chat entry
-      const newChatRef = push(ref(database, 'chats'));
-      const chatId = newChatRef.key;
-      
-      if (!chatId) {
-        throw new Error("Failed to generate chat ID");
-      }
-      
       // Basic chat data
       const chatData = {
-        founderId,
-        investorId: user.uid,
-        timestamp: Date.now(),
-        founderName: "Founder", // You might want to fetch the actual name
+        founderId: founderId,
+        investorId: user.id,
+        founderName: "Founder", // Will be filled by backend
         investorName: user.username || "Investor",
-        founderAvatar: "",
-        investorAvatar: user.profilePicture || "",
       };
       
-      // Set the chat data
-      await set(newChatRef, chatData);
-      
-      console.log("Created new chat:", chatId);
-      setActiveChatId(chatId);
+      // Create the chat
+      createChatMutation.mutate(chatData);
       
     } catch (error) {
       console.error("Error finding/creating chat:", error);
@@ -141,45 +159,20 @@ const Chat = ({ isDirectFounderChat = false }: ChatProps) => {
     }
   };
   
-  // Load active chat data when chat ID changes
+  // Update active chat when chat data changes
   useEffect(() => {
-    if (!activeChatId) {
-      setActiveChat(null);
-      return;
-    }
-    
-    setLoading(true);
-    
-    // Reference to the active chat
-    const chatRef = ref(database, `chats/${activeChatId}`);
-    
-    // Listen for chat updates
-    const unsubscribe = onValue(chatRef, (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        setActiveChat(null);
-        setLoading(false);
-        return;
-      }
-      
-      setActiveChat({
-        id: activeChatId,
-        ...data
-      });
+    if (chatData) {
+      setActiveChat(chatData);
       setLoading(false);
-    });
-    
-    // Cleanup
-    return () => {
-      unsubscribe();
-    };
-  }, [activeChatId]);
+    }
+  }, [chatData]);
   
   // Handle chat selection
-  const handleSelectChat = (chatId: string) => {
-    setActiveChatId(chatId);
+  const handleSelectChat = (chatId: string | number) => {
+    const numericChatId = typeof chatId === 'string' ? parseInt(chatId, 10) : chatId;
+    setActiveChatId(numericChatId);
     // Update the URL without refreshing the page
-    setLocation(`/chat/${chatId}`);
+    setLocation(`/chat/${numericChatId}`);
   };
   
   if (!user) {

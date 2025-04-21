@@ -1,31 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  getStartups, 
-  getStartupsByFounderId, 
-  getStartupById, 
-  createStartup, 
-  updateStartup, 
-  getDocumentsByStartupId, 
-  createDocument, 
-  getTransactionsByStartupId, 
-  getTransactionsByInvestorId, 
-  createTransaction,
-  getTransactionsByFounderId
-} from '../firebase/database';
-import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { apiRequest } from '@/lib/queryClient';
+import { useAuth } from '@/context/MongoAuthContext';
 
 export function useStartups() {
   const queryClient = useQueryClient();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
   // Get all startups
   const useAllStartups = () => {
     return useQuery({
       queryKey: ['startups'],
       queryFn: async () => {
-        const startups = await getStartups();
-        return { startups }; // Match expected API response structure
+        const response = await apiRequest('GET', '/api/startups');
+        return await response.json();
       },
       // Add these options to improve caching behavior
       staleTime: 0, // Consider data stale immediately
@@ -37,8 +24,8 @@ export function useStartups() {
 
   // Get startups by founder ID
   const useFounderStartups = (founderId?: string) => {
-    // Use either provided founderId, user.id, or user.uid (Firebase UID)
-    const id = founderId || user?.id || user?.uid;
+    // Use either provided founderId or user.id
+    const id = founderId || user?.id;
     
     return useQuery({
       queryKey: ['startups', 'founder', id],
@@ -50,17 +37,12 @@ export function useStartups() {
           return { startups: [] };
         }
         
-        // Try fetching by ID first
-        let startups = await getStartupsByFounderId(id.toString());
+        // Fetch using MongoDB API
+        const response = await apiRequest('GET', `/api/startups?founderId=${id}`);
+        const result = await response.json();
         
-        // If no results and we have both id and uid, try the other one
-        if (startups.length === 0 && user?.id && user?.uid && id !== user.uid) {
-          console.log("[useFounderStartups] No startups found for ID, trying UID:", user.uid);
-          startups = await getStartupsByFounderId(user.uid.toString());
-        }
-        
-        console.log("[useFounderStartups] Found startups:", startups.length);
-        return { startups }; // Match expected API response structure
+        console.log("[useFounderStartups] Found startups:", result.startups?.length || 0);
+        return result;
       },
       enabled: !!id,
       // Refetch on window focus to ensure we have latest data after login
@@ -76,12 +58,13 @@ export function useStartups() {
       queryKey: ['startups', id],
       queryFn: async () => {
         if (!id) {
-          console.log("[useStartups] No ID provided to getStartupById, returning null");
+          console.log("[useStartups] No ID provided for startup, returning null");
           return Promise.resolve(null);
         }
         
         console.log("[useStartups] Fetching startup with ID:", id);
-        const result = await getStartupById(id);
+        const response = await apiRequest('GET', `/api/startups/${id}`);
+        const result = await response.json();
         console.log("[useStartups] getStartupById result:", result);
         return result;
       },
@@ -92,7 +75,10 @@ export function useStartups() {
   // Create startup
   const useCreateStartup = () => {
     return useMutation({
-      mutationFn: createStartup,
+      mutationFn: async (startupData: any) => {
+        const response = await apiRequest('POST', '/api/startups', startupData);
+        return response.json();
+      },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['startups'] });
         if (user?.id) {
@@ -105,8 +91,10 @@ export function useStartups() {
   // Update startup
   const useUpdateStartup = () => {
     return useMutation({
-      mutationFn: ({ id, updates }: { id: string; updates: any }) => 
-        updateStartup(id, updates),
+      mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+        const response = await apiRequest('PUT', `/api/startups/${id}`, updates);
+        return response.json();
+      },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['startups'] });
         queryClient.invalidateQueries({ queryKey: ['startups', variables.id] });
@@ -133,7 +121,12 @@ export function useDocuments() {
   const useStartupDocuments = (startupId?: string) => {
     return useQuery({
       queryKey: ['documents', 'startup', startupId],
-      queryFn: () => startupId ? getDocumentsByStartupId(startupId) : Promise.resolve([]),
+      queryFn: async () => {
+        if (!startupId) return Promise.resolve([]);
+        
+        const response = await apiRequest('GET', `/api/startups/${startupId}/documents`);
+        return response.json();
+      },
       enabled: !!startupId,
     });
   };
@@ -141,7 +134,10 @@ export function useDocuments() {
   // Create document
   const useCreateDocument = () => {
     return useMutation({
-      mutationFn: createDocument,
+      mutationFn: async (documentData: any) => {
+        const response = await apiRequest('POST', `/api/startups/${documentData.startupId}/documents`, documentData);
+        return response.json();
+      },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['documents', 'startup', variables.startupId] });
       },
@@ -156,15 +152,17 @@ export function useDocuments() {
 
 export function useTransactions() {
   const queryClient = useQueryClient();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
   // Get transactions by startup ID
   const useStartupTransactions = (startupId?: string) => {
     return useQuery({
       queryKey: ['transactions', 'startup', startupId],
       queryFn: async () => {
-        const transactions = startupId ? await getTransactionsByStartupId(startupId) : [];
-        return { transactions }; // Match expected API response structure
+        if (!startupId) return { transactions: [] };
+        
+        const response = await apiRequest('GET', `/api/investments?startupId=${startupId}`);
+        return response.json();
       },
       enabled: !!startupId,
     });
@@ -177,8 +175,10 @@ export function useTransactions() {
     return useQuery({
       queryKey: ['transactions', 'investor', id],
       queryFn: async () => {
-        const transactions = id ? await getTransactionsByInvestorId(id.toString()) : [];
-        return { transactions }; // Match expected API response structure
+        if (!id) return { transactions: [] };
+        
+        const response = await apiRequest('GET', `/api/investments?investorId=${id}`);
+        return response.json();
       },
       enabled: !!id,
     });
@@ -191,8 +191,11 @@ export function useTransactions() {
     return useQuery({
       queryKey: ['transactions', 'founder', id],
       queryFn: async () => {
-        const transactions = id ? await getTransactionsByFounderId(id.toString()) : [];
-        return { transactions }; // Match expected API response structure
+        if (!id) return { transactions: [] };
+        
+        // Using the mongoose API to fetch founder's transactions
+        const response = await apiRequest('GET', `/api/investments?founderId=${id}`);
+        return response.json();
       },
       enabled: !!id,
     });
@@ -201,7 +204,10 @@ export function useTransactions() {
   // Create transaction
   const useCreateTransaction = () => {
     return useMutation({
-      mutationFn: createTransaction,
+      mutationFn: async (transactionData: any) => {
+        const response = await apiRequest('POST', '/api/investments', transactionData);
+        return response.json();
+      },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['transactions', 'startup', variables.startupId] });
         queryClient.invalidateQueries({ queryKey: ['transactions', 'investor', variables.investorId] });

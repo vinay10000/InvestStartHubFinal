@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/MongoAuthContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,31 +14,24 @@ import DocumentUploadSection from "@/components/startups/DocumentUploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import TransactionList from "@/components/transactions/TransactionList";
 import { Startup } from "@shared/schema";
-import { getDatabase, ref, get, child } from "firebase/database";
-import { 
-  createStartup as firebaseCreateStartup, 
-  getStartupsByFounderId as firebaseGetStartupsByFounderId,
-  createDocument as firebaseCreateDocument,
-  getTransactionsByFounderId as firebaseGetTransactionsByFounderId,
-  FirebaseStartup as ImportedFirebaseStartup
-} from "@/firebase/database";
+import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import SampleWalletCleaner from "@/components/utils/SampleWalletCleaner";
 
 const FounderDashboard = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   
   // Make sure we wait for auth to complete before accessing user data
-  // Extract user ID more safely, prioritizing Firebase UID
-  const userId = user ? (user.uid || user.id || "") : "";
+  // MongoDB auth directly provides user.id
+  const userId = user ? user.id.toString() : "";
   
   // Debug auth state to diagnose issues
   useEffect(() => {
     console.log("Current auth state:", { 
       user, 
       userId, 
-      authLoading, 
-      hasUID: user?.uid ? "yes" : "no",
+      authLoading,
       hasID: user?.id ? "yes" : "no", 
       userDetails: user ? JSON.stringify(user) : "null" 
     });
@@ -124,171 +117,104 @@ const FounderDashboard = () => {
     };
   };
   
-  // Load startups from Firebase Realtime Database
-  useEffect(() => {
-    const fetchStartups = async () => {
-      if (userId) {
-        try {
-          console.log("[FounderDashboard] Fetching startups for userId:", userId);
-          
-          // Try to get all possible user identifiers to maximize chances of finding startups
-          const possibleUserIds = new Set<string>();
-          
-          // Always try the primary userId
-          possibleUserIds.add(userId.toString());
-          
-          // If user.uid exists and is different, add it too
-          if (user?.uid && user.uid !== userId.toString()) {
-            possibleUserIds.add(user.uid);
-          }
-          
-          // If user.id exists and is different from both, add it as well
-          if (user?.id && typeof user.id === 'string' && 
-              user.id !== userId.toString() && user.id !== user?.uid) {
-            possibleUserIds.add(user.id);
-          }
-          
-          console.log("[FounderDashboard] Will try these user IDs:", Array.from(possibleUserIds));
-          
-          // Create an array to hold all found startups
-          let allStartups: FirebaseStartup[] = [];
-          const existingIds = new Set<string>(); // Track IDs to avoid duplicates
-          
-          // Try each user ID in sequence
-          const userIdArray = Array.from(possibleUserIds);
-          console.log("[FounderDashboard] Trying IDs:", userIdArray);
-          for (const id of userIdArray) {
-            console.log(`[FounderDashboard] Trying to fetch startups with user ID: ${id}`);
-            
-            // TEMPORARY LOGGING HACK - SHOW ALL STARTUPS
-            const allStartupsInDB = await fetch('/api/startups')
-              .then(res => res.json())
-              .catch(err => {
-                console.error("[FounderDashboard] Error fetching all startups:", err);
-                return [];
-              });
-            
-            console.log("[FounderDashboard] ALL STARTUPS IN DATABASE:", allStartupsInDB);
-            
-            // First log the user's Firebase auth info
-            console.log("[FounderDashboard] Current Firebase auth user:", user);
-            
-            // IMPORTANT: We've removed the direct database access code, as Firebase functions 
-            // should be sufficient. Just using the provided getStartupsByFounderId function.
-            
-            const foundStartups = await firebaseGetStartupsByFounderId(id);
-            
-            if (foundStartups && foundStartups.length > 0) {
-              console.log(`[FounderDashboard] Found ${foundStartups.length} startups with ID ${id}:`, foundStartups);
-              
-              // Add only unique startups based on ID
-              foundStartups.forEach(startup => {
-                if (startup.id && !existingIds.has(startup.id)) {
-                  existingIds.add(startup.id);
-                  allStartups.push(startup);
-                }
-              });
-            } else {
-              console.log(`[FounderDashboard] No startups found with ID ${id}`);
-            }
-          }
-          
-          console.log("[FounderDashboard] Total startups found:", allStartups.length, allStartups);
-          
-          if (allStartups.length > 0) {
-            // Format startups for UI consistency
-            const formattedStartups = allStartups.map(startup => ({
-              id: startup.id || '',
-              name: startup.name || 'Unnamed Startup',
-              description: startup.description || '',
-              category: startup.category,
-              investment_stage: startup.investment_stage,
-              investmentStage: startup.investment_stage || 'Seed',
-              founder_id: startup.founderId || userId.toString(),
-              founderId: startup.founderId || userId.toString(),
-              logo_url: startup.logo_url,
-              logoUrl: startup.logo_url,
-              upi_qr_code: startup.upi_qr_code,
-              upiQrCode: startup.upi_qr_code,
-              pitch: startup.pitch || '',
-              funding_goal: startup.funding_goal || '0',
-              upi_id: startup.upi_id,
-              // Make sure we have all required fields
-              mediaUrls: startup.mediaUrls || [],  // Add missing field
-              videoUrl: startup.videoUrl || null   // Add missing field
-            } as FirebaseStartup));
-            
-            setMyStartups(formattedStartups);
-            
-            // Convert to UI-ready format
-            const uiReadyStartups = formattedStartups.map(startup => adaptFirebaseStartupToUI(startup));
-            setAdaptedStartups(uiReadyStartups);
-            console.log("[FounderDashboard] Set adapted startups:", uiReadyStartups);
-          } else {
-            console.log("[FounderDashboard] No startups found for this user in Firebase");
-          }
-          
-          // Always update loading state when done
-          setStartupsLoading(false);
-        } catch (error) {
-          console.error("[FounderDashboard] Error fetching startups from Firebase:", error);
-          setStartupsLoading(false);
-        }
-      } else {
-        // No userId, set loading to false
-        console.log("[FounderDashboard] No userId available, cannot fetch startups");
-        setStartupsLoading(false);
+  // Load startups directly from MongoDB
+  const { data: mongoStartups, isLoading: mongoStartupsLoading } = useQuery({
+    queryKey: ['/api/startups/founder', userId],
+    queryFn: async () => {
+      if (!userId) return { startups: [] };
+      try {
+        const response = await apiRequest('GET', `/api/startups/founder/${userId}`);
+        const data = await response.json();
+        console.log("[FounderDashboard] MongoDB startups fetched:", data);
+        return data;
+      } catch (error) {
+        console.error("[FounderDashboard] Error fetching startups from MongoDB:", error);
+        return { startups: [] };
       }
-    };
-    
-    if (userId) {
-      fetchStartups();
-    } else {
+    },
+    enabled: !!userId,
+  });
+  
+  // Update startup states when MongoDB data is loaded
+  useEffect(() => {
+    if (mongoStartups?.startups && !mongoStartupsLoading) {
+      console.log("[FounderDashboard] Setting startups from MongoDB:", mongoStartups.startups);
+      
+      // Format startups for UI consistency
+      const formattedStartups = mongoStartups.startups.map((startup: any) => ({
+        id: startup.id || '',
+        name: startup.name || 'Unnamed Startup',
+        description: startup.description || '',
+        category: startup.category,
+        investment_stage: startup.investmentStage,
+        investmentStage: startup.investmentStage || 'Seed',
+        founder_id: startup.founderId || userId,
+        founderId: startup.founderId || userId,
+        logo_url: startup.logoUrl,
+        logoUrl: startup.logoUrl,
+        upi_qr_code: startup.upiQrCode,
+        upiQrCode: startup.upiQrCode,
+        pitch: startup.pitch || '',
+        funding_goal: startup.fundingGoal || '0',
+        upi_id: startup.upiId,
+        mediaUrls: startup.mediaUrls || [],
+        videoUrl: startup.videoUrl || null
+      } as FirebaseStartup));
+      
+      setMyStartups(formattedStartups);
+      
+      // Convert to UI-ready format
+      const uiReadyStartups = formattedStartups.map(startup => adaptFirebaseStartupToUI(startup));
+      setAdaptedStartups(uiReadyStartups);
       setStartupsLoading(false);
     }
-  }, [userId, user]);
+  }, [mongoStartups, mongoStartupsLoading, userId]);
   
-  // Firebase transactions
-  const [firebaseTransactions, setFirebaseTransactions] = useState<any[]>([]);
+  // MongoDB transactions
+  const { data: mongoTransactions, isLoading: mongoTransactionsLoading } = useQuery({
+    queryKey: ['/api/transactions/founder', userId],
+    queryFn: async () => {
+      if (!userId) return { transactions: [] };
+      try {
+        const response = await apiRequest('GET', `/api/transactions/founder/${userId}`);
+        const data = await response.json();
+        console.log("[FounderDashboard] MongoDB transactions fetched:", data);
+        return data;
+      } catch (error) {
+        console.error("[FounderDashboard] Error fetching transactions from MongoDB:", error);
+        return { transactions: [] };
+      }
+    },
+    enabled: !!userId,
+  });
+
+  // Processed transactions for UI
+  const [formattedTransactions, setFormattedTransactions] = useState<any[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   
-  // Load transactions from Firebase Realtime Database
+  // Update transactions state when MongoDB data is loaded
   useEffect(() => {
-    const fetchTransactions = async () => {
-      if (userId) {
-        try {
-          setTransactionsLoading(true);
-          // Get transactions from Firebase
-          const transactions = await firebaseGetTransactionsByFounderId(userId.toString());
-          console.log("Fetched founder transactions from Firebase:", transactions);
-          
-          if (transactions && transactions.length > 0) {
-            // Convert Firebase timestamps to Date objects if needed
-            const formattedTransactions = transactions.map(tx => ({
-              id: Number(tx.id) || 0,
-              startupId: Number(tx.startupId) || 0,
-              investorId: Number(tx.investorId) || 0,
-              amount: tx.amount,
-              status: tx.status,
-              paymentMethod: tx.paymentMethod,
-              transactionId: tx.transactionId,
-              createdAt: tx.createdAt ? new Date(tx.createdAt) : null
-            }));
-            
-            setFirebaseTransactions(formattedTransactions);
-          }
-        } catch (error) {
-          console.error("Error fetching transactions from Firebase:", error);
-        } finally {
-          setTransactionsLoading(false);
-        }
-      }
-    };
-    
-    if (userId) {
-      fetchTransactions();
+    if (mongoTransactions?.transactions && !mongoTransactionsLoading) {
+      console.log("[FounderDashboard] Setting transactions from MongoDB:", mongoTransactions.transactions);
+      
+      // Format transactions for UI consistency
+      const formatted = mongoTransactions.transactions.map((tx: any) => ({
+        id: tx.id || 0,
+        startupId: tx.startupId || 0,
+        investorId: tx.investorId || 0,
+        amount: tx.amount || "0",
+        status: tx.status || "pending",
+        paymentMethod: tx.paymentMethod || "card",
+        transactionId: tx.transactionId || null,
+        createdAt: tx.createdAt ? new Date(tx.createdAt) : null
+      }));
+      
+      setFormattedTransactions(formatted);
+      setTransactionsLoading(false);
+    } else if (mongoTransactionsLoading) {
+      setTransactionsLoading(true);
     }
-  }, [userId]);
+  }, [mongoTransactions, mongoTransactionsLoading]);
   
   // Removed Supabase mutation
 

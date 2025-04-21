@@ -11,8 +11,9 @@ import {
   sendETH
 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
-// Firebase wallet functions will be imported dynamically to avoid circular dependencies
-import { useAuth } from '@/hooks/useAuth';
+// MongoDB auth context
+import { useAuth } from '@/context/MongoAuthContext';
+import { apiRequest } from '@/lib/queryClient';
 
 // Helper function to get network name from chain ID
 const getNetworkName = (chainId: number | null): string => {
@@ -32,6 +33,7 @@ export const useWeb3 = () => {
   const [chainId, setChainId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // Check if MetaMask is installed on component mount
   useEffect(() => {
@@ -113,36 +115,32 @@ export const useWeb3 = () => {
           .then((newBalance: string) => setBalance(newBalance))
           .catch((error: Error) => console.error('Error getting balance:', error));
         
-        // When account changes, also save the new wallet address to Firebase
+        // When account changes, also save the new wallet address to MongoDB
         try {
-          // Get the current user from Firebase Auth
-          const { auth } = await import("@/firebase/config");
-          if (auth.currentUser) {
-            const userId = auth.currentUser.uid;
-            console.log("[useWeb3] Account changed, saving new wallet address to Firebase for user:", userId);
+          // Get the current user from MongoDB auth context
+          if (user?.id) {
+            const userId = user.id;
+            console.log("[useWeb3] Account changed, saving new wallet address to MongoDB for user:", userId);
             
-            // Get user role from localStorage if available
-            const userRole = localStorage.getItem('user_role') || 'investor';
+            // Get user role from user object or localStorage
+            const userRole = user.role || localStorage.getItem('user_role') || 'investor';
             
-            // Save wallet to Firebase wallet database
-            const { addWalletAddress } = await import("@/firebase/walletDatabase");
-            await addWalletAddress(
-              newAddress,
-              parseInt(userId) || 999, // Parse userId or use a fallback
-              auth.currentUser.displayName || auth.currentUser.email || 'User', 
-              false // Not permanent by default
-            );
+            // Save wallet to MongoDB via API
+            const response = await apiRequest('POST', '/api/user/wallet/connect', {
+              userId: userId,
+              walletAddress: newAddress,
+              isPermanent: false // Not permanent by default
+            });
             
-            console.log("[useWeb3] Successfully saved changed wallet to Firebase wallet database");
-            
-            // Also update the user profile in Firebase
-            const { updateUser } = await import("@/firebase/database");
-            await updateUser(userId, { walletAddress: newAddress });
-            console.log("[useWeb3] Also updated user profile with new wallet address");
+            if (response.ok) {
+              console.log("[useWeb3] Successfully saved changed wallet to MongoDB");
+            } else {
+              console.error("[useWeb3] Error response from wallet connect API:", await response.text());
+            }
           }
         } catch (saveError) {
-          console.error("[useWeb3] Error saving changed wallet to Firebase:", saveError);
-          // Continue even if Firebase save fails
+          console.error("[useWeb3] Error saving changed wallet to MongoDB:", saveError);
+          // Continue even if MongoDB save fails
         }
       }
     };
@@ -173,7 +171,7 @@ export const useWeb3 = () => {
       accountCleanup();
       networkCleanup();
     };
-  }, [isInstalled, address]);
+  }, [isInstalled, address, user]);
   
   // Connect wallet function
   const connect = useCallback(async () => {
@@ -218,38 +216,34 @@ export const useWeb3 = () => {
         const balanceValue = await getWalletBalance(connectedAddress);
         setBalance(balanceValue);
         
-        // Try to get user information to save to Firebase
+        // Try to get user information to save to MongoDB
         try {
-          // Get the current user from Firebase Auth
-          const { auth } = await import("@/firebase/config");
-          if (auth.currentUser) {
-            const userId = auth.currentUser.uid;
-            console.log("[useWeb3] Saving wallet address to Firebase for user:", userId);
+          // Get the current user from MongoDB auth
+          if (user?.id) {
+            const userId = user.id;
+            console.log("[useWeb3] Saving wallet address to MongoDB for user:", userId);
             
-            // Get user role from localStorage if available
-            const userRole = localStorage.getItem('user_role') || 'investor';
+            // Get user role from user object or localStorage
+            const userRole = user.role || localStorage.getItem('user_role') || 'investor';
             
-            // Save wallet to Firebase wallet database
-            const { addWalletAddress } = await import("@/firebase/walletDatabase");
-            await addWalletAddress(
-              connectedAddress,
-              parseInt(userId) || 999, // Parse userId or use a fallback
-              auth.currentUser.displayName || auth.currentUser.email || 'User',
-              false // Not permanent by default
-            );
+            // Save wallet to MongoDB via API
+            const response = await apiRequest('POST', '/api/user/wallet/connect', {
+              userId: userId,
+              walletAddress: connectedAddress,
+              isPermanent: false // Not permanent by default
+            });
             
-            console.log("[useWeb3] Successfully saved wallet to Firebase wallet database");
-            
-            // Also update the user profile in Firebase
-            const { updateUser } = await import("@/firebase/database");
-            await updateUser(userId, { walletAddress: connectedAddress });
-            console.log("[useWeb3] Also updated user profile with wallet address");
+            if (response.ok) {
+              console.log("[useWeb3] Successfully saved wallet to MongoDB");
+            } else {
+              console.error("[useWeb3] Error response from wallet connect API:", await response.text());
+            }
           } else {
             console.log("[useWeb3] No authenticated user found for wallet saving");
           }
         } catch (saveError) {
-          console.error("[useWeb3] Error saving wallet to Firebase:", saveError);
-          // Continue even if Firebase save fails - the wallet is still connected locally
+          console.error("[useWeb3] Error saving wallet to MongoDB:", saveError);
+          // Continue even if MongoDB save fails - the wallet is still connected locally
         }
         
         toast({
@@ -276,7 +270,7 @@ export const useWeb3 = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isInstalled, toast, address]);
+  }, [isInstalled, toast, address, user]);
   
   // Switch network function
   const changeNetwork = useCallback(async (newChainIdStr: string) => {

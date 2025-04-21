@@ -2,7 +2,7 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "./hooks/use-auth"; // Use our MongoDB-compatible auth provider
+import { AuthProvider } from "./context/MongoAuthContext"; // MongoDB-native auth provider
 import { WebSocketProvider } from "@/context/WebSocketContext"; // WebSocket context for real-time updates
 import { ProtectedRoute } from "./lib/protected-route"; // MongoDB-compatible protected route
 import Header from "@/components/layout/Header";
@@ -25,7 +25,7 @@ import ImageKitTest from "@/pages/ImageKitTest";
 import MediaViewerTest from "@/pages/MediaViewerTest";
 import StartupMediaExplorer from "@/pages/StartupMediaExplorer";
 import { useState, useEffect } from "react";
-import { useAuth } from "./hooks/use-auth";
+import { useAuth } from "./context/MongoAuthContext";
 import WalletPrompt from "@/components/auth/WalletPrompt";
 
 // AutoRedirect component to handle automatic redirection after login
@@ -89,102 +89,91 @@ function Router() {
       <Route path="/signup" component={SignUp} />
       
       {/* Auto-redirect route */}
-      <Route path="/dashboard">
-        <AutoRedirect />
-      </Route>
+      <ProtectedRoute
+        path="/dashboard"
+        children={<AutoRedirect />}
+      />
       
       {/* Protected Founder Routes */}
-      <Route path="/founder/dashboard">
-        <ProtectedRoute requiredRole="founder">
-          <FounderDashboard />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/founder/dashboard" 
+        requiredRole="founder"
+        children={<FounderDashboard />} 
+      />
       
       {/* Protected Investor Routes */}
-      <Route path="/investor/dashboard">
-        <ProtectedRoute requiredRole="investor">
-          <InvestorDashboard />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/investor/dashboard" 
+        requiredRole="investor"
+        children={<InvestorDashboard />} 
+      />
       
       {/* Protected Routes for All Authenticated Users */}
-      <Route path="/startup/:id">
-        <ProtectedRoute>
-          <StartupDetails />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/startup/:id" 
+        children={<StartupDetails />} 
+      />
       
-      <Route path="/transactions">
-        <ProtectedRoute>
-          <Transactions />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/transactions" 
+        children={<Transactions />} 
+      />
 
-      <Route path="/transactions/:id">
-        <ProtectedRoute>
-          <TransactionDetails />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/transactions/:id" 
+        children={<TransactionDetails />} 
+      />
       
-      <Route path="/chat/founder/:founderId">
-        <ProtectedRoute>
-          <Chat isDirectFounderChat={true} />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/chat/founder/:founderId" 
+        children={<Chat isDirectFounderChat={true} />} 
+      />
       
-      <Route path="/chat/:id">
-        <ProtectedRoute>
-          <Chat />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/chat/:id" 
+        children={<Chat />} 
+      />
       
-      <Route path="/chat">
-        <ProtectedRoute>
-          <Chat />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/chat" 
+        children={<Chat />} 
+      />
       
-      <Route path="/profile">
-        <ProtectedRoute>
-          <Profile />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/profile" 
+        children={<Profile />} 
+      />
       
-      <Route path="/wallet-connect">
-        <ProtectedRoute>
-          <WalletConnection />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/wallet-connect" 
+        children={<WalletConnection />} 
+      />
       
-      <Route path="/wallet-setup">
-        <ProtectedRoute>
-          <WalletSetup />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/wallet-setup" 
+        children={<WalletSetup />} 
+      />
       
       {/* Wallet Diagnostics Tool - Restricted to admin/founder */}
-      <Route path="/wallet-diagnostics">
-        <ProtectedRoute>
-          <WalletDiagnostics />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/wallet-diagnostics" 
+        children={<WalletDiagnostics />} 
+      />
       
       {/* ImageKit test page */}
-      <Route path="/imagekit-test">
-        <ProtectedRoute>
-          <ImageKitTest />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/imagekit-test" 
+        children={<ImageKitTest />} 
+      />
       
       {/* Media Viewer test page (public for easy testing) */}
       <Route path="/media-viewer-test" component={MediaViewerTest} />
       
       {/* Media Explorer page */}
-      <Route path="/media-explorer">
-        <ProtectedRoute>
-          <StartupMediaExplorer />
-        </ProtectedRoute>
-      </Route>
+      <ProtectedRoute 
+        path="/media-explorer" 
+        children={<StartupMediaExplorer />} 
+      />
       
       {/* Fallback to 404 */}
       <Route component={NotFound} />
