@@ -45,7 +45,9 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     try {
       // Determine the WebSocket URL based on the current environment
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const host = window.location.host;
+      // Don't append port when it's already in the host
+      const wsUrl = `${protocol}//${host}/ws`;
       
       console.log('[WebSocketContext] Connecting to WebSocket server:', wsUrl);
       

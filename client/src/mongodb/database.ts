@@ -1,99 +1,118 @@
 /**
- * MongoDB-compatible Database Functions
+ * MongoDB database operations for client-side
  * 
- * This module provides a simplified API that mimics the Firebase Realtime Database API
- * but uses MongoDB in the background. This helps maintain compatibility
- * with existing code while transitioning away from Firebase.
+ * This file provides a MongoDB-compatible API for database operations
+ * to replace Firebase Realtime Database functions
  */
 
-// User-related functions
-export async function getUserByUid(uid: string): Promise<any | null> {
+// Interface for MongoDB user data
+export interface MongoUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  walletAddress: string | null;
+  profilePicture: string | null;
+  createdAt: Date | null;
+}
+
+// Interface for MongoDB startup data
+export interface MongoStartup {
+  id: number;
+  name: string;
+  description: string;
+  category: string | null;
+  investmentStage: string;
+  founderId: string;
+  logoUrl: string | null;
+  upiQrCode: string | null;
+  upiId: string | null;
+  pitch: string;
+  fundingGoal: string | null;
+  currentFunding: string | null;
+  websiteUrl: string | null;
+  mediaUrls: string[];
+  videoUrl: string | null;
+  createdAt: Date | null;
+}
+
+// Interface for MongoDB document data
+export interface MongoDocument {
+  id: number;
+  startupId: string;
+  name: string;
+  type: string;
+  fileUrl: string;
+  fileId: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  createdAt: Date | null;
+}
+
+// MongoDB API methods
+
+// Users
+
+/**
+ * Get a user by ID from MongoDB
+ */
+export async function getUser(userId: string | number): Promise<MongoUser | null> {
   try {
-    const response = await fetch(`/api/users/${uid}`, {
-      method: 'GET',
+    const response = await fetch(`/api/user/profile?userId=${userId}`, {
       credentials: 'include'
     });
     
     if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error('Failed to get user');
+      throw new Error(`Error fetching user: ${response.statusText}`);
     }
     
-    return await response.json();
+    const userData = await response.json();
+    return userData.user || null;
   } catch (error) {
-    console.error('Error getting user by UID:', error);
+    console.error('Error fetching user:', error);
     return null;
   }
 }
 
-export async function updateUser(uid: string, userData: any): Promise<any> {
+/**
+ * Update a user in MongoDB
+ */
+export async function updateUser(userId: string | number, userData: Partial<MongoUser>): Promise<MongoUser | null> {
   try {
-    const response = await fetch(`/api/users/${uid}`, {
-      method: 'PATCH',
+    const response = await fetch('/api/user/profile', {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(userData),
+      body: JSON.stringify({
+        userId,
+        ...userData
+      }),
       credentials: 'include'
     });
     
     if (!response.ok) {
-      throw new Error('Failed to update user');
+      throw new Error(`Error updating user: ${response.statusText}`);
     }
     
-    return await response.json();
+    const updatedUser = await response.json();
+    return updatedUser.user || null;
   } catch (error) {
     console.error('Error updating user:', error);
-    throw error;
-  }
-}
-
-// Startup-related functions
-export async function getStartupById(startupId: string): Promise<any | null> {
-  try {
-    const response = await fetch(`/api/startups/${startupId}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error('Failed to get startup');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting startup by ID:', error);
     return null;
   }
 }
 
-export async function getStartups(): Promise<any[]> {
+// Startups
+
+/**
+ * Create a startup in MongoDB
+ */
+export async function createStartup(startupData: Omit<MongoStartup, 'id' | 'createdAt'>): Promise<MongoStartup | null> {
   try {
     const response = await fetch('/api/startups', {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to get startups');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting startups:', error);
-    return [];
-  }
-}
-
-export async function updateStartup(startupId: string, startupData: any): Promise<any> {
-  try {
-    const response = await fetch(`/api/mongodb/startups/${startupId}`, {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
@@ -102,155 +121,130 @@ export async function updateStartup(startupId: string, startupData: any): Promis
     });
     
     if (!response.ok) {
-      throw new Error('Failed to update startup');
+      throw new Error(`Error creating startup: ${response.statusText}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    return result.startup || null;
   } catch (error) {
-    console.error('Error updating startup:', error);
-    throw error;
-  }
-}
-
-// Transaction-related functions
-export async function getTransactions(): Promise<any[]> {
-  try {
-    const response = await fetch('/api/mongodb/transactions', {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to get transactions');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting transactions:', error);
-    return [];
-  }
-}
-
-export async function addTransaction(transactionData: any): Promise<any> {
-  try {
-    const response = await fetch('/api/mongodb/transactions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(transactionData),
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to add transaction');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error adding transaction:', error);
-    throw error;
-  }
-}
-
-// Chat/Message-related functions
-export async function getChats(userId: string): Promise<any[]> {
-  try {
-    const response = await fetch(`/api/mongodb/chats/user/${userId}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to get chats');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting chats:', error);
-    return [];
-  }
-}
-
-export async function getChatById(chatId: string): Promise<any | null> {
-  try {
-    const response = await fetch(`/api/mongodb/chats/${chatId}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error('Failed to get chat');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting chat by ID:', error);
+    console.error('Error creating startup:', error);
     return null;
   }
 }
 
-export async function createChat(chatData: any): Promise<any> {
+/**
+ * Update a startup in MongoDB
+ */
+export async function updateStartup(startupId: string | number, startupData: Partial<MongoStartup>): Promise<MongoStartup | null> {
   try {
-    const response = await fetch('/api/mongodb/chats', {
-      method: 'POST',
+    const response = await fetch(`/api/startups/${startupId}`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(chatData),
+      body: JSON.stringify(startupData),
       credentials: 'include'
     });
     
     if (!response.ok) {
-      throw new Error('Failed to create chat');
+      throw new Error(`Error updating startup: ${response.statusText}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    return result.startup || null;
   } catch (error) {
-    console.error('Error creating chat:', error);
-    throw error;
+    console.error('Error updating startup:', error);
+    return null;
   }
 }
 
-export async function getMessagesByChatId(chatId: string): Promise<any[]> {
+/**
+ * Get startups by founder ID from MongoDB
+ */
+export async function getStartupsByFounderId(founderId: string | number): Promise<MongoStartup[]> {
   try {
-    const response = await fetch(`/api/mongodb/messages/chat/${chatId}`, {
-      method: 'GET',
+    const response = await fetch(`/api/startups/founder/${founderId}`, {
       credentials: 'include'
     });
     
     if (!response.ok) {
-      throw new Error('Failed to get messages');
+      throw new Error(`Error fetching startups: ${response.statusText}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    return result.startups || [];
   } catch (error) {
-    console.error('Error getting messages by chat ID:', error);
+    console.error('Error fetching startups by founder ID:', error);
     return [];
   }
 }
 
-export async function sendMessage(messageData: any): Promise<any> {
+/**
+ * Get a startup by ID from MongoDB
+ */
+export async function getStartup(startupId: string | number): Promise<MongoStartup | null> {
   try {
-    const response = await fetch('/api/mongodb/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(messageData),
+    const response = await fetch(`/api/startups/${startupId}`, {
       credentials: 'include'
     });
     
     if (!response.ok) {
-      throw new Error('Failed to send message');
+      throw new Error(`Error fetching startup: ${response.statusText}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    return result.startup || null;
   } catch (error) {
-    console.error('Error sending message:', error);
-    throw error;
+    console.error('Error fetching startup:', error);
+    return null;
+  }
+}
+
+// Documents
+
+/**
+ * Create a document in MongoDB
+ */
+export async function createDocument(documentData: Omit<MongoDocument, 'id' | 'createdAt'>): Promise<MongoDocument | null> {
+  try {
+    const response = await fetch(`/api/startups/${documentData.startupId}/documents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(documentData),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error creating document: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    return result.document || null;
+  } catch (error) {
+    console.error('Error creating document:', error);
+    return null;
+  }
+}
+
+/**
+ * Get documents by startup ID from MongoDB
+ */
+export async function getDocumentsByStartupId(startupId: string | number): Promise<MongoDocument[]> {
+  try {
+    const response = await fetch(`/api/startups/${startupId}/documents`, {
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching documents: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    return result.documents || [];
+  } catch (error) {
+    console.error('Error fetching documents by startup ID:', error);
+    return [];
   }
 }

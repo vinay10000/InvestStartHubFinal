@@ -16,6 +16,14 @@ import TransactionList from "@/components/transactions/TransactionList";
 import { Startup } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
+// MongoDB imports for database operations
+import { useToast } from "@/hooks/use-toast";
+import { 
+  createStartup as mongoCreateStartup,
+  updateStartup as mongoUpdateStartup, 
+  createDocument as mongoCreateDocument,
+  MongoStartup 
+} from "@/mongodb/database";
 import SampleWalletCleaner from "@/components/utils/SampleWalletCleaner";
 
 const FounderDashboard = () => {
@@ -38,7 +46,7 @@ const FounderDashboard = () => {
   }, [user, userId, authLoading]);
   
   // No longer using hooks that depend on Supabase
-  // We'll use Firebase functions directly
+  // We'll use MongoDB functions directly
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
   
@@ -49,8 +57,8 @@ const FounderDashboard = () => {
            window.location.hostname.includes('repl.co');
   }, []);
   const [selectedStartupId, setSelectedStartupId] = useState<string | number | null>(null);
-  // Define types for Firebase data
-  interface FirebaseStartup {
+  // Define types for MongoDB data (with backward compatibility)
+  interface MongoStartupData {
     id?: string;
     name: string;
     description: string;
@@ -67,28 +75,33 @@ const FounderDashboard = () => {
     [key: string]: any; // Allow for other properties
   }
   
-  const [myStartups, setMyStartups] = useState<FirebaseStartup[]>([]); // Store startups in state
+  const [myStartups, setMyStartups] = useState<MongoStartupData[]>([]); // Store startups in state
   const [adaptedStartups, setAdaptedStartups] = useState<Startup[]>([]); // Converted startups for UI components
 
   // No longer using Supabase hooks for startups
   const [startupsLoading, setStartupsLoading] = useState(true);
   const [isCreatingStartup, setIsCreatingStartup] = useState(false);
   
-  // Convert Firebase startups to the format expected by StartupCard
-  const adaptFirebaseStartupToUI = (firebaseStartup: FirebaseStartup): Startup => {
-    // Store both the original Firebase ID and a numeric ID for different use cases
-    const originalId = typeof firebaseStartup.id === 'string' ? firebaseStartup.id : '0';
+  // Initialize empty Firebase variables for backward compatibility
+  // This prevents "firebaseTransactions is not defined" errors during migration
+  const [firebaseTransactions, setFirebaseTransactions] = useState<any[]>([]);
+  const [firebaseStartups, setFirebaseStartups] = useState<any[]>([]);
+  
+  // Convert MongoDB startups to the format expected by StartupCard
+  const adaptMongoStartupToUI = (mongoStartup: MongoStartupData): Startup => {
+    // Store both the original MongoDB ID and a numeric ID for different use cases
+    const originalId = typeof mongoStartup.id === 'string' ? mongoStartup.id : '0';
     
-    // CRITICAL: We use the original Firebase ID (like -OO3QgOok6sXzmTM5_aR) instead of 
+    // CRITICAL: We use the original MongoDB ID (like "65f0abcd1234567890abcdef") instead of 
     // converting to a number. This ensures consistency with database IDs.
     
     // Create a numeric version of the founderId for the schema type - only used internally
     let founderIdNumeric = 0;
     try {
-      if (typeof firebaseStartup.founderId === 'number') {
-        founderIdNumeric = firebaseStartup.founderId;
-      } else if (typeof firebaseStartup.founderId === 'string') {
-        const parsed = parseInt(firebaseStartup.founderId);
+      if (typeof mongoStartup.founderId === 'number') {
+        founderIdNumeric = mongoStartup.founderId;
+      } else if (typeof mongoStartup.founderId === 'string') {
+        const parsed = parseInt(mongoStartup.founderId);
         founderIdNumeric = !isNaN(parsed) ? parsed : 0;
       }
     } catch (e) {
@@ -98,22 +111,22 @@ const FounderDashboard = () => {
     // Modified the type to work with both string and numeric IDs
     return {
       id: originalId as any, // Type assertion to satisfy TypeScript - we've modified the schema
-      name: firebaseStartup.name,
-      description: firebaseStartup.description,
-      category: firebaseStartup.category || null,
-      investmentStage: firebaseStartup.investment_stage || "",
+      name: mongoStartup.name,
+      description: mongoStartup.description,
+      category: mongoStartup.category || null,
+      investmentStage: mongoStartup.investment_stage || "",
       founderId: founderIdNumeric, // Use the numeric conversion for schema compatibility
-      createdAt: firebaseStartup.createdAt ? new Date(firebaseStartup.createdAt) : new Date(),
-      logoUrl: firebaseStartup.logo_url || null,
-      upiQrCode: firebaseStartup.upi_qr_code || null,
-      pitch: firebaseStartup.pitch || "",
-      fundingGoal: firebaseStartup.funding_goal || "0",
-      currentFunding: firebaseStartup.current_funding || "0",
-      websiteUrl: firebaseStartup.website_url || null,
-      upiId: firebaseStartup.upi_id || null,
+      createdAt: mongoStartup.createdAt ? new Date(mongoStartup.createdAt) : new Date(),
+      logoUrl: mongoStartup.logo_url || null,
+      upiQrCode: mongoStartup.upi_qr_code || null,
+      pitch: mongoStartup.pitch || "",
+      fundingGoal: mongoStartup.funding_goal || "0",
+      currentFunding: mongoStartup.current_funding || "0",
+      websiteUrl: mongoStartup.website_url || null,
+      upiId: mongoStartup.upi_id || null,
       // Add required fields that might be missing
-      mediaUrls: firebaseStartup.mediaUrls || [],
-      videoUrl: firebaseStartup.videoUrl || null
+      mediaUrls: mongoStartup.mediaUrls || [],
+      videoUrl: mongoStartup.videoUrl || null
     };
   };
   
@@ -159,12 +172,12 @@ const FounderDashboard = () => {
         upi_id: startup.upiId,
         mediaUrls: startup.mediaUrls || [],
         videoUrl: startup.videoUrl || null
-      } as FirebaseStartup));
+      } as MongoStartupData));
       
       setMyStartups(formattedStartups);
       
       // Convert to UI-ready format
-      const uiReadyStartups = formattedStartups.map(startup => adaptFirebaseStartupToUI(startup));
+      const uiReadyStartups = formattedStartups.map((startup: MongoStartupData) => adaptMongoStartupToUI(startup));
       setAdaptedStartups(uiReadyStartups);
       setStartupsLoading(false);
     }
@@ -239,7 +252,6 @@ const FounderDashboard = () => {
       
       // Log the user information we're using
       console.log("Creating startup with user:", { 
-        uid: user.uid,
         id: user.id,
         username: user.username,
         isAuthenticated: !!user
@@ -258,56 +270,57 @@ const FounderDashboard = () => {
         }
       }
       
-      // Create the Firebase payload
-      const firebasePayload = {
+      // Create the MongoDB payload
+      const mongoPayload = {
         name: startupData.name,
         description: startupData.description,
         pitch: startupData.pitch || "",
         founderId: userId.toString(), // Store as string for consistency
-        investment_stage: startupData.investmentStage,
+        investmentStage: startupData.investmentStage,
         category: startupData.category || null,
-        funding_goal: startupData.fundingGoalEth || "1",
-        funding_goal_eth: startupData.fundingGoalEth || "1",
-        current_funding: startupData.currentFunding || "0",
-        logo_url: startupData.logoUrl || null,
-        website_url: startupData.websiteUrl || null,
-        upi_id: startupData.upiId || null,
-        upi_qr_code: upiQrCodeUrl || startupData.upiQrCode || null
+        fundingGoal: startupData.fundingGoalEth || "1",
+        currentFunding: startupData.currentFunding || "0",
+        logoUrl: startupData.logoUrl || null,
+        websiteUrl: startupData.websiteUrl || null,
+        upiId: startupData.upiId || null,
+        upiQrCode: upiQrCodeUrl || startupData.upiQrCode || null,
+        mediaUrls: [], // Initialize with empty array
+        videoUrl: null // Initialize with null
       };
       
-      console.log("Creating startup in Firebase with data:", firebasePayload);
+      console.log("Creating startup in MongoDB with data:", mongoPayload);
       
       try {
-        // Create startup in Firebase Realtime Database
-        const result = await firebaseCreateStartup(firebasePayload);
+        // Create startup in MongoDB
+        const result = await mongoCreateStartup(mongoPayload);
         
         if (result && result.id) {
-          console.log('Startup created in Firebase with ID:', result.id);
+          console.log('Startup created in MongoDB with ID:', result.id);
           
           // Format for UI consistency
-          const typedStartupData: FirebaseStartup = {
-            id: result.id,
+          const typedStartupData: MongoStartupData = {
+            id: result.id.toString(),
             name: result.name,
             description: result.description,
             category: result.category,
-            investment_stage: result.investment_stage,
-            investmentStage: result.investment_stage,
+            investment_stage: result.investmentStage, // Add legacy format field for compatibility
+            investmentStage: result.investmentStage,
             founderId: result.founderId,
             founder_id: result.founderId,
-            logoUrl: result.logo_url,
-            logo_url: result.logo_url,
-            upiQrCode: result.upi_qr_code,
-            upi_qr_code: result.upi_qr_code,
+            logoUrl: result.logoUrl,
+            logo_url: result.logoUrl, // Add legacy format field for compatibility
+            upiQrCode: result.upiQrCode,
+            upi_qr_code: result.upiQrCode, // Add legacy format field for compatibility
             pitch: result.pitch,
-            funding_goal: result.funding_goal,
-            upi_id: result.upi_id
+            funding_goal: result.fundingGoal, // Add legacy format field for compatibility
+            upi_id: result.upiId // Add legacy format field for compatibility
           };
           
           // Add to local state for immediate UI update
           setMyStartups(prev => [...prev, typedStartupData]);
           
           // Also add to the UI-ready state in adapted format
-          const adaptedStartup = adaptFirebaseStartupToUI(typedStartupData);
+          const adaptedStartup = adaptMongoStartupToUI(typedStartupData);
           setAdaptedStartups(prev => [...prev, adaptedStartup]);
           
           console.log("Added new startup to local state:", typedStartupData);
@@ -326,7 +339,7 @@ const FounderDashboard = () => {
           // Show success message
           alert(`Startup ${result.name} created successfully!`);
           
-          // Redirect to the startup details page using the Firebase ID
+          // Redirect to the startup details page using the MongoDB ID
           // Use setLocation from wouter for SPA navigation
           setLocation(`/startup/${result.id}`);
           
@@ -334,7 +347,7 @@ const FounderDashboard = () => {
           throw new Error("Failed to create startup - no ID returned");
         }
       } catch (error) {
-        console.error("Error creating startup in Firebase:", error);
+        console.error("Error creating startup in MongoDB:", error);
         // Show a more user-friendly error using toast or alert
         if (error instanceof Error) {
           alert(`Failed to create startup: ${error.message}`);
@@ -370,9 +383,9 @@ const FounderDashboard = () => {
           if (uploadResult && uploadResult.url) {
             console.log("UPI QR code uploaded to ImageKit:", uploadResult.url);
             
-            // Update startup with QR code URL in Firebase
-            await firebaseUpdateStartup(startupId, {
-              upi_qr_code: uploadResult.url
+            // Update startup with QR code URL in MongoDB
+            await mongoUpdateStartup(startupId, {
+              upiQrCode: uploadResult.url
             });
             
             console.log("Startup updated with UPI QR code URL");
@@ -396,9 +409,9 @@ const FounderDashboard = () => {
           if (uploadResult && uploadResult.url) {
             console.log("Logo uploaded to ImageKit:", uploadResult.url);
             
-            // Update startup with logo URL in Firebase
-            await firebaseUpdateStartup(startupId, {
-              logo_url: uploadResult.url
+            // Update startup with logo URL in MongoDB
+            await mongoUpdateStartup(startupId, {
+              logoUrl: uploadResult.url
             });
             
             console.log("Startup updated with logo URL");
@@ -439,9 +452,9 @@ const FounderDashboard = () => {
           }
           
           if (mediaUrls.length > 0) {
-            // Update startup with media URLs in Firebase
-            await firebaseUpdateStartup(startupId, {
-              media_urls: mediaUrls
+            // Update startup with media URLs in MongoDB
+            await mongoUpdateStartup(startupId, {
+              mediaUrls: mediaUrls
             });
             
             console.log("Startup updated with media URLs");
@@ -465,9 +478,9 @@ const FounderDashboard = () => {
           if (uploadResult && uploadResult.url) {
             console.log("Video uploaded to ImageKit:", uploadResult.url);
             
-            // Update startup with video URL in Firebase
-            await firebaseUpdateStartup(startupId, {
-              video_url: uploadResult.url
+            // Update startup with video URL in MongoDB
+            await mongoUpdateStartup(startupId, {
+              videoUrl: uploadResult.url
             });
             
             console.log("Startup updated with video URL");
@@ -483,10 +496,9 @@ const FounderDashboard = () => {
     }
   };
 
-  // Combine startups from both sources (Firebase and API)
-  // Type the API responses explicitly
+  // Type the API responses explicitly for MongoDB data
   interface ApiStartupResponse {
-    startups: FirebaseStartup[];
+    startups: MongoStartupData[]; // Updated to use MongoDB naming
   }
   
   interface ApiTransactionResponse {
@@ -503,28 +515,26 @@ const FounderDashboard = () => {
     }[];
   }
   
-  // No longer need to transform API startups as we're using Firebase directly
-    
-  // Now we're only using adapted Firebase data for UI components
-  // Use firebaseTransactions directly
+  // Now we're only using MongoDB data for UI components
+  // Use formattedTransactions directly from MongoDB
 
   // Calculate metrics safely
   const totalInvestors = useMemo(() => {
     const investorIds: Record<string, boolean> = {};
-    firebaseTransactions.forEach(t => {
+    formattedTransactions.forEach(t => {
       if (t.investorId) {
         const id = String(t.investorId);
         investorIds[id] = true;
       }
     });
     return Object.keys(investorIds).length;
-  }, [firebaseTransactions]);
+  }, [formattedTransactions]);
   
   const totalRevenue = useMemo(() => {
-    return firebaseTransactions
+    return formattedTransactions
       .filter(t => t.status === "completed")
       .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-  }, [firebaseTransactions]);
+  }, [formattedTransactions]);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -582,7 +592,7 @@ const FounderDashboard = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Transactions</p>
                 <h3 className="text-2xl font-bold">
-                  {transactionsLoading ? <Skeleton className="h-8 w-16" /> : firebaseTransactions.length}
+                  {transactionsLoading ? <Skeleton className="h-8 w-16" /> : formattedTransactions.length}
                 </h3>
               </div>
             </div>
@@ -742,7 +752,7 @@ const FounderDashboard = () => {
                     const uploadResult = await uploadDocumentToImageKit(startupId, documentType, file);
                     
                     if (uploadResult && uploadResult.url) {
-                      // Create document record in Firebase
+                      // Create document record in MongoDB
                       const documentData = {
                         startupId: startupId,
                         type: documentType,
@@ -754,8 +764,8 @@ const FounderDashboard = () => {
                         fileSize: file.size
                       };
                       
-                      // Create document in Firebase
-                      await firebaseCreateDocument(documentData);
+                      // Create document in MongoDB
+                      await mongoCreateDocument(documentData);
                     }
                   }}
                 />
@@ -776,7 +786,7 @@ const FounderDashboard = () => {
         
         <TabsContent value="transactions">
           <h2 className="text-2xl font-bold mb-6">Investment Transactions</h2>
-          <TransactionList transactions={firebaseTransactions} isLoading={transactionsLoading} />
+          <TransactionList transactions={formattedTransactions} isLoading={transactionsLoading} />
         </TabsContent>
         
         {isDevEnvironment && (
