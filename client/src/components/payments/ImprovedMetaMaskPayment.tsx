@@ -18,9 +18,9 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-// Import from our local mock implementations instead of Firebase SDK
-import { doc, setDoc, collection, serverTimestamp, addDoc, firestore } from '@/firebase/firestore';
-// Import wallet utilities with MongoDB and Firestore fallbacks
+// Import MongoDB adapters that provide Firestore-compatible API
+// MongoDB API is used directly with fetch instead of Firestore-like API
+// Import wallet utilities that use MongoDB
 import { getStartupWallet } from '../../utils/getStartupWalletNew';
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -433,18 +433,40 @@ const ImprovedMetaMaskPayment = ({
           startupName: startupName
         };
 
-        // Add transaction to Firestore
-        await setDoc(doc(firestore, "transactions", transactionId), transactionData);
-
-        // Update startup's total investment
-        const startupRef = doc(firestore, "startups", startupId.toString());
-        const startupTransactionsRef = collection(startupRef, "transactions");
-        await setDoc(doc(startupTransactionsRef, transactionId), transactionData);
-
-        // Update user's investments
-        const userRef = doc(firestore, "users", user.id.toString());
-        const userTransactionsRef = collection(userRef, "transactions");
-        await setDoc(doc(userTransactionsRef, transactionId), transactionData);
+        // Add transaction to MongoDB
+        try {
+          await fetch(`/api/mongodb/transactions/${transactionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...transactionData,
+              _updatedAt: new Date()
+            })
+          });
+          
+          // Update startup's transactions collection in MongoDB
+          await fetch(`/api/mongodb/startups/${startupId}/transactions/${transactionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...transactionData,
+              _updatedAt: new Date()
+            })
+          });
+          
+          // Update user's transactions collection in MongoDB
+          await fetch(`/api/mongodb/users/${user.id}/transactions/${transactionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...transactionData,
+              _updatedAt: new Date()
+            })
+          });
+        } catch (error) {
+          console.error("Error saving transaction data to MongoDB:", error);
+          // Continue with the API transaction creation since that's backed by MongoDB anyway
+        }
         
         // Record transaction in our backend for API access
         try {

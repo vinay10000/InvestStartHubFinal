@@ -19,6 +19,7 @@ import {
   storeWalletAddress,
   storeStartupWalletAddress
 } from './mongo-wallet-utils';
+import { getDB } from './mongo';
 import walletRoutes from './wallet-routes';
 import { setupAuth, requireAuth, requireRole } from './auth';
 
@@ -27,7 +28,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
   
   // Register wallet routes at multiple endpoints for compatibility
-  app.use('/api/wallet', walletRoutes); // New MongoDB-based endpoint
+  app.use('/api/wallet', walletRoutes); // MongoDB-based endpoint
+  
+  // MongoDB API endpoints to replace Firestore
+  app.get('/api/mongodb/:collection/:id', async (req: Request, res: Response) => {
+    try {
+      const { collection, id } = req.params;
+      const db = getDB();
+      
+      // Get the document from MongoDB
+      const doc = await db.collection(collection).findOne({ 
+        $or: [
+          { id: id }, 
+          { id: Number(id) }, 
+          { _id: id },
+          { _id: Number(id) }
+        ]
+      });
+      
+      if (!doc) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      res.json(doc);
+    } catch (error) {
+      console.error('Error getting document from MongoDB:', error);
+      res.status(500).json({ error: 'Failed to get document' });
+    }
+  });
+  
+  app.get('/api/mongodb/:collection', async (req: Request, res: Response) => {
+    try {
+      const { collection } = req.params;
+      const { filter, orderBy, limit } = req.query;
+      const db = getDB();
+      
+      // Build the query
+      let query: any = {};
+      
+      // Add filters if present
+      if (filter) {
+        const filters = Array.isArray(filter) ? filter : [filter];
+        filters.forEach((f: any) => {
+          if (f.field && f.op && f.value !== undefined) {
+            // Convert operators to MongoDB format
+            switch (f.op) {
+              case '==': query[f.field] = f.value; break;
+              case '!=': query[f.field] = { $ne: f.value }; break;
+              case '>': query[f.field] = { $gt: f.value }; break;
+              case '>=': query[f.field] = { $gte: f.value }; break;
+              case '<': query[f.field] = { $lt: f.value }; break;
+              case '<=': query[f.field] = { $lte: f.value }; break;
+              default: query[f.field] = f.value;
+            }
+          }
+        });
+      }
+      
+      // Fetch documents
+      let cursor = db.collection(collection).find(query);
+      
+      // Add ordering if present
+      if (orderBy) {
+        const sort: any = {};
+        const orders = Array.isArray(orderBy) ? orderBy : [orderBy];
+        orders.forEach((o: any) => {
+          if (o.field) {
+            sort[o.field] = o.direction === 'desc' ? -1 : 1;
+          }
+        });
+        
+        if (Object.keys(sort).length > 0) {
+          cursor = cursor.sort(sort);
+        }
+      }
+      
+      // Add limit if present
+      if (limit) {
+        cursor = cursor.limit(parseInt(limit as string, 10));
+      }
+      
+      // Execute the query
+      const documents = await cursor.toArray();
+      
+      res.json(documents);
+    } catch (error) {
+      console.error('Error querying MongoDB:', error);
+      res.status(500).json({ error: 'Failed to query documents' });
+    }
+  });
+  
+  app.put('/api/mongodb/:collection/:id', async (req: Request, res: Response) => {
+    try {
+      const { collection, id } = req.params;
+      const data = req.body;
+      const db = getDB();
+      
+      // Create or replace the document
+      const result = await db.collection(collection).replaceOne(
+        { $or: [{ id: id }, { id: Number(id) }, { _id: id }] }, 
+        { ...data, id: id, _id: id },
+        { upsert: true }
+      );
+      
+      res.json({ success: true, id });
+    } catch (error) {
+      console.error('Error updating document in MongoDB:', error);
+      res.status(500).json({ error: 'Failed to update document' });
+    }
+  });
+  
+  app.patch('/api/mongodb/:collection/:id', async (req: Request, res: Response) => {
+    try {
+      const { collection, id } = req.params;
+      const updates = req.body;
+      const db = getDB();
+      
+      // Update the document
+      const result = await db.collection(collection).updateOne(
+        { $or: [{ id: id }, { id: Number(id) }, { _id: id }] },
+        { $set: updates },
+        { upsert: true }
+      );
+      
+      res.json({ success: true, id });
+    } catch (error) {
+      console.error('Error updating document in MongoDB:', error);
+      res.status(500).json({ error: 'Failed to update document' });
+    }
+  });
+  
+  app.delete('/api/mongodb/:collection/:id', async (req: Request, res: Response) => {
+    try {
+      const { collection, id } = req.params;
+      const db = getDB();
+      
+      // Delete the document
+      const result = await db.collection(collection).deleteOne({ 
+        $or: [{ id: id }, { id: Number(id) }, { _id: id }] 
+      });
+      
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting document from MongoDB:', error);
+      res.status(500).json({ error: 'Failed to delete document' });
+    }
+  });
   app.use('/api/wallets', walletRoutes); // Standard endpoint that the frontend expects
   app.use('/api/mongodb/wallets', walletRoutes); // Keep this for backward compatibility
   

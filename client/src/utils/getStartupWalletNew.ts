@@ -1,105 +1,93 @@
 /**
- * New module for wallet lookups
- * This module provides hybrid lookup capabilities using both MongoDB and Firestore
- * for reliable wallet discovery.
+ * Wallet lookup module using MongoDB exclusively
+ * This module replaces the hybrid Firebase/MongoDB implementation
+ * with a MongoDB-only solution for wallet discovery
  */
-import { getStartupWalletFromMongoDB, getUserWalletFromMongoDB } from './mongoWalletUtils';
 
-// Existing Firestore-based wallet lookup imports
-const getStartupWalletFromFirebase = async (startupId: string): Promise<string | null> => {
+/**
+ * Get a wallet address for a startup from MongoDB
+ */
+const getStartupWalletFromMongoDB = async (startupId: string): Promise<string | null> => {
   try {
     const response = await fetch(`/api/wallets/startup/${startupId}`);
     if (!response.ok) {
       if (response.status === 404) {
-        console.log(`[getStartupWalletNew] No wallet found for startup ${startupId} in Firestore`);
+        console.log(`[getStartupWallet] No wallet found for startup ${startupId} in MongoDB`);
         return null;
       }
-      throw new Error(`Error fetching wallet from Firestore: ${response.statusText}`);
+      throw new Error(`Error fetching wallet from MongoDB: ${response.statusText}`);
     }
     
     const data = await response.json();
-    console.log(`[getStartupWalletNew] Found wallet for startup ${startupId} in Firestore:`, data.walletAddress);
+    console.log(`[getStartupWallet] Found wallet for startup ${startupId} in MongoDB:`, data.walletAddress);
     return data.walletAddress;
   } catch (error) {
-    console.error(`[getStartupWalletNew] Error fetching wallet from Firestore for startup ${startupId}:`, error);
-    return null;
-  }
-};
-
-const getUserWalletFromFirebase = async (userId: string): Promise<string | null> => {
-  try {
-    const response = await fetch(`/api/wallets/user/${userId}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.log(`[getStartupWalletNew] No wallet found for user ${userId} in Firestore`);
-        return null;
-      }
-      throw new Error(`Error fetching wallet from Firestore: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log(`[getStartupWalletNew] Found wallet for user ${userId} in Firestore:`, data.walletAddress);
-    return data.walletAddress;
-  } catch (error) {
-    console.error(`[getStartupWalletNew] Error fetching wallet from Firestore for user ${userId}:`, error);
+    console.error(`[getStartupWallet] Error fetching wallet from MongoDB for startup ${startupId}:`, error);
     return null;
   }
 };
 
 /**
- * Get a wallet address for a startup, trying MongoDB first, then Firestore
+ * Get a wallet address for a user from MongoDB
+ */
+const getUserWalletFromMongoDB = async (userId: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`/api/wallets/user/${userId}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log(`[getStartupWallet] No wallet found for user ${userId} in MongoDB`);
+        return null;
+      }
+      throw new Error(`Error fetching wallet from MongoDB: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`[getStartupWallet] Found wallet for user ${userId} in MongoDB:`, data.walletAddress);
+    return data.walletAddress;
+  } catch (error) {
+    console.error(`[getStartupWallet] Error fetching wallet from MongoDB for user ${userId}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Get a wallet address for a startup from MongoDB
  */
 export async function getStartupWallet(startupId: string): Promise<string> {
-  console.log(`[getStartupWalletNew] Getting wallet for startup ${startupId}`);
+  console.log(`[getStartupWallet] Getting wallet for startup ${startupId}`);
   
   try {
-    // First try MongoDB
-    const mongoWallet = await getStartupWalletFromMongoDB(startupId);
-    if (mongoWallet) {
-      console.log(`[getStartupWalletNew] Found wallet in MongoDB: ${mongoWallet}`);
-      return mongoWallet;
+    const wallet = await getStartupWalletFromMongoDB(startupId);
+    if (wallet) {
+      console.log(`[getStartupWallet] Found wallet in MongoDB: ${wallet}`);
+      return wallet;
     }
     
-    // Then try Firestore
-    const firebaseWallet = await getStartupWalletFromFirebase(startupId);
-    if (firebaseWallet) {
-      console.log(`[getStartupWalletNew] Found wallet in Firestore: ${firebaseWallet}`);
-      return firebaseWallet;
-    }
-    
-    console.log(`[getStartupWalletNew] No wallet found for startup ${startupId} in any database`);
+    console.log(`[getStartupWallet] No wallet found for startup ${startupId} in MongoDB`);
     return ""; // Return empty string as fallback
   } catch (error) {
-    console.error(`[getStartupWalletNew] Error getting wallet for startup ${startupId}:`, error);
+    console.error(`[getStartupWallet] Error getting wallet for startup ${startupId}:`, error);
     return ""; // Return empty string as fallback
   }
 }
 
 /**
- * Get a wallet address for a user, trying MongoDB first, then Firestore
+ * Get a wallet address for a user from MongoDB
  */
 export async function getUserWallet(userId: string): Promise<string> {
-  console.log(`[getStartupWalletNew] Getting wallet for user ${userId}`);
+  console.log(`[getUserWallet] Getting wallet for user ${userId}`);
   
   try {
-    // First try MongoDB
-    const mongoWallet = await getUserWalletFromMongoDB(userId);
-    if (mongoWallet) {
-      console.log(`[getStartupWalletNew] Found wallet in MongoDB: ${mongoWallet}`);
-      return mongoWallet;
+    const wallet = await getUserWalletFromMongoDB(userId);
+    if (wallet) {
+      console.log(`[getUserWallet] Found wallet in MongoDB: ${wallet}`);
+      return wallet;
     }
     
-    // Then try Firestore
-    const firebaseWallet = await getUserWalletFromFirebase(userId);
-    if (firebaseWallet) {
-      console.log(`[getStartupWalletNew] Found wallet in Firestore: ${firebaseWallet}`);
-      return firebaseWallet;
-    }
-    
-    console.log(`[getStartupWalletNew] No wallet found for user ${userId} in any database`);
+    console.log(`[getUserWallet] No wallet found for user ${userId} in MongoDB`);
     return ""; // Return empty string as fallback
   } catch (error) {
-    console.error(`[getStartupWalletNew] Error getting wallet for user ${userId}:`, error);
+    console.error(`[getUserWallet] Error getting wallet for user ${userId}:`, error);
     return ""; // Return empty string as fallback
   }
 }

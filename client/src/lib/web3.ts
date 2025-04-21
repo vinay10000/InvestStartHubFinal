@@ -291,37 +291,37 @@ export const useWeb3 = () => {
             // Mark as connected in localStorage
             localStorage.setItem('wallet_connected', 'true');
             
-            // Also save wallet address to Firebase on initial load
+            // Also save wallet address to MongoDB on initial load
             try {
-              // Import Firebase modules dynamically to avoid circular dependencies
-              const { auth } = await import("../firebase/config");
-              const { addWalletAddress } = await import("../firebase/walletDatabase");
-              const { updateUser } = await import("../firebase/database");
+              // Import MongoDB modules dynamically to avoid circular dependencies
+              const { auth } = await import("../mongodb/config");
+              const { saveWalletAddress } = await import("../mongodb/walletDatabase");
+              const { updateUser } = await import("../mongodb/database");
               
               if (auth.currentUser) {
                 const userId = auth.currentUser.uid;
-                console.log("[useWeb3] Initial load - Saving wallet address to Firebase for user:", userId);
+                console.log("[useWeb3] Initial load - Saving wallet address to MongoDB for user:", userId);
                 
                 // Get user role from localStorage if available
                 const userRole = localStorage.getItem('user_role') || 'investor';
                 
                 // Save to dedicated wallet database
-                await addWalletAddress(
+                await saveWalletAddress(
+                  userId,
                   userAddress,
-                  parseInt(userId) || 999,
                   auth.currentUser.displayName || auth.currentUser.email || 'User',
-                  false
+                  userRole
                 );
                 
                 // Also update the user profile
                 await updateUser(userId, { walletAddress: userAddress });
-                console.log("[useWeb3] Initial load - Successfully saved wallet address to Firebase");
+                console.log("[useWeb3] Initial load - Successfully saved wallet address to MongoDB");
               } else {
                 console.log("[useWeb3] Initial load - No authenticated user found for wallet saving");
               }
             } catch (saveError) {
-              console.error("[useWeb3] Initial load - Error saving wallet to Firebase:", saveError);
-              // Continue even if Firebase save fails
+              console.error("[useWeb3] Initial load - Error saving wallet to MongoDB:", saveError);
+              // Continue even if MongoDB save fails
             }
           }
         }
@@ -354,37 +354,37 @@ export const useWeb3 = () => {
         // Mark as connected in localStorage
         localStorage.setItem('wallet_connected', 'true');
         
-        // Save wallet address to Firebase when account changes
+        // Save wallet address to MongoDB when account changes
         try {
-          // Import Firebase modules dynamically to avoid circular dependencies
-          const { auth } = await import("../firebase/config");
-          const { saveWalletAddress } = await import("../firebase/walletDatabase");
-          const { updateUser } = await import("../firebase/database");
+          // Import MongoDB modules dynamically to avoid circular dependencies
+          const { auth } = await import("../mongodb/config");
+          const { saveWalletAddress } = await import("../mongodb/walletDatabase");
+          const { updateUser } = await import("../mongodb/database");
           
           if (auth.currentUser) {
             const userId = auth.currentUser.uid;
-            console.log("[useWeb3] Account changed, saving new wallet address to Firebase for user:", userId);
+            console.log("[useWeb3] Account changed, saving new wallet address to MongoDB for user:", userId);
             
             // Get user role from localStorage if available
             const userRole = localStorage.getItem('user_role') || 'investor';
             
             // Save to dedicated wallet database
-            await addWalletAddress(
-              newAddress, 
-              parseInt(userId) || 999,
+            await saveWalletAddress(
+              userId,
+              newAddress,
               auth.currentUser.displayName || auth.currentUser.email || 'User',
-              false
+              userRole
             );
             
             // Also update the user profile
             await updateUser(userId, { walletAddress: newAddress });
-            console.log("[useWeb3] Successfully saved new wallet address to Firebase");
+            console.log("[useWeb3] Successfully saved new wallet address to MongoDB");
           } else {
             console.log("[useWeb3] No authenticated user found for wallet saving on account change");
           }
         } catch (saveError) {
-          console.error("[useWeb3] Error saving wallet to Firebase on account change:", saveError);
-          // Continue even if Firebase save fails
+          console.error("[useWeb3] Error saving wallet to MongoDB on account change:", saveError);
+          // Continue even if MongoDB save fails
         }
       }
     };
@@ -427,37 +427,37 @@ export const useWeb3 = () => {
         const userChainId = await getChainId();
         setChainId(userChainId);
         
-        // Save wallet address to Firebase
+        // Save wallet address to MongoDB
         try {
-          // Import Firebase modules dynamically to avoid circular dependencies
-          const { auth } = await import("../firebase/config");
-          const { saveWalletAddress } = await import("../firebase/walletDatabase");
-          const { updateUser } = await import("../firebase/database");
+          // Import MongoDB modules dynamically to avoid circular dependencies
+          const { auth } = await import("../mongodb/config");
+          const { saveWalletAddress } = await import("../mongodb/walletDatabase");
+          const { updateUser } = await import("../mongodb/database");
           
           if (auth.currentUser) {
             const userId = auth.currentUser.uid;
-            console.log("[useWeb3] Saving wallet address to Firebase for user:", userId);
+            console.log("[useWeb3] Saving wallet address to MongoDB for user:", userId);
             
             // Get user role from localStorage if available
             const userRole = localStorage.getItem('user_role') || 'investor';
             
             // Save to dedicated wallet database
-            await addWalletAddress(
-              connectedAddress,
-              parseInt(userId) || 999,
+            await saveWalletAddress(
+              userId,
+              connectedAddress, 
               auth.currentUser.displayName || auth.currentUser.email || 'User',
-              false
+              userRole
             );
             
             // Also update the user profile
             await updateUser(userId, { walletAddress: connectedAddress });
-            console.log("[useWeb3] Successfully saved wallet address to Firebase");
+            console.log("[useWeb3] Successfully saved wallet address to MongoDB");
           } else {
             console.log("[useWeb3] No authenticated user found for wallet saving");
           }
         } catch (saveError) {
-          console.error("[useWeb3] Error saving wallet to Firebase:", saveError);
-          // Continue even if Firebase save fails
+          console.error("[useWeb3] Error saving wallet to MongoDB:", saveError);
+          // Continue even if MongoDB save fails
         }
         
         return true;

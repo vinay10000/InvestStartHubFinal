@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { auth } from '@/firebase/config';
-import { onAuthStateChanged } from '@/firebase/auth';
+import { observeAuthState, getCurrentUser } from '@/firebase/firebaseAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,16 @@ const TestAuth = () => {
   const [firebaseLoading, setFirebaseLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
 
-  // Get Firebase user directly
+  // Get MongoDB user using Firebase-compatible API
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // Initialize with current user
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setFirebaseUser(currentUser);
+    }
+    
+    // Observe auth state changes
+    const unsubscribe = observeAuthState((user) => {
       setFirebaseUser(user);
       setFirebaseLoading(false);
     });
@@ -53,14 +59,14 @@ const TestAuth = () => {
           </div>
 
           <div className="border rounded-lg p-4 bg-muted/30">
-            <h3 className="text-lg font-semibold mb-2">Firebase Auth Status:</h3>
+            <h3 className="text-lg font-semibold mb-2">MongoDB Auth Status:</h3>
             {firebaseUser ? (
               <div className="text-green-600 font-medium">
-                ✅ User is authenticated in Firebase
+                ✅ User is authenticated in MongoDB
               </div>
             ) : (
               <div className="text-red-600 font-medium">
-                ❌ No user authenticated in Firebase
+                ❌ No user authenticated in MongoDB
               </div>
             )}
           </div>
@@ -80,7 +86,7 @@ const TestAuth = () => {
 
           {firebaseUser && showDetails && (
             <div className="border rounded-lg p-4 mt-4">
-              <h3 className="text-lg font-semibold mb-2">Firebase User Details:</h3>
+              <h3 className="text-lg font-semibold mb-2">MongoDB User Details:</h3>
               <pre className="bg-muted p-4 rounded overflow-auto text-xs">
                 {JSON.stringify(
                   {

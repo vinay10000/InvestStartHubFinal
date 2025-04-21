@@ -2,15 +2,15 @@
  * Wallet address utilities for the server side
  * 
  * IMPORTANT: This file provides a critical wallet address retrieval system that 
- * exclusively uses Firestore as the source of truth for wallet addresses.
+ * exclusively uses MongoDB as the source of truth for wallet addresses.
  * 
  * The approach is:
- * 1. Use Firestore as the ONLY source of wallet addresses
- * 2. Return null if Firestore lookup fails (no fallbacks)
+ * 1. Use MongoDB as the ONLY source of wallet addresses
+ * 2. Return null if MongoDB lookup fails (no fallbacks)
  * 3. Never use in-memory caching or predetermined wallet constants for lookups
  * 4. Only use predefined wallet constants for initialization purposes
  */
-import { firestore, realtimeDb } from './db';
+import { getDB } from './mongo';
 
 /**
  * Pre-initialized wallet addresses for known critical startups and founders
@@ -32,14 +32,13 @@ const KNOWN_WALLETS: Record<string, string> = {
   '-OOLddX22DvremZi-040': '0x05fe362a1cb1a55a99bfdceb7e91c6cf241ee782',
 };
 
-// Note: No in-memory cache is used. All wallet lookups go directly to Firestore
+// Note: No in-memory cache is used. All wallet lookups go directly to MongoDB
 
 // Collection names
 const WALLET_COLLECTION = 'wallet_addresses';
 const STARTUP_WALLET_COLLECTION = 'startup_wallet_addresses';
 const USERS_COLLECTION = 'users';
 const STARTUPS_COLLECTION = 'startups';
-const FIREBASE_USERS_COLLECTION = 'firebase_users';
 
 /**
  * Store a wallet address for a user

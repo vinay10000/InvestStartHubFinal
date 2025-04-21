@@ -12,9 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
-import { database } from "@/firebase/config";
-import { ref, onValue } from "firebase/database";
 import { useSimpleAuth } from "@/hooks/useSimpleAuth";
+import { useQuery } from "@tanstack/react-query";
 
 const NotificationIcon = () => {
   const { user } = useSimpleAuth();
@@ -26,6 +25,22 @@ const NotificationIcon = () => {
   const isFounder = user?.role === "founder" || localStorage.getItem('user_role') === "founder";
   const unreadCountField = isFounder ? 'founderUnread' : 'investorUnread';
   
+  // Use React Query to fetch notifications from MongoDB backend
+  const { data: chatData, isLoading } = useQuery({
+    queryKey: ['/api/chats/notifications', user?.id, isFounder],
+    queryFn: async () => {
+      if (!user) return null;
+      const response = await fetch('/api/chats/notifications?role=' + (isFounder ? 'founder' : 'investor'));
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
+      }
+      return response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 10000, // Refetch every 10 seconds to check for new messages
+    refetchIntervalInBackground: true
+  });
+
   useEffect(() => {
     if (!user) {
       setUnreadCount(0);
@@ -34,58 +49,34 @@ const NotificationIcon = () => {
       return;
     }
 
-    setLoading(true);
+    setLoading(isLoading);
     
-    // Reference to all chats
-    const chatsQuery = ref(database, "chats");
-    
-    // Listen for chat updates
-    const unsubscribe = onValue(chatsQuery, (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        setNotifications([]);
-        setUnreadCount(0);
-        setLoading(false);
-        return;
-      }
-      
-      // Convert object to array and filter by user's role
-      const chatList = Object.entries(data).map(([id, chatData]: [string, any]) => ({
-        id,
-        ...chatData
-      })).filter(chat => {
-        // Filter chats where user is a participant
-        return isFounder 
-          ? chat.founderId === user.id
-          : chat.investorId === user.id;
-      });
+    if (chatData) {
+      // Process chat data
+      const chatList = chatData.chats || [];
       
       // Calculate total unread count
-      const totalUnread = chatList.reduce((total, chat) => {
+      const totalUnread = chatList.reduce((total: number, chat: any) => {
         return total + (chat[unreadCountField] || 0);
       }, 0);
       
       // Get notifications for chats with unread messages
       const notificationItems = chatList
-        .filter(chat => chat[unreadCountField] && chat[unreadCountField] > 0)
-        .map(chat => ({
-          id: chat.id,
+        .filter((chat: any) => chat[unreadCountField] && chat[unreadCountField] > 0)
+        .map((chat: any) => ({
+          id: chat.id.toString(),
           name: isFounder ? chat.investorName || "Investor" : chat.startupName || "Startup",
           avatar: isFounder ? chat.investorAvatar : chat.founderAvatar,
           unreadCount: chat[unreadCountField] || 0,
           lastMessage: chat.lastMessage || "New message",
         }))
-        .sort((a, b) => b.unreadCount - a.unreadCount); // Sort by unread count (highest first)
+        .sort((a: any, b: any) => b.unreadCount - a.unreadCount); // Sort by unread count (highest first)
       
       setUnreadCount(totalUnread);
       setNotifications(notificationItems);
       setLoading(false);
-    });
-    
-    return () => {
-      unsubscribe();
-    };
-  }, [user, isFounder, unreadCountField]);
+    }
+  }, [user, isFounder, unreadCountField, chatData, isLoading]);
 
   const handleNotificationClick = (chatId: string) => {
     navigate(`/chat/${chatId}`);

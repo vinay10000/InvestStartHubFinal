@@ -6,9 +6,11 @@ import {
   Chat, InsertChat,
   Message, InsertMessage
 } from "@shared/schema";
-import { firestore, realtimeDb } from "./db";
+import { getDB } from "./db";
 import { MongoStorage } from "./mongo-storage";
 import { connectToMongoDB } from "./mongo";
+import session from "express-session";
+import { MongoStore } from 'connect-mongo';
 
 export interface IStorage {
   // User operations
@@ -22,7 +24,7 @@ export interface IStorage {
   // Startup operations
   getAllStartups(): Promise<Startup[]>;
   getStartup(id: number): Promise<Startup | undefined>;
-  getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined>;
+  getStartupByFounderId(founderId: string | number): Promise<Startup | undefined>;
   getStartupsByFounderId(founderId: number): Promise<Startup[]>;
   createStartup(startup: InsertStartup): Promise<Startup>;
   updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined>;
@@ -49,6 +51,9 @@ export interface IStorage {
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesByChatId(chatId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  
+  // Session store
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
@@ -65,6 +70,7 @@ export class MemStorage implements IStorage {
   private transactionCurrentId: number;
   private chatCurrentId: number;
   private messageCurrentId: number;
+  public sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
@@ -80,6 +86,10 @@ export class MemStorage implements IStorage {
     this.transactionCurrentId = 1;
     this.chatCurrentId = 1;
     this.messageCurrentId = 1;
+    
+    // Create a memory session store
+    const MemoryStore = require('memorystore')(session);
+    this.sessionStore = new MemoryStore({ checkPeriod: 86400000 });
   }
 
   // User operations
@@ -143,22 +153,15 @@ export class MemStorage implements IStorage {
     return this.startups.get(id);
   }
   
-  async getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined> {
-    // For memory storage, search for startups with a matching founderId or sameId
+  async getStartupByFounderId(founderId: string | number): Promise<Startup | undefined> {
+    // For memory storage, search for startups with a matching founderId
     const startups = Array.from(this.startups.values());
     
-    // First try to find by founderId as a string
-    const startupByFounderId = startups.find(
-      (startup) => String(startup.founderId) === firebaseId
-    );
+    // Compare as strings to handle both number and string IDs
+    const founderIdStr = String(founderId);
     
-    if (startupByFounderId) {
-      return startupByFounderId;
-    }
-    
-    // Then try to find by sameId
     return startups.find(
-      (startup) => startup.sameId === firebaseId
+      (startup) => String(startup.founderId) === founderIdStr
     );
   }
 
@@ -204,7 +207,7 @@ export class MemStorage implements IStorage {
   async getDocumentsByStartupId(startupId: number | string): Promise<Document[]> {
     console.log(`Getting documents for startup ID: ${startupId} (type: ${typeof startupId})`);
     
-    // Handle both Firebase string IDs and numeric IDs
+    // Handle both string IDs and numeric IDs
     return Array.from(this.documents.values()).filter(
       (document) => {
         // For numeric startupId, directly compare
@@ -322,733 +325,26 @@ export class MemStorage implements IStorage {
   }
 }
 
-export class FirebaseStorage implements IStorage {
-  private usersCollection = 'users';
-  private startupsCollection = 'startups';
-  private documentsCollection = 'documents';
-  private transactionsCollection = 'transactions';
-  private chatsCollection = 'chats';
-  private messagesCollection = 'messages';
-  private walletAddressesCollection = 'wallet_addresses';
+// Create and export a singleton instance
+export const storage: IStorage = new MongoStorage();
 
-  constructor() {
-    // Ensure Firestore is available
-    if (!firestore) {
-      console.error('Firebase Firestore is not initialized properly');
-    }
-  }
-
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    try {
-      const snapshot = await firestore?.collection(this.usersCollection).doc(String(id)).get();
-      if (snapshot && snapshot.exists) {
-        return { id: Number(snapshot.id), ...snapshot.data() } as User;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting user:', error);
-      return undefined;
-    }
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      const snapshot = await firestore?.collection(this.usersCollection)
-        .where('username', '==', username)
-        .limit(1)
-        .get();
-      
-      if (snapshot && !snapshot.empty) {
-        const doc = snapshot.docs[0];
-        return { id: Number(doc.id), ...doc.data() } as User;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting user by username:', error);
-      return undefined;
-    }
-  }
+// Function to initialize storage if needed (for testing or special cases)
+export async function initStorage(): Promise<IStorage> {
+  console.log('Initializing storage with MongoDB storage');
   
-  async getAllUsers(): Promise<User[]> {
-    try {
-      const snapshot = await firestore?.collection(this.usersCollection).get();
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as User[];
-    } catch (error) {
-      console.error('Error getting all users:', error);
-      return [];
+  try {
+    // Check MongoDB connection
+    const isConnected = await connectToMongoDB();
+    
+    if (!isConnected) {
+      console.log('MongoDB not available, consider using in-memory storage');
+      return new MemStorage();
     }
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    try {
-      const userRef = firestore?.collection(this.usersCollection).doc();
-      
-      if (!userRef) {
-        throw new Error('Failed to create user reference');
-      }
-      
-      const id = Number(userRef.id);
-      const createdAt = new Date();
-      
-      const userData = {
-        ...insertUser,
-        id,
-        createdAt,
-        walletAddress: insertUser.walletAddress || null,
-        profilePicture: insertUser.profilePicture || null,
-        sameId: insertUser.sameId || null
-      };
-      
-      await userRef.set(userData);
-      
-      // If a wallet address is provided, store it in a special collection
-      if (insertUser.walletAddress) {
-        await this.storeWalletAddress(id, insertUser.walletAddress);
-      }
-      
-      return userData as User;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
-  }
-
-  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    try {
-      const userRef = firestore?.collection(this.usersCollection).doc(String(id));
-      
-      if (!userRef) {
-        return undefined;
-      }
-      
-      // Get current user data
-      const snapshot = await userRef.get();
-      if (!snapshot.exists) {
-        return undefined;
-      }
-      
-      const currentData = snapshot.data() as User;
-      const updatedData = { ...currentData, ...userData };
-      
-      await userRef.update(updatedData);
-      
-      // If wallet address is being updated, store it in the special collection
-      if (userData.walletAddress) {
-        await this.storeWalletAddress(id, userData.walletAddress);
-      }
-      
-      return { id, ...updatedData } as User;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      return undefined;
-    }
-  }
-
-  async updateUserWallet(id: number, walletAddress: string): Promise<User | undefined> {
-    try {
-      const userRef = firestore?.collection(this.usersCollection).doc(String(id));
-      
-      if (!userRef) {
-        return undefined;
-      }
-      
-      // Get current user data
-      const snapshot = await userRef.get();
-      if (!snapshot.exists) {
-        return undefined;
-      }
-      
-      const currentData = snapshot.data() as User;
-      const updatedData = { ...currentData, walletAddress };
-      
-      await userRef.update({ walletAddress });
-      
-      // Store wallet address in the special collection
-      await this.storeWalletAddress(id, walletAddress);
-      
-      return { id, ...updatedData } as User;
-    } catch (error) {
-      console.error('Error updating user wallet:', error);
-      return undefined;
-    }
-  }
-
-  // Special method to store wallet addresses in a dedicated collection
-  private async storeWalletAddress(userId: number, walletAddress: string): Promise<void> {
-    try {
-      // Store by user ID
-      await firestore?.collection(this.walletAddressesCollection)
-        .doc(String(userId))
-        .set({
-          userId,
-          walletAddress,
-          updatedAt: new Date()
-        });
-
-      // Also store by wallet address for reverse lookup
-      await firestore?.collection(`${this.walletAddressesCollection}_reverse`)
-        .doc(walletAddress.toLowerCase())
-        .set({
-          userId,
-          walletAddress,
-          updatedAt: new Date()
-        });
-    } catch (error) {
-      console.error('Error storing wallet address:', error);
-    }
-  }
-
-  // Get wallet address by user ID
-  async getWalletAddressByUserId(userId: number): Promise<string | null> {
-    try {
-      const doc = await firestore?.collection(this.walletAddressesCollection)
-        .doc(String(userId))
-        .get();
-      
-      if (doc && doc.exists) {
-        return doc.data()?.walletAddress || null;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching wallet address:', error);
-      return null;
-    }
-  }
-
-  // Get user ID by wallet address
-  async getUserIdByWalletAddress(walletAddress: string): Promise<number | null> {
-    try {
-      const doc = await firestore?.collection(`${this.walletAddressesCollection}_reverse`)
-        .doc(walletAddress.toLowerCase())
-        .get();
-      
-      if (doc && doc.exists) {
-        return doc.data()?.userId || null;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching user by wallet address:', error);
-      return null;
-    }
-  }
-
-  // Startup operations
-  async getAllStartups(): Promise<Startup[]> {
-    try {
-      const snapshot = await firestore?.collection(this.startupsCollection).get();
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Startup[];
-    } catch (error) {
-      console.error('Error getting all startups:', error);
-      return [];
-    }
-  }
-
-  async getStartup(id: number): Promise<Startup | undefined> {
-    try {
-      const snapshot = await firestore?.collection(this.startupsCollection).doc(String(id)).get();
-      if (snapshot && snapshot.exists) {
-        return { id: Number(snapshot.id), ...snapshot.data() } as Startup;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting startup:', error);
-      return undefined;
-    }
-  }
-  
-  /**
-   * Get a startup by its Firebase ID (string ID)
-   * This is specifically for handling Firebase UIDs which are strings like "5SddFKVv8ydDMPl4sSnrgPazt3c2"
-   */
-  async getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined> {
-    try {
-      if (!firestore) {
-        console.warn('Firestore is not available. Falling back to memory storage for getStartupByFirebaseId()');
-        return undefined;
-      }
-      
-      console.log(`[FirebaseStorage] Looking up startup with Firebase ID: ${firebaseId}`);
-      
-      // First try looking for the startup record directly using the Firebase ID as the document ID
-      const startupRef = firestore.collection(this.startupsCollection).doc(firebaseId);
-      let snapshot = await startupRef.get();
-      
-      if (snapshot.exists) {
-        const data = snapshot.data() as Omit<Startup, 'id'>;
-        return { ...data, id: Number(firebaseId) || 0 } as Startup;
-      }
-      
-      // If not found, try querying with where clause matching on founderId field
-      const querySnapshot = await firestore.collection(this.startupsCollection)
-        .where('founderId', '==', firebaseId)
-        .limit(1)
-        .get();
-      
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        const data = doc.data() as Omit<Startup, 'id'>;
-        const id = Number(doc.id) || 0;
-        
-        console.log(`[FirebaseStorage] Found startup with founderId=${firebaseId}, startup ID: ${id}`);
-        return { ...data, id } as Startup;
-      }
-      
-      // Also try looking for startups with sameId matching the Firebase UID
-      // (in case the startup was linked to the founder using sameId)
-      const sameIdQuerySnapshot = await firestore.collection(this.startupsCollection)
-        .where('sameId', '==', firebaseId)
-        .limit(1)
-        .get();
-        
-      if (!sameIdQuerySnapshot.empty) {
-        const doc = sameIdQuerySnapshot.docs[0];
-        const data = doc.data() as Omit<Startup, 'id'>;
-        const id = Number(doc.id) || 0;
-        
-        console.log(`[FirebaseStorage] Found startup with sameId=${firebaseId}, startup ID: ${id}`);
-        return { ...data, id } as Startup;
-      }
-      
-      console.log(`[FirebaseStorage] No startup found for Firebase ID: ${firebaseId}`);
-      return undefined;
-    } catch (error) {
-      console.error('Error getting startup by Firebase ID:', error);
-      return undefined;
-    }
-  }
-
-  async getStartupsByFounderId(founderId: number): Promise<Startup[]> {
-    try {
-      const snapshot = await firestore?.collection(this.startupsCollection)
-        .where('founderId', '==', founderId)
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Startup[];
-    } catch (error) {
-      console.error('Error getting startups by founder ID:', error);
-      return [];
-    }
-  }
-
-  async createStartup(insertStartup: InsertStartup): Promise<Startup> {
-    try {
-      const startupRef = firestore?.collection(this.startupsCollection).doc();
-      
-      if (!startupRef) {
-        throw new Error('Failed to create startup reference');
-      }
-      
-      const id = Number(startupRef.id);
-      const createdAt = new Date();
-      
-      const startupData = {
-        ...insertStartup,
-        id,
-        createdAt,
-        sameId: insertStartup.sameId || null,
-        category: insertStartup.category || null,
-        fundingGoal: insertStartup.fundingGoal || null,
-        currentFunding: insertStartup.currentFunding || null,
-        logoUrl: insertStartup.logoUrl || null,
-        websiteUrl: insertStartup.websiteUrl || null,
-        upiId: insertStartup.upiId || null,
-        upiQrCode: insertStartup.upiQrCode || null,
-        mediaUrls: insertStartup.mediaUrls || [],
-        videoUrl: insertStartup.videoUrl || null
-      };
-      
-      await startupRef.set(startupData);
-      
-      // Also get the founder's wallet address and store it for this startup
-      const founderWallet = await this.getWalletAddressByUserId(insertStartup.founderId);
-      if (founderWallet) {
-        await firestore?.collection('startup_wallets')
-          .doc(String(id))
-          .set({
-            startupId: id,
-            founderId: insertStartup.founderId,
-            walletAddress: founderWallet,
-            updatedAt: new Date()
-          });
-      }
-      
-      return startupData as Startup;
-    } catch (error) {
-      console.error('Error creating startup:', error);
-      throw error;
-    }
-  }
-
-  async updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined> {
-    try {
-      const startupRef = firestore?.collection(this.startupsCollection).doc(String(id));
-      
-      if (!startupRef) {
-        return undefined;
-      }
-      
-      // Get current startup data
-      const snapshot = await startupRef.get();
-      if (!snapshot.exists) {
-        return undefined;
-      }
-      
-      const currentData = snapshot.data() as Startup;
-      const updatedData = { ...currentData, ...startupData };
-      
-      await startupRef.update(updatedData);
-      
-      return { id, ...updatedData } as Startup;
-    } catch (error) {
-      console.error('Error updating startup:', error);
-      return undefined;
-    }
-  }
-
-  // Document operations
-  async getDocument(id: number | string): Promise<Document | undefined> {
-    try {
-      const docId = String(id);
-      const snapshot = await firestore?.collection(this.documentsCollection).doc(docId).get();
-      
-      if (snapshot && snapshot.exists) {
-        return { id: Number(snapshot.id), ...snapshot.data() } as Document;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting document:', error);
-      return undefined;
-    }
-  }
-
-  async getDocumentsByStartupId(startupId: number | string): Promise<Document[]> {
-    try {
-      const stringStartupId = String(startupId);
-      const snapshot = await firestore?.collection(this.documentsCollection)
-        .where('startupId', '==', stringStartupId)
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Document[];
-    } catch (error) {
-      console.error('Error getting documents by startup ID:', error);
-      return [];
-    }
-  }
-
-  async createDocument(document: InsertDocument): Promise<Document> {
-    try {
-      const docRef = firestore?.collection(this.documentsCollection).doc();
-      
-      if (!docRef) {
-        throw new Error('Failed to create document reference');
-      }
-      
-      const id = Number(docRef.id);
-      const createdAt = new Date();
-      
-      const documentData = {
-        ...document,
-        id,
-        createdAt,
-        fileId: document.fileId || null,
-        fileName: document.fileName || null,
-        mimeType: document.mimeType || null,
-        fileSize: document.fileSize || null
-      };
-      
-      await docRef.set(documentData);
-      
-      return documentData as Document;
-    } catch (error) {
-      console.error('Error creating document:', error);
-      throw error;
-    }
-  }
-
-  // Transaction operations
-  async getTransaction(id: number): Promise<Transaction | undefined> {
-    try {
-      const snapshot = await firestore?.collection(this.transactionsCollection).doc(String(id)).get();
-      
-      if (snapshot && snapshot.exists) {
-        return { id: Number(snapshot.id), ...snapshot.data() } as Transaction;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting transaction:', error);
-      return undefined;
-    }
-  }
-
-  async getTransactionsByFounderId(founderId: number): Promise<Transaction[]> {
-    try {
-      // First get all startups by founder ID
-      const founderStartups = await this.getStartupsByFounderId(founderId);
-      if (founderStartups.length === 0) return [];
-      
-      const startupIds = founderStartups.map(startup => String(startup.id));
-      
-      // Use array-contains-any to get transactions for multiple startups
-      const snapshot = await firestore?.collection(this.transactionsCollection)
-        .where('startupId', 'in', startupIds)
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Transaction[];
-    } catch (error) {
-      console.error('Error getting transactions by founder ID:', error);
-      return [];
-    }
-  }
-
-  async getTransactionsByInvestorId(investorId: number): Promise<Transaction[]> {
-    try {
-      const investorIdStr = String(investorId);
-      const snapshot = await firestore?.collection(this.transactionsCollection)
-        .where('investorId', '==', investorIdStr)
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Transaction[];
-    } catch (error) {
-      console.error('Error getting transactions by investor ID:', error);
-      return [];
-    }
-  }
-
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    try {
-      const transactionRef = firestore?.collection(this.transactionsCollection).doc();
-      
-      if (!transactionRef) {
-        throw new Error('Failed to create transaction reference');
-      }
-      
-      const id = Number(transactionRef.id);
-      const createdAt = new Date();
-      
-      const transactionData = {
-        ...transaction,
-        id,
-        createdAt,
-        transactionId: transaction.transactionId || null
-      };
-      
-      await transactionRef.set(transactionData);
-      
-      return transactionData as Transaction;
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-      throw error;
-    }
-  }
-
-  async updateTransactionStatus(id: number, status: string): Promise<Transaction | undefined> {
-    try {
-      const transactionRef = firestore?.collection(this.transactionsCollection).doc(String(id));
-      
-      if (!transactionRef) {
-        return undefined;
-      }
-      
-      // Get current transaction data
-      const snapshot = await transactionRef.get();
-      if (!snapshot.exists) {
-        return undefined;
-      }
-      
-      const currentData = snapshot.data() as Transaction;
-      const updatedData = { ...currentData, status };
-      
-      await transactionRef.update({ status });
-      
-      return { id, ...updatedData } as Transaction;
-    } catch (error) {
-      console.error('Error updating transaction status:', error);
-      return undefined;
-    }
-  }
-
-  // Chat operations
-  async getChat(id: number): Promise<Chat | undefined> {
-    try {
-      const snapshot = await firestore?.collection(this.chatsCollection).doc(String(id)).get();
-      
-      if (snapshot && snapshot.exists) {
-        return { id: Number(snapshot.id), ...snapshot.data() } as Chat;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting chat:', error);
-      return undefined;
-    }
-  }
-
-  async getChatsByFounderId(founderId: number): Promise<Chat[]> {
-    try {
-      const snapshot = await firestore?.collection(this.chatsCollection)
-        .where('founderId', '==', founderId)
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Chat[];
-    } catch (error) {
-      console.error('Error getting chats by founder ID:', error);
-      return [];
-    }
-  }
-
-  async getChatsByInvestorId(investorId: number): Promise<Chat[]> {
-    try {
-      const snapshot = await firestore?.collection(this.chatsCollection)
-        .where('investorId', '==', investorId)
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Chat[];
-    } catch (error) {
-      console.error('Error getting chats by investor ID:', error);
-      return [];
-    }
-  }
-
-  async createChat(chat: InsertChat): Promise<Chat> {
-    try {
-      const chatRef = firestore?.collection(this.chatsCollection).doc();
-      
-      if (!chatRef) {
-        throw new Error('Failed to create chat reference');
-      }
-      
-      const id = Number(chatRef.id);
-      const createdAt = new Date();
-      
-      const chatData = {
-        ...chat,
-        id,
-        createdAt
-      };
-      
-      await chatRef.set(chatData);
-      
-      return chatData as Chat;
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      throw error;
-    }
-  }
-
-  // Message operations
-  async getMessage(id: number): Promise<Message | undefined> {
-    try {
-      const snapshot = await firestore?.collection(this.messagesCollection).doc(String(id)).get();
-      
-      if (snapshot && snapshot.exists) {
-        return { id: Number(snapshot.id), ...snapshot.data() } as Message;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting message:', error);
-      return undefined;
-    }
-  }
-
-  async getMessagesByChatId(chatId: number): Promise<Message[]> {
-    try {
-      const snapshot = await firestore?.collection(this.messagesCollection)
-        .where('chatId', '==', chatId)
-        .orderBy('createdAt', 'asc')
-        .get();
-      
-      if (!snapshot) return [];
-      
-      return snapshot.docs.map(doc => ({ 
-        id: Number(doc.id), 
-        ...doc.data() 
-      })) as Message[];
-    } catch (error) {
-      console.error('Error getting messages by chat ID:', error);
-      return [];
-    }
-  }
-
-  async createMessage(message: InsertMessage): Promise<Message> {
-    try {
-      const messageRef = firestore?.collection(this.messagesCollection).doc();
-      
-      if (!messageRef) {
-        throw new Error('Failed to create message reference');
-      }
-      
-      const id = Number(messageRef.id);
-      const createdAt = new Date();
-      
-      const messageData = {
-        ...message,
-        id,
-        createdAt
-      };
-      
-      await messageRef.set(messageData);
-      
-      return messageData as Message;
-    } catch (error) {
-      console.error('Error creating message:', error);
-      throw error;
-    }
+    
+    return storage; // Return the existing singleton instance
+  } catch (error) {
+    console.error('Error initializing MongoDB storage:', error);
+    console.log('Falling back to in-memory storage');
+    return new MemStorage();
   }
 }
-
-// Use FirebaseStorage for reliable wallet address storage and retrieval
-// Initialize MongoDB connection
-connectToMongoDB()
-  .then(success => {
-    if (success) {
-      console.log("MongoDB connection successful, using MongoDB storage");
-    } else {
-      console.warn("MongoDB connection failed, falling back to Firebase storage");
-    }
-  })
-  .catch(error => {
-    console.error("Error connecting to MongoDB:", error);
-  });
-
-// Export MongoDB storage as the primary storage implementation
-export const storage = new MongoStorage();

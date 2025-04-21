@@ -13,13 +13,42 @@ import {
   TrendingUp, Users, Wallet, DollarSign, BarChart2, PieChart as PieChartIcon, 
   LineChart as LineChartIcon, Activity, Filter
 } from "lucide-react";
-import { getDatabase, ref, get, query, orderByChild } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getTransactionsByFounderId } from "@/firebase/database";
-
-// This will be populated with real data from Firebase
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+// MongoDB transaction utilities
+async function getTransactionsByFounderId(founderId: string | undefined): Promise<any[]> {
+  if (!founderId) return [];
+  
+  try {
+    // Query transactions from MongoDB API
+    const response = await fetch(`/api/mongodb/transactions?filter[field]=founderId&filter[op]=%3D%3D&filter[value]=${founderId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch transactions');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching transactions by founder ID:", error);
+    return [];
+  }
+}
+
+async function getTransactionsByInvestorId(investorId: string | undefined): Promise<any[]> {
+  if (!investorId) return [];
+  
+  try {
+    // Query transactions from MongoDB API
+    const response = await fetch(`/api/mongodb/transactions?filter[field]=investorId&filter[op]=%3D%3D&filter[value]=${investorId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch transactions');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching transactions by investor ID:", error);
+    return [];
+  }
+}
 
 interface InvestmentAnalyticsProps {
   startupId?: string;
@@ -36,12 +65,12 @@ const InvestmentAnalytics: React.FC<InvestmentAnalyticsProps> = ({
   const [chartType, setChartType] = useState('bar');
   const [loading, setLoading] = useState(true);
   
-  // Real data from Firebase
+  // Real data from MongoDB
   const [investmentData, setInvestmentData] = useState<any[]>([]);
   const [sectorData, setSectorData] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   
-  // Load data from Firebase
+  // Load data from MongoDB
   useEffect(() => {
     const fetchData = async () => {
       if (!userId) return;
@@ -56,19 +85,8 @@ const InvestmentAnalytics: React.FC<InvestmentAnalyticsProps> = ({
           console.log("Fetched founder transactions for analytics:", transactions);
         } else {
           // For investor view, we'd fetch by investor ID
-          // This would need to be implemented in database.ts
-          const db = getDatabase();
-          const transactionsRef = ref(db, 'transactions');
-          const snapshot = await get(transactionsRef);
-          
-          if (snapshot.exists()) {
-            const allTransactions = snapshot.val();
-            transactions = Object.values(allTransactions)
-              .filter((tx: any) => 
-                tx.investorId && tx.investorId.toString() === userId.toString()
-              ) as Transaction[];
-            console.log("Fetched investor transactions for analytics:", transactions);
-          }
+          transactions = await getTransactionsByInvestorId(userId);
+          console.log("Fetched investor transactions for analytics:", transactions);
         }
         
         if (transactions && transactions.length > 0) {

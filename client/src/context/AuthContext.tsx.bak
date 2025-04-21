@@ -11,7 +11,7 @@ import {
   signInWithGoogle as mongoSignInWithGoogle, 
   signOut as mongoSignOut,
   onAuthChange 
-} from "@/mongodb/auth";
+} from "@/firebase/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 // Use MongoDB database adapter instead of Firebase
@@ -352,7 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Updating user profile:", userData);
       
       // Get the current auth user
-      const { auth } = await import("@/mongodb/config");
+      const { auth } = await import("@/firebase/config");
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
@@ -401,7 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Connecting wallet:", walletAddress);
       
       // Get the current auth user
-      const { auth } = await import("@/mongodb/config");
+      const { auth } = await import("@/firebase/config");
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
@@ -492,7 +492,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Disconnecting wallet");
       
       // Get the current auth user
-      const { auth } = await import("@/mongodb/config");
+      const { auth } = await import("@/firebase/config");
       const currentUser = auth.currentUser;
       
       if (!currentUser) {

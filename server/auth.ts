@@ -44,10 +44,8 @@ export async function hashPassword(password: string): Promise<string> {
  * Compare a supplied password with a stored hash
  */
 export async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
-  // Handle Firebase/Google Auth password format
-  if (stored.startsWith('firebase_') || stored.startsWith('google_')) {
-    return false;
-  }
+  // No need to check for Firebase/Google Auth password format anymore
+  // Just perform regular password comparison
   
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
@@ -112,11 +110,8 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: 'Invalid username or password' });
         }
         
-        // For Firebase users (password starts with firebase_ or google_)
-        if (user.password.startsWith('firebase_') || user.password.startsWith('google_')) {
-          console.log(`Found Firebase/Google user: ${username}. Firebase authentication is no longer supported.`);
-          return done(null, false, { message: 'Firebase authentication is no longer supported. Please reset your password.' });
-        }
+        // We no longer support any special password formats
+        // All passwords should be in the standard format
         
         // Compare passwords
         const isPasswordValid = await comparePasswords(password, user.password);

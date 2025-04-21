@@ -1,8 +1,8 @@
 /**
- * Database connections for both Firebase and PostgreSQL
- * This file exports both Firebase and PostgreSQL database connections for compatibility
+ * Database connections for MongoDB
+ * This file exports MongoDB database connection for the application
  */
-import { firebaseApp, firestore, realtimeDb } from './firebase.db';
+import { getDB } from './mongo';
 
-// Re-export Firebase connections to maintain compatibility with existing code
-export { firestore, realtimeDb };
+// Export MongoDB connection
+export { getDB };
