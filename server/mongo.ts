@@ -8,12 +8,15 @@ if (!uri) {
   console.error("⚠️ WARNING: No MONGODB_URI environment variable found. MongoDB functionality will not work correctly.");
 }
 
-// Use simplified connection options for compatibility with MongoDB Atlas on Replit
+// Use improved connection options for compatibility with MongoDB Atlas on Replit
 const mongoOptions: MongoClientOptions = {
-  // Using a simpler set of options for better compatibility
+  // Enhanced connection options for better stability with MongoDB Atlas
   connectTimeoutMS: 30000,
   serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 60000
+  socketTimeoutMS: 60000,
+  maxPoolSize: 10,
+  minPoolSize: 1,
+  maxIdleTimeMS: 30000
 };
 
 // Detect if we're using Atlas
@@ -44,33 +47,46 @@ export const STARTUP_WALLET_COLLECTION = 'startup_wallet_addresses';
 // Initialize MongoDB connection with fallback strategies
 export async function connectToMongoDB() {
   try {
-    // Log the MongoDB connection attempt
+    // Log the MongoDB connection attempt 
     const maskedUri = uri.replace(/mongodb\+srv:\/\/([^:]+):[^@]+@/, 'mongodb+srv://$1:****@');
     console.log(`Attempting to connect to MongoDB with URI: ${maskedUri}`);
+    
+    // First see if we already have a valid connection
+    if (db) {
+      try {
+        // Try a simple operation to verify the connection is still valid
+        await db.command({ ping: 1 });
+        console.log("✅ MongoDB connection already established and valid");
+        return true;
+      } catch (existingConnectionError) {
+        console.log("⚠️ Existing MongoDB connection is no longer valid, reconnecting...");
+        // Continue with reconnection
+      }
+    }
     
     try {
       // First strategy: Try normal connection
       console.log("MongoDB Connection Strategy 1: Direct connection with timeout");
       await client.connect();
       console.log("✅ MongoDB Strategy 1 succeeded: Connected to MongoDB successfully");
+      
+      // Get database reference
+      db = client.db("startup_investment_platform");
     } catch (firstError) {
       console.error("❌ MongoDB Strategy 1 failed:", firstError instanceof Error ? firstError.message : String(firstError));
       
-      // Second strategy: Try with ping
+      // Second strategy: Try with direct database access
       try {
         console.log("MongoDB Connection Strategy 2: Direct connection to database");
         // Just connect to the database directly
         db = client.db("startup_investment_platform");
+        // Verify connection with a ping
+        await db.command({ ping: 1 });
         console.log("✅ MongoDB Strategy 2 succeeded: Connected to database directly");
       } catch (secondError) {
         console.error("❌ MongoDB Strategy 2 failed:", secondError instanceof Error ? secondError.message : String(secondError));
         throw secondError; // Pass error to the outer catch block
       }
-    }
-    
-    // If we got here, one of the strategies worked - set up the database
-    if (!db) {
-      db = client.db("startup_investment_platform");
     }
     
     console.log(`✅ Successfully connected to database: startup_investment_platform`);
@@ -150,7 +166,19 @@ const inMemoryStorage: Record<string, Map<string, any>> = {
 // Get MongoDB database instance with fallback support
 export function getDB() {
   if (!db) {
-    console.warn("⚠️ MongoDB not initialized. Using fallback in-memory storage.");
+    console.warn("⚠️ MongoDB not initialized. Attempting to connect...");
+    
+    // Try to connect in the background
+    connectToMongoDB().then(connected => {
+      if (connected) {
+        console.log("✅ Successfully initialized MongoDB connection on demand");
+      } else {
+        console.error("❌ Failed to initialize MongoDB connection on demand");
+      }
+    }).catch(err => {
+      console.error("❌ Error connecting to MongoDB on demand:", err);
+    });
+    
     // Return a proxy object that mimics MongoDB collection operations but uses in-memory storage
     return {
       collection: (collectionName: string) => {
@@ -227,6 +255,8 @@ export function useMongoConnection() {
   mongoConnectionInUse = true;
   return () => {
     mongoConnectionInUse = false;
+    // Don't automatically close the connection when operations complete
+    // We want to keep the connection open for faster subsequent requests
     if (pendingCloseRequested) {
       closeMongoDBInternal();
     }
@@ -236,7 +266,8 @@ export function useMongoConnection() {
 // Internal function to actually close the connection
 async function closeMongoDBInternal() {
   try {
-    await client.close();
+    // Only close on application shutdown, not between operations
+    await client.close(true);
     console.log("MongoDB connection closed");
     pendingCloseRequested = false;
     return true;
