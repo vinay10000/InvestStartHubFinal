@@ -41,17 +41,5 @@ export const realtimeDb = firebaseApp ? getDatabase(firebaseApp) : null;
 // Keep the db export for compatibility with existing code
 export const db = { firestore, realtimeDb };
 
-// Import wallet utils for initialization
-import { initKnownWalletAddresses } from './wallet-utils';
-
-// Initialize known wallet addresses to ensure they're available
-// This will populate the database with critical wallet addresses even if Firebase has connectivity issues
-(async function initWallets() {
-  try {
-    console.log('Initializing known wallet addresses...');
-    await initKnownWalletAddresses();
-    console.log('Wallet addresses initialized successfully');
-  } catch (error) {
-    console.error('Error initializing wallet addresses:', error);
-  }
-})();
+// Wallet addresses will be initialized in server/index.ts after all imports are resolved
+// This prevents circular dependency issues

@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerImageKitRoutes } from "./imagekit";
+import { initKnownWalletAddresses } from "./wallet-utils";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -54,6 +55,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize known wallet addresses to ensure they are available in Firestore
+  try {
+    log('Initializing known wallet addresses');
+    await initKnownWalletAddresses();
+    log('✅ Successfully initialized known wallet addresses');
+  } catch (error) {
+    log('❌ Error initializing known wallet addresses: ' + error);
+  }
+
   const server = await registerRoutes(app);
 
   // Register ImageKit routes
