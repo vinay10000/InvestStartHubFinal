@@ -19,23 +19,7 @@ export const useTransactions = () => {
   const getTransactionsByInvestorId = (investorId?: number | string) => {
     if (!investorId) return { data: { transactions: [] }, isLoading: false };
     
-    // Use firebase directly if we're using the Firebase auth system
-    if (typeof investorId === 'string' && investorId.length > 10) {
-      return useQuery<{ transactions: Transaction[] }>({
-        queryKey: ["firebase/transactions", { investorId }],
-        queryFn: async () => {
-          // Import here to avoid circular dependencies
-          const { getFirestoreTransactionsByInvestorId } = await import("@/firebase/firestore");
-          const transactions = await getFirestoreTransactionsByInvestorId(investorId);
-          return { transactions };
-        },
-        enabled: !!investorId,
-        refetchOnWindowFocus: true,
-        refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
-      });
-    }
-    
-    // Fall back to API request for backward compatibility
+    // All transactions now use MongoDB via the API
     return useQuery<{ transactions: Transaction[] }>({
       queryKey: ["/api/investments", { investorId }],
       enabled: !!investorId,
@@ -48,23 +32,7 @@ export const useTransactions = () => {
   const getTransactionsByFounderId = (founderId?: number | string) => {
     if (!founderId) return { data: { transactions: [] }, isLoading: false };
     
-    // Use firebase directly if we're using the Firebase auth system
-    if (typeof founderId === 'string' && founderId.length > 10) {
-      return useQuery<{ transactions: Transaction[] }>({
-        queryKey: ["firebase/transactions", { founderId }],
-        queryFn: async () => {
-          // Import here to avoid circular dependencies
-          const { getFirestoreTransactionsByFounderId } = await import("@/firebase/firestore");
-          const transactions = await getFirestoreTransactionsByFounderId(founderId);
-          return { transactions };
-        },
-        enabled: !!founderId,
-        refetchOnWindowFocus: true,
-        refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
-      });
-    }
-    
-    // Fall back to API request for backward compatibility
+    // All transactions now use MongoDB via the API
     return useQuery<{ transactions: Transaction[] }>({
       queryKey: ["/api/investments", { founderId }],
       enabled: !!founderId,
@@ -87,10 +55,7 @@ export const useTransactions = () => {
   // Create a new transaction
   const createTransaction = useMutation({
     mutationFn: async (transactionData: InsertTransaction) => {
-      return apiRequest("/api/investments", {
-        method: "POST",
-        body: JSON.stringify(transactionData),
-      });
+      return apiRequest("POST", "/api/investments", transactionData);
     },
     onSuccess: () => {
       // Invalidate all transaction queries to refetch data
@@ -114,10 +79,7 @@ export const useTransactions = () => {
   // Verify a transaction
   const verifyTransaction = useMutation({
     mutationFn: async ({ transactionId, status }: { transactionId: string; status: string }) => {
-      return apiRequest("/api/investments/verify", {
-        method: "POST",
-        body: JSON.stringify({ transactionId, status }),
-      });
+      return apiRequest("POST", "/api/investments/verify", { transactionId, status });
     },
     onSuccess: () => {
       // Invalidate all transaction queries to refetch data
@@ -142,7 +104,6 @@ export const useTransactions = () => {
   const refreshTransactions = () => {
     console.log("[Transactions] Manually refreshing all transaction queries");
     queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
-    queryClient.invalidateQueries({ queryKey: ["firebase/transactions"] });
     
     toast({
       title: "Refreshed",

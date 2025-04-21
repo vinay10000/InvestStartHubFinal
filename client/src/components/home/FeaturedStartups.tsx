@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getStartups, FirebaseStartup } from "@/firebase/database";
+import { Startup } from "@shared/schema";
 
 // Default images for startups that don't have images
 const defaultImages = [
@@ -11,7 +11,8 @@ const defaultImages = [
   "https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80"
 ];
 
-const getStageColorClasses = (stage: string | undefined) => {
+// Get color classes based on investment stage
+const getStageColorClasses = (stage: string | undefined | null) => {
   // Normalize the stage name for consistent comparison
   const normalizedStage = stage?.toLowerCase().trim() || '';
   
@@ -31,20 +32,27 @@ const getStageColorClasses = (stage: string | undefined) => {
 };
 
 const FeaturedStartups = () => {
-  const [startups, setStartups] = useState<FirebaseStartup[]>([]);
+  const [startups, setStartups] = useState<Startup[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch startups from Firebase Realtime Database
+  // Fetch startups from MongoDB via API
   useEffect(() => {
     const fetchStartups = async () => {
       try {
         setLoading(true);
-        // Get all startups from Firebase Realtime Database
-        const firebaseStartups = await getStartups();
+        // Get all startups from MongoDB API
+        const response = await fetch('/api/startups');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch startups');
+        }
+        
+        const data = await response.json();
+        const mongoStartups = data.startups || [];
         
         // Sort by creation date (newest first) and limit to 3 for featured display
-        const sortedStartups = firebaseStartups
-          .sort((a, b) => {
+        const sortedStartups = mongoStartups
+          .sort((a: Startup, b: Startup) => {
             const dateA = a.createdAt ? new Date(a.createdAt) : new Date();
             const dateB = b.createdAt ? new Date(b.createdAt) : new Date();
             return dateB.getTime() - dateA.getTime();
@@ -108,15 +116,15 @@ const FeaturedStartups = () => {
                 <div className="flex-shrink-0">
                   <img 
                     className="h-48 w-full object-cover" 
-                    src={startup.logo_url || defaultImages[index % defaultImages.length]} 
+                    src={startup.logoUrl || defaultImages[index % defaultImages.length]} 
                     alt={`${startup.name} logo`} 
                   />
                 </div>
                 <div className="flex-1 bg-white dark:bg-gray-800 p-6 flex flex-col justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-primary dark:text-primary">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.investment_stage)}`}>
-                        {startup.investment_stage || "Not Specified"}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStageColorClasses(startup.investmentStage)}`}>
+                        {startup.investmentStage || "Not Specified"}
                       </span>
                     </p>
                     <a href="#" className="block mt-2">
@@ -131,7 +139,7 @@ const FeaturedStartups = () => {
                     <Link href={`/startup/${startup.id}`}>
                       <Button>View Details</Button>
                     </Link>
-                    <Link href="/signin">
+                    <Link href="/auth">
                       <Button variant="outline">Chat</Button>
                     </Link>
                   </div>

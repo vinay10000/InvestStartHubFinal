@@ -15,11 +15,117 @@ import {
   Database,
   Fingerprint
 } from 'lucide-react';
-import { getAllUsersWithWallets, getAllStartups, runWalletDiagnostics, saveWalletAddressComprehensive } from '@/firebase/directWalletAccess';
+
+// MongoDB version of wallet diagnostic functions
+const runMongoWalletDiagnostics = async (startupId: string, founderId?: string) => {
+  try {
+    // First try to get wallet address by startup ID
+    const startupResponse = await fetch(`/api/wallets/startup/${startupId}`);
+    const startupResult = await startupResponse.json();
+    const walletAddress = startupResult.walletAddress;
+
+    // Get startup details
+    const startupDetailsResponse = await fetch(`/api/startups/${startupId}`);
+    const startup = await startupDetailsResponse.json();
+
+    // Get founder details if founder ID is provided
+    let founder = null;
+    if (founderId) {
+      const founderResponse = await fetch(`/api/user/profile?userId=${founderId}`);
+      if (founderResponse.ok) {
+        founder = await founderResponse.json();
+      }
+    }
+
+    // Track the lookup methods and their results
+    const methods = [
+      {
+        method: "MongoDB Wallet Lookup by Startup ID",
+        successful: !!walletAddress,
+        result: walletAddress || "Not found"
+      }
+    ];
+
+    // Determine the overall status
+    let status = 'failure';
+    if (walletAddress) {
+      status = 'success';
+    }
+
+    return {
+      status,
+      walletAddress,
+      methods,
+      startup,
+      founder
+    };
+  } catch (error) {
+    console.error("MongoDB wallet diagnostic error:", error);
+    throw error;
+  }
+};
+
+// MongoDB version of get all users with wallets
+const getMongoUsersWithWallets = async () => {
+  try {
+    const response = await fetch('/api/user/profile?withWallet=true');
+    if (!response.ok) {
+      throw new Error('Failed to fetch users with wallets');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching users with wallets:", error);
+    throw error;
+  }
+};
+
+// MongoDB version of get all startups
+const getMongoStartups = async () => {
+  try {
+    const response = await fetch('/api/startups');
+    if (!response.ok) {
+      throw new Error('Failed to fetch startups');
+    }
+    const data = await response.json();
+    return data.startups || [];
+  } catch (error) {
+    console.error("Error fetching startups:", error);
+    throw error;
+  }
+};
+
+// MongoDB version of save wallet address
+const saveMongoWalletAddress = async (startupId: string, founderId: string, walletAddress: string) => {
+  try {
+    // Update the user's wallet
+    const userResponse = await fetch('/api/user/wallet/connect', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: founderId,
+        walletAddress
+      })
+    });
+
+    if (!userResponse.ok) {
+      console.error('Failed to update user wallet:', await userResponse.text());
+      return false;
+    }
+
+    // No direct API for startup wallet, assuming the wallet connection will propagate through relationships
+    return true;
+  } catch (error) {
+    console.error("Error saving wallet address:", error);
+    return false;
+  }
+};
 
 /**
  * A diagnostic tool component to help fix wallet connection issues
  * This can be used by admins to diagnose and repair wallet connections
+ * Updated to use MongoDB instead of Firebase
  */
 const WalletDiagnosticsTool: React.FC = () => {
   const [startupId, setStartupId] = useState('');
@@ -43,7 +149,7 @@ const WalletDiagnosticsTool: React.FC = () => {
     setError(null);
     
     try {
-      const diagnosticResults = await runWalletDiagnostics(
+      const diagnosticResults = await runMongoWalletDiagnostics(
         startupId,
         founderId || undefined
       );
@@ -62,7 +168,7 @@ const WalletDiagnosticsTool: React.FC = () => {
     setIsUserLoading(true);
     
     try {
-      const users = await getAllUsersWithWallets();
+      const users = await getMongoUsersWithWallets();
       setUsersWithWallets(users);
     } catch (err) {
       console.error('Error loading users:', err);
@@ -77,7 +183,7 @@ const WalletDiagnosticsTool: React.FC = () => {
     setIsStartupLoading(true);
     
     try {
-      const allStartups = await getAllStartups();
+      const allStartups = await getMongoStartups();
       setStartups(allStartups);
     } catch (err) {
       console.error('Error loading startups:', err);
@@ -98,7 +204,7 @@ const WalletDiagnosticsTool: React.FC = () => {
     setError(null);
     
     try {
-      const success = await saveWalletAddressComprehensive(
+      const success = await saveMongoWalletAddress(
         startupId,
         founderId,
         results.walletAddress
@@ -106,7 +212,7 @@ const WalletDiagnosticsTool: React.FC = () => {
       
       if (success) {
         // Re-run diagnostics to confirm the fix
-        const updatedResults = await runWalletDiagnostics(
+        const updatedResults = await runMongoWalletDiagnostics(
           startupId,
           founderId
         );

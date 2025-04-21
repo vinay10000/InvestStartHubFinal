@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  addWalletAddress, 
-  getUserWallet, 
-  removeWalletAddress, 
-  makeWalletPermanent,
-  WalletData
-} from '@/firebase/walletDatabase';
+
+// Define wallet data interface
+export interface WalletData {
+  address: string;
+  userId: number;
+  username: string;
+  isPermanent: boolean;
+  timestamp: number;
+}
 
 export const useWallet = (userId?: string | null) => {
   const [walletData, setWalletData] = useState<WalletData | null>(null);
@@ -19,11 +21,14 @@ export const useWallet = (userId?: string | null) => {
   const { user } = useAuth();
   
   // Use either provided userId or the authenticated user's ID
-  const targetUserId = userId || (user ? user.uid : null);
+  const targetUserId = userId || (user ? user.id : null);
   
   // For safer number parsing that works with both numeric and string IDs
-  const parseUserId = (id: string | null): number => {
-    if (!id) return 0;
+  const parseUserId = (id: string | number | null): number => {
+    if (id === null || id === undefined) return 0;
+    
+    if (typeof id === 'number') return id;
+    
     try {
       return parseInt(id, 10);
     } catch (e) {
@@ -46,15 +51,33 @@ export const useWallet = (userId?: string | null) => {
       setError(null);
       
       try {
-        // Try to get wallet from the database
-        const wallet = await getUserWallet(parseUserId(targetUserId));
+        // Get wallet from MongoDB API
+        const response = await fetch(`/api/wallets/user/${targetUserId}`);
         
-        if (wallet) {
-          console.log(`[useWallet] Found wallet for user ${targetUserId}:`, wallet);
-          setWalletData(wallet);
-          setWalletAddress(wallet.address);
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.walletAddress) {
+            console.log(`[useWallet] Found wallet for user ${targetUserId}:`, data.walletAddress);
+            
+            // Create wallet data object from API response
+            const wallet: WalletData = {
+              address: data.walletAddress,
+              userId: parseUserId(targetUserId),
+              username: user?.username || 'Anonymous',
+              isPermanent: data.isPermanent || false,
+              timestamp: data.timestamp || Date.now()
+            };
+            
+            setWalletData(wallet);
+            setWalletAddress(data.walletAddress);
+          } else {
+            console.log(`[useWallet] No wallet found in database for ${targetUserId}`);
+            setWalletData(null);
+            setWalletAddress(null);
+          }
         } else {
-          console.log(`[useWallet] No wallet found in database for ${targetUserId}`);
+          console.log(`[useWallet] API error: ${response.status}`);
           setWalletData(null);
           setWalletAddress(null);
         }
@@ -71,7 +94,7 @@ export const useWallet = (userId?: string | null) => {
     };
     
     loadWalletData();
-  }, [targetUserId]);
+  }, [targetUserId, user]);
   
   // Connect a new wallet address
   const connectWallet = useCallback(async (address: string) => {
@@ -88,13 +111,23 @@ export const useWallet = (userId?: string | null) => {
     setError(null);
     
     try {
-      // Save wallet address to the database
-      await addWalletAddress(
-        address,
-        parseUserId(targetUserId) || 999,
-        user?.username || 'Anonymous',
-        false // Not permanent by default
-      );
+      // Save wallet address to MongoDB through API
+      const response = await fetch('/api/user/wallet/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: targetUserId.toString(),
+          walletAddress: address,
+          userType: user?.role || 'investor',
+          isPermanent: false // Not permanent by default
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to connect wallet: ${response.status}`);
+      }
       
       // Update local state
       const newWalletData: WalletData = {
@@ -145,19 +178,24 @@ export const useWallet = (userId?: string | null) => {
     setError(null);
     
     try {
-      // First remove the old wallet
-      if (walletAddress) {
-        // We need to remove the old wallet address first
-        await removeWalletAddress(walletAddress, parseUserId(targetUserId) || 999);
-      }
+      // Update wallet through API (our API will handle removing old wallet and adding new one)
+      const response = await fetch('/api/user/wallet/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: targetUserId.toString(),
+          walletAddress: address,
+          userType: user?.role || 'investor',
+          isPermanent: false, // Not permanent by default
+          replace: true // Indicate this is a replacement
+        })
+      });
       
-      // Add the new wallet address
-      await addWalletAddress(
-        address,
-        parseUserId(targetUserId) || 999,
-        user?.username || 'Anonymous',
-        false // Not permanent by default
-      );
+      if (!response.ok) {
+        throw new Error(`Failed to update wallet: ${response.status}`);
+      }
       
       // Update local state
       const updatedWalletData: WalletData = {
@@ -191,7 +229,7 @@ export const useWallet = (userId?: string | null) => {
     } finally {
       setIsLoading(false);
     }
-  }, [targetUserId, user, toast, walletData]);
+  }, [targetUserId, user, toast]);
   
   // Disconnect wallet
   const disconnectWallet = useCallback(async () => {
@@ -203,12 +241,20 @@ export const useWallet = (userId?: string | null) => {
     setError(null);
     
     try {
-      // Get the wallet address for the user
-      const wallet = await getUserWallet(parseUserId(targetUserId) || 999);
+      // Remove wallet through API
+      const response = await fetch('/api/user/wallet/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: targetUserId.toString()
+        })
+      });
       
-      // Remove the wallet from the database
-      if (wallet && wallet.address) {
-        await removeWalletAddress(wallet.address, parseUserId(targetUserId) || 999);
+      if (!response.ok) {
+        console.warn(`[useWallet] API warning: ${response.status}`);
+        // Continue execution even if API fails
       }
       
       // Clear local state
@@ -241,6 +287,64 @@ export const useWallet = (userId?: string | null) => {
     }
   }, [targetUserId, toast]);
   
+  // Make wallet permanent (will not be removed on logout)
+  const makePermanent = useCallback(async () => {
+    if (!targetUserId || !walletAddress) {
+      return false;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Make permanent through API
+      const response = await fetch('/api/user/wallet/permanent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: targetUserId.toString(),
+          walletAddress,
+          isPermanent: true
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to make wallet permanent: ${response.status}`);
+      }
+      
+      // Update local state
+      if (walletData) {
+        const updatedWalletData = {
+          ...walletData,
+          isPermanent: true
+        };
+        setWalletData(updatedWalletData);
+      }
+      
+      toast({
+        title: 'Wallet Settings Updated',
+        description: 'Your wallet is now permanently connected to your account',
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('[useWallet] Error making wallet permanent:', err);
+      setError('Failed to update wallet settings');
+      
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update your wallet settings. Please try again.',
+        variant: 'destructive',
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [targetUserId, walletAddress, walletData, toast]);
+  
   return {
     walletData,
     walletAddress,
@@ -249,6 +353,9 @@ export const useWallet = (userId?: string | null) => {
     connectWallet,
     updateWallet,
     disconnectWallet,
+    makePermanent,
     hasWallet: !!walletAddress
   };
 };
+
+export default useWallet;

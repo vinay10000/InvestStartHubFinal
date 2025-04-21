@@ -8,8 +8,6 @@ import { MessageSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { database } from "@/firebase/config";
-import { ref, onValue, get, push, set } from "firebase/database";
 import { useStartups } from "@/hooks/useStartups";
 
 interface ChatListProps {
@@ -17,11 +15,11 @@ interface ChatListProps {
   activeChatId?: string;
 }
 
-interface FirebaseChat {
-  id: string;
-  founderId: string;
-  investorId: string;
-  startupId: string;
+interface MongoChat {
+  id: string | number;
+  founderId: string | number;
+  investorId: string | number;
+  startupId: string | number;
   startupName?: string;
   founderName?: string;
   investorName?: string;
@@ -31,12 +29,13 @@ interface FirebaseChat {
   timestamp?: number;
   founderUnread?: number;
   investorUnread?: number;
+  createdAt?: Date | null;
 }
 
 const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [chats, setChats] = useState<FirebaseChat[]>([]);
+  const [chats, setChats] = useState<MongoChat[]>([]);
   const [loading, setLoading] = useState(true);
   const [allStartups, setAllStartups] = useState<any[]>([]);
   const [loadingStartups, setLoadingStartups] = useState(true);
@@ -62,64 +61,79 @@ const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
     refetchStartups();
   };
   
-  // Load user's chats from Firebase
+  // Load user's chats from MongoDB
   useEffect(() => {
     if (!user) return;
     
     setLoading(true);
     
-    // Reference to all chats (we'll filter client-side)
-    const chatsQuery = ref(database, `chats`);
-    
-    // Listen for chat updates
-    const unsubscribe = onValue(chatsQuery, (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
+    // Function to fetch chats from API
+    const fetchChats = async () => {
+      try {
+        // Get all chats from MongoDB API
+        const response = await fetch('/api/chats');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch chats');
+        }
+        
+        const data = await response.json();
+        
+        if (!data || !data.chats || !Array.isArray(data.chats)) {
+          setChats([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Filter chats where user is a participant
+        const chatList = data.chats.filter((chat: MongoChat) => {
+          // Convert IDs to strings for comparison to handle both number and string types
+          const userId = String(user.id);
+          const founderId = String(chat.founderId);
+          const investorId = String(chat.investorId);
+          
+          return isFounder 
+            ? founderId === userId
+            : investorId === userId;
+        });
+        
+        // Sort by timestamp (most recent first)
+        chatList.sort((a: MongoChat, b: MongoChat) => {
+          const timeA = a.timestamp || 0;
+          const timeB = b.timestamp || 0;
+          return timeB - timeA;
+        });
+        
+        setChats(chatList);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching chats:', error);
         setChats([]);
         setLoading(false);
-        return;
       }
-      
-      // Convert object to array and filter by user's role
-      const chatList = Object.entries(data).map(([id, chatData]: [string, any]) => ({
-        id,
-        ...chatData
-      })).filter(chat => {
-        // Filter chats where user is a participant
-        // Convert IDs to strings for comparison to handle both number and string types
-        const userId = String(user.id);
-        const founderId = String(chat.founderId);
-        const investorId = String(chat.investorId);
-        
-        return isFounder 
-          ? founderId === userId
-          : investorId === userId;
-      });
-      
-      // Sort by timestamp (most recent first)
-      chatList.sort((a, b) => {
-        const timeA = a.timestamp || 0;
-        const timeB = b.timestamp || 0;
-        return timeB - timeA;
-      });
-      
-      setChats(chatList);
-      setLoading(false);
-    });
+    };
+    
+    // Fetch chats initially
+    fetchChats();
+    
+    // Poll for updates every 10 seconds
+    const intervalId = setInterval(fetchChats, 10000);
     
     // Cleanup
     return () => {
-      unsubscribe();
+      clearInterval(intervalId);
     };
   }, [user, isFounder]);
   
   // Format chat name for display
-  const getChatName = (chat: FirebaseChat) => {
+  const getChatName = (chat: MongoChat) => {
     if (isFounder) {
       if (chat.investorName) {
         return chat.investorName;
       } else if (chat.investorId) {
-        return `Investor ${chat.investorId.substring(0, 5)}...`;
+        // Make sure investorId is a string before using substring
+        const investorIdStr = String(chat.investorId);
+        return `Investor ${investorIdStr.substring(0, 5)}...`;
       } else {
         return "Investor";
       }
@@ -127,7 +141,9 @@ const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
       if (chat.startupName) {
         return chat.startupName;
       } else if (chat.startupId) {
-        return `Startup ${chat.startupId.substring(0, 5)}...`;
+        // Make sure startupId is a string before using substring
+        const startupIdStr = String(chat.startupId);
+        return `Startup ${startupIdStr.substring(0, 5)}...`;
       } else {
         return "Startup";
       }
@@ -135,7 +151,7 @@ const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
   };
   
   // Get avatar for display
-  const getChatAvatar = (chat: FirebaseChat) => {
+  const getChatAvatar = (chat: MongoChat) => {
     return isFounder ? chat.investorAvatar : chat.founderAvatar;
   };
   
@@ -144,33 +160,42 @@ const ChatList = ({ onSelectChat, activeChatId }: ChatListProps) => {
     if (!user) return;
     
     try {
-      // Create a new chat in Firebase
-      const chatsRef = ref(database, "chats");
-      const newChatRef = push(chatsRef);
-      const chatId = newChatRef.key as string;
-      
-      // Set up the chat data
-      await set(newChatRef, {
-        founderId: String(founderId),
-        investorId: String(user.id),
-        startupId: String(startupId),
-        startupName: startupName,
-        founderName: "Founder",
-        investorName: user.username || "Investor",
-        founderAvatar: "",
-        investorAvatar: user.profilePicture || "",
-        timestamp: Date.now(),
-        founderUnread: 0,
-        investorUnread: 0,
-        lastMessage: "",
-        lastAccessed: {
-          [user.id]: Date.now()
-        }
+      // Create a new chat in MongoDB using API
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          founderId: String(founderId),
+          investorId: String(user.id),
+          startupId: String(startupId),
+          startupName: startupName,
+          founderName: "Founder",
+          investorName: user.username || "Investor",
+          founderAvatar: "",
+          investorAvatar: user.profilePicture || "",
+          timestamp: Date.now(),
+          founderUnread: 0,
+          investorUnread: 0,
+          lastMessage: ""
+        })
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create chat');
+      }
+      
+      const chatData = await response.json();
+      const chatId = chatData.id || chatData.chat?.id;
+      
+      if (!chatId) {
+        throw new Error('No chat ID returned from API');
+      }
       
       // Navigate to the new chat
       setLocation(`/chat/${chatId}`);
-      onSelectChat(chatId);
+      onSelectChat(String(chatId));
     } catch (error) {
       console.error("Error creating new chat:", error);
     }

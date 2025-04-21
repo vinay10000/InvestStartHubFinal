@@ -17,7 +17,6 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
-import { migrateWalletToFirebaseUid } from "@/firebase/walletDatabase";
 
 // Enhanced validation schema with better number handling
 const formSchema = z.object({
@@ -85,7 +84,7 @@ const MetaMaskPayment = ({
   // Add state for manual wallet info entry
   const [manualFounderInfo, setManualFounderInfo] = useState<any>(null);
   
-  // Use our enhanced dedicated hook to fetch founder wallet information
+  // Use enhanced dedicated hook to fetch founder wallet information
   const { 
     founderWallet, 
     founderInfo: hookFounderInfo, 
@@ -140,62 +139,78 @@ const MetaMaskPayment = ({
             description: "You can now proceed with the payment to the provided address.",
           });
           
-          // Also save this wallet to the database for future use
-          import('@/firebase/walletDatabase').then(walletDb => {
-            // Get the actual startup data to get the founder ID
-            const { useStartup } = useStartups();
-            const { data: startupData } = useStartup(startupId.toString());
+          // Save this wallet to MongoDB
+          if (startupDetailData?.founderId) {
+            console.log("[MetaMaskPayment] Retrieved startup data for wallet saving:", {
+              startupId,
+              startupName,
+              founderId: startupDetailData.founderId
+            });
             
-            if (startupData && startupData.founderId && walletDb.saveWalletAddress) {
-              console.log("[MetaMaskPayment] Retrieved startup data for wallet saving:", {
-                startupId,
-                startupName,
-                founderId: startupData.founderId
-              });
+            // Use the API endpoint to save the wallet address
+            fetch('/api/user/wallet/connect', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: startupDetailData.founderId.toString(),
+                walletAddress,
+                userType: 'founder',
+                isPermanent: true
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              console.log("[MetaMaskPayment] Saved manually entered wallet address to MongoDB:", data);
               
-              // Use the actual Firebase UID (founderId) instead of the startup ID
-              walletDb.saveWalletAddress(
-                startupData.founderId.toString(), 
-                walletAddress, 
-                "Founder", 
-                "founder"
-              ).then(() => {
-                console.log("[MetaMaskPayment] Saved manually entered wallet address to Firebase UID:", startupData.founderId);
-                
-                // Also create a migration from the old ID format (numeric) to the Firebase UID
-                // This ensures backward compatibility with older wallet entries
-                const commonNumericIds = ["1", "2", "92", "3", "4", "5", "10"];
-                for (const numericId of commonNumericIds) {
-                  // Try to migrate any existing wallets with these IDs to the Firebase UID
-                  walletDb.migrateWalletToFirebaseUid(
-                    numericId,
-                    startupData.founderId.toString(),
-                    walletAddress
-                  ).catch(err => {
-                    // Silently ignore migration errors - it's just a helpful extra step
-                    console.log(`[MetaMaskPayment] Migration attempt from ID ${numericId} didn't apply:`, err.message);
-                  });
-                }
-              }).catch(err => {
-                console.error("[MetaMaskPayment] Error saving wallet address:", err);
+              // Also save to startup record
+              return fetch('/api/wallets/connect', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  startupId: startupId.toString(),
+                  founderId: startupDetailData.founderId.toString(),
+                  walletAddress
+                })
               });
-            } else {
-              // Fallback to using startup ID if we couldn't find the founder ID
-              console.log("[MetaMaskPayment] Could not find founder ID, falling back to startup ID");
-              if (startupId && walletDb.saveWalletAddress) {
-                walletDb.saveWalletAddress(
-                  startupId.toString(), 
-                  walletAddress, 
-                  "Founder", 
-                  "founder"
-                ).catch(err => {
-                  console.error("[MetaMaskPayment] Fallback wallet save error:", err);
-                });
+            })
+            .then(() => {
+              console.log("[MetaMaskPayment] Saved wallet association for startup:", startupId);
+              
+              // Store the wallet in session storage as well for faster access
+              try {
+                sessionStorage.setItem(`founder_wallet_${startupId}`, walletAddress);
+              } catch (err) {
+                console.warn("[MetaMaskPayment] Could not store wallet in session storage:", err);
               }
+            })
+            .catch(err => {
+              console.error("[MetaMaskPayment] Error saving wallet address to MongoDB:", err);
+            });
+          } else {
+            // Fallback to using startup ID if we couldn't find the founder ID
+            console.log("[MetaMaskPayment] Could not find founder ID, falling back to startup ID");
+            if (startupId) {
+              // Save using the startupId instead
+              fetch('/api/wallets/connect', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  startupId: startupId.toString(),
+                  walletAddress,
+                  isPermanent: true
+                })
+              })
+              .catch(err => {
+                console.error("[MetaMaskPayment] Fallback wallet save error:", err);
+              });
             }
-          }).catch(error => {
-            console.error("[MetaMaskPayment] Error importing wallet database:", error);
-          });
+          }
         } else if (walletAddress) {
           // Invalid address format
           toast({
@@ -223,7 +238,7 @@ const MetaMaskPayment = ({
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isWalletLoading, toast, startupId]);
+  }, [isWalletLoading, toast, startupId, startupDetailData, startupName]);
   
   // Combine manual entry with hook data
   const founderInfo = manualFounderInfo || hookFounderInfo;
@@ -281,7 +296,6 @@ const MetaMaskPayment = ({
     }
     
     // Check if startup details has wallet
-    // Using a type assertion since the FirebaseStartup interface may not include all properties
     if ((startupDetailData as any)?.founderWalletAddress) {
       console.log('[MetaMaskPayment] Using wallet from startup details');
       return 'found';
@@ -296,7 +310,7 @@ const MetaMaskPayment = ({
     // Detailed logging for all wallet sources - casting to any to avoid TS errors
     const startupData = startupDetailData as any;
     
-    console.log('Wallet Discovery in ImprovedMetaMaskPayment:', {
+    console.log('Wallet Discovery in MetaMaskPayment:', {
       hookProvidedWallet: founderWallet,
       sessionStorageWallet: sessionWallet,
       effectiveWalletAddress: founderInfo?.walletAddress || 
@@ -304,7 +318,7 @@ const MetaMaskPayment = ({
                              sessionWallet || null,
       hookFounderWallet: founderInfo?.walletAddress,
       startupFounderId: startupData?.founderId,
-      startupFounderSameId: startupData?.sameId, // Add sameId to debug output
+      startupFounderSameId: startupData?.sameId,
       currentMetaMaskAddress: address,
       userWalletAddress: address || sessionWallet || founderInfo?.walletAddress,
       isMetaMaskConnected: typeof isWalletConnected === 'function' ? isWalletConnected() : false,
@@ -457,125 +471,125 @@ const MetaMaskPayment = ({
         console.log("[MetaMaskPayment] Using wallet from startup data:", founderWalletAddress);
       }
       // 4. Check session storage
-      else if (sessionWallet && sessionWallet !== "0x" && sessionWallet.startsWith("0x")) {
+      else if (sessionWallet && 
+               sessionWallet !== "0x" && 
+               sessionWallet.startsWith("0x")) {
         founderWalletAddress = sessionWallet;
         console.log("[MetaMaskPayment] Using wallet from session storage:", founderWalletAddress);
         
         // Save this wallet to the database for future use
         if (startupDetailData?.founderId && founderWalletAddress) {
-          // Save using import to avoid bundling issues
-          import('@/firebase/walletDatabase').then(async walletDb => {
-            try {
-              // Save to Firebase user
-              await walletDb.saveWalletAddress(
-                startupDetailData.founderId.toString(),
-                founderWalletAddress as string,
-                startupDetailData.name || "Founder",
-                "founder"
-              );
-              
-              // Also save to startup record
-              await walletDb.saveWalletToStartup(
-                startupId.toString(),
-                founderWalletAddress as string,
-                startupDetailData.name || "Founder"
-              );
-              
-              console.log("[MetaMaskPayment] Saved session wallet to database:", {
-                founderId: startupDetailData.founderId,
-                startupId,
+          try {
+            // Use the API endpoint to save the wallet address for the user
+            await fetch('/api/user/wallet/connect', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: startupDetailData.founderId.toString(),
+                walletAddress: founderWalletAddress,
+                userType: 'founder',
+                isPermanent: true
+              })
+            });
+            
+            // Also save to startup record
+            await fetch('/api/wallets/connect', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                startupId: startupId.toString(),
+                founderId: startupDetailData.founderId.toString(),
                 walletAddress: founderWalletAddress
-              });
-            } catch (err) {
-              console.error("[MetaMaskPayment] Error saving session wallet:", err);
-            }
-          });
+              })
+            });
+            
+            console.log("[MetaMaskPayment] Saved session wallet to MongoDB database:", {
+              founderId: startupDetailData.founderId,
+              startupId,
+              walletAddress: founderWalletAddress
+            });
+          } catch (err) {
+            console.error("[MetaMaskPayment] Error saving session wallet:", err);
+          }
         }
       }
-      // 5. Last resort: try to fetch from database - with comprehensive direct lookup
+      // 5. Last resort: try to fetch from MongoDB API endpoint
       else {
         console.log("[MetaMaskPayment] Attempting database lookup for wallet...");
         
         try {
-          // Use our new direct wallet access module for the most reliable lookup
-          const directWalletModule = await import('@/firebase/directWalletAccess');
-          
+          // Use MongoDB API for wallet lookup
           console.log("[MetaMaskPayment] Running wallet diagnostics for startup ID:", startupId);
           const founderId = startupDetailData?.founderId;
           
-          // Run comprehensive diagnostics to find the wallet through all possible methods
-          const diagnosticResults = await directWalletModule.getWalletAddressByStartupId(
-            startupId.toString()
-          );
-          
-          console.log("[MetaMaskPayment] Direct wallet lookup result:", diagnosticResults);
-          
-          if (diagnosticResults) {
-            founderWalletAddress = diagnosticResults;
-            console.log("[MetaMaskPayment] Found wallet through direct lookup:", founderWalletAddress);
+          // Try to get wallet by startup ID first
+          const walletResult = await fetch(`/api/wallets/startup/${startupId}`)
+            .then(res => {
+              if (!res.ok) {
+                throw new Error(`Startup wallet lookup failed: ${res.status}`);
+              }
+              return res.json();
+            })
+            .then(data => data.walletAddress)
+            .catch(err => {
+              console.error("[MetaMaskPayment] Error fetching startup wallet from MongoDB API:", err);
+              return null;
+            });
+            
+          if (walletResult) {
+            founderWalletAddress = walletResult;
+            console.log("[MetaMaskPayment] Found wallet through startup lookup:", founderWalletAddress);
             
             // Store in session storage for future use
             try {
               sessionStorage.setItem(`founder_wallet_${startupId}`, founderWalletAddress);
               console.log("[MetaMaskPayment] Saved wallet to session storage");
-              
-              // Also save the wallet information comprehensively to both user and startup
-              if (founderId) {
-                await directWalletModule.saveWalletAddressComprehensive(
-                  startupId.toString(),
-                  founderId.toString(),
-                  founderWalletAddress
-                );
-                console.log("[MetaMaskPayment] Saved wallet address comprehensively to all locations");
-              }
             } catch (err) {
               console.warn("[MetaMaskPayment] Failed to save to session storage:", err);
             }
           }
-          // Fall back to the original wallet database methods if direct lookup fails
-          else {
-            console.log("[MetaMaskPayment] Direct lookup failed, trying legacy methods");
-            const walletDbModule = await import('@/firebase/walletDatabase');
-            
-            // First try the sameId method
-            console.log("[MetaMaskPayment] Trying sameId lookup for startup ID:", startupId);
-            const founderWalletBySameId = await walletDbModule.getFounderWalletBySameId(
-              startupId.toString()
-            );
-            
-            if (founderWalletBySameId) {
-              founderWalletAddress = founderWalletBySameId;
-              console.log("[MetaMaskPayment] Found wallet through sameId lookup:", founderWalletAddress);
+          // If not found by startup ID and we have founderId, try by founderId
+          else if (founderId) {
+            const founderWallet = await fetch(`/api/wallets/user/${founderId}`)
+              .then(res => {
+                if (!res.ok) {
+                  throw new Error(`Founder wallet lookup failed: ${res.status}`);
+                }
+                return res.json();
+              })
+              .then(data => data.walletAddress)
+              .catch(err => {
+                console.error("[MetaMaskPayment] Error fetching founder wallet from MongoDB API:", err);
+                return null;
+              });
+              
+            if (founderWallet) {
+              founderWalletAddress = founderWallet;
+              console.log("[MetaMaskPayment] Found wallet through founder lookup:", founderWalletAddress);
               
               // Store in session storage for future use
               try {
                 sessionStorage.setItem(`founder_wallet_${startupId}`, founderWalletAddress);
-                console.log("[MetaMaskPayment] Saved sameId wallet to session storage");
+                console.log("[MetaMaskPayment] Saved direct user wallet to session storage");
+                
+                // Also associate this wallet with the startup
+                await fetch('/api/wallets/connect', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    startupId: startupId.toString(),
+                    founderId: founderId.toString(),
+                    walletAddress: founderWalletAddress
+                  })
+                });
               } catch (err) {
                 console.warn("[MetaMaskPayment] Failed to save to session storage:", err);
-              }
-            }
-            // If sameId lookup fails, try direct user record lookup
-            else if (startupDetailData?.founderId) {
-              console.log("[MetaMaskPayment] sameId lookup failed, trying direct user lookup for ID:", 
-                startupDetailData.founderId);
-                
-              // Try the direct method to access users collection
-              const founderWallet = await walletDbModule.getFounderWalletAddress(
-                startupDetailData.founderId.toString()
-              );
-              
-              if (founderWallet) {
-                founderWalletAddress = founderWallet;
-                console.log("[MetaMaskPayment] Found wallet through direct user lookup:", founderWalletAddress);
-                
-                // Store in session storage for future use
-                try {
-                  sessionStorage.setItem(`founder_wallet_${startupId}`, founderWalletAddress);
-                  console.log("[MetaMaskPayment] Saved direct user wallet to session storage");
-                } catch (err) {
-                  console.warn("[MetaMaskPayment] Failed to save to session storage:", err);
-                }
               }
             }
           }
@@ -821,93 +835,14 @@ const MetaMaskPayment = ({
           {/* Add a button to show the direct payment form instead of waiting */}
           <Button 
             variant="outline" 
-            size="sm" 
             className="mt-4" 
             onClick={() => {
-              // Instead of showing error, create a manual wallet entry form
-              toast({
-                title: "Manual Payment Mode",
-                description: "You can now enter a wallet address directly for payment",
-              });
-              
-              // Force render the payment form with a dummy wallet
+              // Create a mock wallet address to trigger the manual entry prompt
               setManualFounderInfo({
                 id: "manual",
-                walletAddress: "0x",  // This will be replaced by user input
+                walletAddress: null,
                 name: "Manual Payment"
               });
-              
-              // Create a manual wallet entry by prompting the user
-              const walletAddress = prompt("Enter the founder's wallet address (0x...)", "0x");
-              if (walletAddress && walletAddress.startsWith("0x")) {
-                setManualFounderInfo({
-                  id: "manual",
-                  walletAddress: walletAddress,
-                  name: "Manual Payment"
-                });
-                
-                // Also save this wallet to the database for future use
-                // using promise-based approach to avoid async/await syntax errors
-                const walletPromise = import('@/firebase/walletDatabase');
-                walletPromise.then(walletDb => {
-                  // Get the actual startup data to get the founder ID
-                  const { useStartup } = useStartups();
-                  const { data: startupData } = useStartup(startupId.toString());
-                  
-                  // If we have startup data with a founder ID, use that instead of the startup ID
-                  if (startupData && startupData.founderId && walletDb.saveWalletAddress) {
-                    console.log("[MetaMaskPayment] Found proper Firebase UID to save wallet:", {
-                      startupId,
-                      founderId: startupData.founderId
-                    });
-                    
-                    // Save using the Firebase UID
-                    walletDb.saveWalletAddress(
-                      startupData.founderId.toString(), 
-                      walletAddress, 
-                      "Founder", 
-                      "founder"
-                    ).then(() => {
-                      console.log("[MetaMaskPayment] Saved manually entered wallet address using Firebase UID:", startupData.founderId);
-                      
-                      // Also attempt to migrate any old numeric ID wallets
-                      if (walletDb.migrateWalletToFirebaseUid) {
-                        // Common IDs to check would be "1", "2", "92" etc. based on your JSON data
-                        const commonNumericIds = ["1", "2", "92", "3", "4", "5", "10"];
-                        
-                        for (const numericId of commonNumericIds) {
-                          // Try to migrate any existing wallets with these IDs to the Firebase UID
-                          walletDb.migrateWalletToFirebaseUid(
-                            numericId,
-                            startupData.founderId.toString(),
-                            walletAddress
-                          ).catch(err => {
-                            // Silently ignore migration errors - it's just a helpful extra step
-                            console.log(`[MetaMaskPayment] Migration attempt from ID ${numericId} didn't apply:`, err.message);
-                          });
-                        }
-                      }
-                    }).catch(err => {
-                      console.error("[MetaMaskPayment] Error saving wallet address:", err);
-                    });
-                  } else {
-                    // Fallback to using startup ID if we couldn't find the founder ID
-                    console.log("[MetaMaskPayment] Could not find founder ID, falling back to startup ID");
-                    if (startupId && walletDb.saveWalletAddress) {
-                      walletDb.saveWalletAddress(
-                        startupId.toString(), 
-                        walletAddress, 
-                        "Founder", 
-                        "founder"
-                      ).catch(err => {
-                        console.error("[MetaMaskPayment] Fallback wallet save error:", err);
-                      });
-                    }
-                  }
-                }).catch(error => {
-                  console.error("[MetaMaskPayment] Error importing wallet database:", error);
-                });
-              }
             }}
           >
             Enter wallet address manually
@@ -917,38 +852,85 @@ const MetaMaskPayment = ({
     );
   }
   
-  // Show error when founder hasn't connected a wallet
+  // Show wallet not found error
   if (founderWalletStatus === 'not_found' || founderWalletStatus === 'error') {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-600">
-            <AlertTriangle className="h-5 w-5" />
-            Wallet Not Available
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Pay with MetaMask
           </CardTitle>
           <CardDescription>
-            Cannot process cryptocurrency payments at this time
+            Use Ethereum to invest in {startupName}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="p-4 border rounded-lg bg-amber-50 text-amber-800">
-            <h4 className="font-medium mb-2">
-              {founderWalletStatus === 'not_found' 
-                ? "Founder hasn't connected a wallet" 
-                : "Error retrieving founder's wallet"}
-            </h4>
-            <p className="text-sm">
-              {founderWalletStatus === 'not_found'
-                ? "The founder of this startup hasn't connected a cryptocurrency wallet address yet. Please try again later or use an alternative payment method."
-                : "There was an error retrieving the founder's wallet information. Please try again later or use an alternative payment method."}
-            </p>
+          <div className="p-4 border rounded-lg bg-amber-50 text-amber-800 flex items-start gap-3 mb-4">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-medium mb-1">Founder Wallet Not Found</h4>
+              <p className="text-sm">
+                We couldn't find the founder's wallet address for this startup. Please enter it manually to proceed with the payment.
+              </p>
+            </div>
           </div>
+          
+          <Button 
+            className="w-full" 
+            onClick={() => {
+              // Get wallet address from user via prompt
+              const walletAddress = prompt(
+                "Enter the founder's wallet address (0x...) to proceed with payment", 
+                "0x"
+              );
+              
+              if (walletAddress && walletAddress.startsWith("0x") && walletAddress.length >= 42) {
+                setManualFounderInfo({
+                  id: "manual",
+                  walletAddress: walletAddress,
+                  name: "Manual Payment"
+                });
+                
+                // Save this wallet address to the database for future use
+                if (startupDetailData?.founderId) {
+                  fetch('/api/user/wallet/connect', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      userId: startupDetailData.founderId.toString(),
+                      walletAddress,
+                      userType: 'founder',
+                      isPermanent: true
+                    })
+                  }).catch(err => {
+                    console.error("[MetaMaskPayment] Error saving wallet address:", err);
+                  });
+                }
+                
+                toast({
+                  title: "Wallet Address Entered",
+                  description: "You can now proceed with the payment to the provided address.",
+                });
+              } else if (walletAddress) {
+                toast({
+                  title: "Invalid Wallet Address",
+                  description: "Please enter a valid Ethereum wallet address starting with 0x",
+                  variant: "destructive"
+                });
+              }
+            }}
+          >
+            Enter Wallet Address Manually
+          </Button>
         </CardContent>
       </Card>
     );
   }
   
-  // Render payment form
+  // Render main payment form
   return (
     <Card>
       <CardHeader>
@@ -957,91 +939,89 @@ const MetaMaskPayment = ({
           Pay with MetaMask
         </CardTitle>
         <CardDescription>
-          Use Ethereum to invest in {startupName}
+          Use cryptocurrency to invest in {startupName}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Network info section */}
-        {address && (
-          <div className="mb-4 text-sm">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-muted-foreground">Connected:</span>
-              <span className="font-medium">{address ? truncateAddress(address) : ''}</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-muted-foreground">Network:</span>
-              <span className="font-medium">{networkName}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Balance:</span>
-              <span className="font-medium">{parseFloat(balance || "0").toFixed(4)} ETH</span>
-            </div>
-          </div>
-        )}
-        
-        {/* Founder wallet info */}
-        {founderInfo && founderInfo.walletAddress && (
-          <div className="mb-4 p-3 border rounded-lg bg-blue-50 text-blue-800 text-sm">
-            <p className="flex items-center">
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              <span>Direct transfer to founder available</span>
-            </p>
-            <p className="text-xs mt-1 text-blue-600">
-              Investments will be sent directly to the founder's Ethereum wallet
-            </p>
-          </div>
-        )}
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount (ETH)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      type="number"
-                      step="0.0001"
-                      min="0.0001"
-                      placeholder="0.00"
-                      disabled={isProcessing}
-                      // Prevent scientific notation for very small numbers
-                      onChange={(e) => {
-                        // Format the number to prevent scientific notation
-                        const value = e.target.value;
-                        field.onChange(value);
-                      }}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Enter the amount you want to invest in ETH
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
+        {!address ? (
+          <div className="text-center py-3">
             <Button 
-              type="submit" 
-              className="w-full"
-              disabled={isProcessing}
+              onClick={connect} 
+              className="mb-4"
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : address ? (
-                "Complete Investment"
-              ) : (
-                "Connect Wallet & Invest"
-              )}
+              Connect MetaMask Wallet
             </Button>
-          </form>
-        </Form>
+            <p className="text-sm text-muted-foreground">
+              Connect your MetaMask wallet to start the investment process.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col space-y-1.5 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Your Wallet</div>
+                <div className="text-sm font-medium">{balance ? `${parseFloat(balance).toFixed(4)} ETH` : '0 ETH'}</div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-muted-foreground">{truncateAddress(address)}</div>
+                <div className="text-xs text-muted-foreground">{networkName}</div>
+              </div>
+            </div>
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Investment Amount (ETH)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="0.1" 
+                          {...field} 
+                          disabled={isProcessing}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Enter the amount of Ethereum you want to invest
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="text-sm text-muted-foreground mb-4">
+                  <p className="font-medium mb-1">Payment will be sent to:</p>
+                  <p className="font-mono text-xs break-all">
+                    {(() => {
+                      // Get the wallet address in order of priority
+                      const walletAddress = founderInfo?.walletAddress || 
+                                          (startupDetailData as any)?.founderWalletAddress || 
+                                          sessionWallet;
+                      return walletAddress ? truncateAddress(walletAddress, 12, 12) : "Loading wallet address...";
+                    })()}
+                  </p>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Invest Now"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </>
+        )}
       </CardContent>
     </Card>
   );

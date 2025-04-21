@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Chat, InsertChat, Message, InsertMessage } from "@shared/schema";
 import { useState, useEffect, useCallback } from "react";
-import { subscribeToMessages, sendRealtimeMessage } from "@/firebase/realtime";
 
 export const useChat = () => {
   const queryClient = useQueryClient();
@@ -27,41 +26,8 @@ export const useChat = () => {
   const createChat = () => {
     return useMutation({
       mutationFn: async (chatData: InsertChat) => {
-        // First create the chat in our local storage API
-        const response = await apiRequest("/api/chats", {
-          method: "POST",
-          body: JSON.stringify(chatData),
-        });
-
-        // Then also create a corresponding entry in Firebase Realtime DB
-        try {
-          // Import needed for createRealtimeChat
-          const { createRealtimeChat } = await import('@/firebase/realtime');
-          
-          // Create the chat in Firebase realtime database which accepts any data structure
-          // This is separate from the Drizzle schema types
-          const firebaseChatId = await createRealtimeChat({
-            // We need to pass string values for Firebase
-            // TypeScript is complaining because we're mixing types, but this is intended
-            // as we're creating a separate entity in Firebase
-            founderId: String(chatData.founderId),
-            investorId: String(chatData.investorId), 
-            startupId: String(chatData.startupId),
-            // Additional metadata for the Firebase chat
-            timestamp: Date.now(),
-            lastMessage: "",
-            founderUnread: 0,
-            investorUnread: 0
-          } as Record<string, any>);
-          
-          // Enhance the response with the Firebase chat ID if needed
-          if (response && response.chat) {
-            response.chat.firebaseId = firebaseChatId;
-          }
-        } catch (err) {
-          console.error("Failed to create Firebase chat entry:", err);
-          // We continue even if Firebase fails since we have our local storage
-        }
+        // Create the chat using MongoDB API
+        const response = await apiRequest("POST", "/api/chats", chatData);
         
         return response;
       },
@@ -98,36 +64,44 @@ export const useChat = () => {
           content,
         };
         
-        const response = await apiRequest(`/api/chats/${chatId}/messages`, {
-          method: "POST",
-          body: JSON.stringify(messageData),
-        });
-        
-        // Also send to Firebase Realtime Database for real-time updates
-        await sendRealtimeMessage(chatId.toString(), {
-          senderId: String(senderId),  // Convert to string for Firebase
-          content,
-          chatId: chatId.toString(),
-        } as Record<string, any>);
+        // Send message using MongoDB API
+        const response = await apiRequest("POST", "/api/chats/" + chatId + "/messages", messageData);
         
         return response;
       },
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: [`/api/chats/${data.message.chatId}/messages`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
       },
     });
   };
 
-  // Custom hook for real-time messages
+  // Polling-based messages hook to replace Firebase real-time functionality
   const useRealtimeMessages = (chatId: number) => {
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const handleNewMessages = useCallback((newMessages: any[]) => {
-      setMessages(newMessages);
-      setLoading(false);
-    }, []);
+    // Fetch messages from MongoDB
+    const fetchMessages = useCallback(async () => {
+      if (!chatId) {
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
 
+      try {
+        const response = await fetch(`/api/chats/${chatId}/messages`);
+        if (!response.ok) throw new Error('Failed to fetch messages');
+        
+        const data = await response.json();
+        setMessages(data.messages || []);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, [chatId]);
+
+    // Initial fetch and polling setup
     useEffect(() => {
       if (!chatId) {
         setMessages([]);
@@ -137,13 +111,16 @@ export const useChat = () => {
 
       setLoading(true);
       
-      // Subscribe to real-time updates
-      const unsubscribe = subscribeToMessages(chatId.toString(), handleNewMessages);
+      // Fetch immediately
+      fetchMessages();
+      
+      // Set up polling every 3 seconds
+      const intervalId = setInterval(fetchMessages, 3000);
       
       return () => {
-        unsubscribe();
+        clearInterval(intervalId);
       };
-    }, [chatId, handleNewMessages]);
+    }, [chatId, fetchMessages]);
 
     return { messages, loading };
   };

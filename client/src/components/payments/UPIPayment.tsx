@@ -10,9 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { firestore } from "@/firebase/config";
+import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
@@ -44,7 +42,7 @@ const UPIPayment = ({
   onPaymentComplete 
 }: UPIPaymentProps) => {
   const { createTransaction, getTransactionsByInvestorId, refreshTransactions } = useTransactions();
-  const { user } = useSimpleAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -123,21 +121,15 @@ const UPIPayment = ({
       // Set completed state
       setCompleted(true);
       
-      // Also create entry in Firestore for real-time updates
-      try {
-        await addDoc(collection(firestore, "transactions"), {
-          startupId,
-          investorId: user.id.toString(),
-          amount: values.amount,
-          paymentMethod: "upi",
-          transactionId: values.referenceId,
-          status: "pending",
-          createdAt: serverTimestamp()
-        });
-        console.log("[UPI] Created duplicate transaction in Firestore for real-time tracking");
-      } catch (firestoreError) {
-        console.error("[UPI] Failed to create Firestore transaction record:", firestoreError);
-      }
+      // Log for transaction tracking
+      console.log("[UPI] Transaction recorded in MongoDB:", {
+        startupId,
+        investorId: user.id.toString(),
+        amount: values.amount,
+        paymentMethod: "upi",
+        transactionId: values.referenceId,
+        status: "pending"
+      });
       
       // Call the callback if provided
       if (onPaymentComplete) {

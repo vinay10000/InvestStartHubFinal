@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Send, Paperclip, CheckCircle2, FileIcon, Download, Image as ImageIcon } from "lucide-react";
-import { database } from "@/firebase/config";
-import { ref, onValue, push, set, serverTimestamp, update, get } from "firebase/database";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
@@ -21,21 +19,23 @@ export interface ChatInterfaceProps {
   otherUserAvatar?: string;
 }
 
-interface FirebaseMessage {
-  id: string;
+interface MongoMessage {
+  id: string | number;
   text: string;
-  senderId: string;
+  senderId: string | number;
   timestamp: number;
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
   readBy?: string[]; // Array of user IDs who read the message
   reactions?: Record<string, string[]>; // Map of reaction emoji to array of user IDs
+  chatId?: string | number;
+  createdAt?: Date | null;
 }
 
 const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: ChatInterfaceProps) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<FirebaseMessage[]>([]);
+  const [messages, setMessages] = useState<MongoMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -49,44 +49,62 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
   const socketRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Load messages from Firebase
+  // Load messages from MongoDB
   useEffect(() => {
     if (!chatId) return;
     
     setLoading(true);
     
-    // Reference to messages for this chat
-    const messagesRef = ref(database, `chats/${chatId}/messages`);
-    
-    // Listen for message updates
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
+    // Function to fetch messages from API
+    const fetchMessages = async () => {
+      try {
+        // Fetch messages from MongoDB API
+        const response = await fetch(`/api/chats/${chatId}/messages`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch messages');
+        }
+        
+        const data = await response.json();
+        
+        if (!data || !data.messages) {
+          setMessages([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Sort messages by timestamp (oldest first)
+        const messageList = [...data.messages].sort((a: MongoMessage, b: MongoMessage) => {
+          const timeA = a.timestamp || 0;
+          const timeB = b.timestamp || 0;
+          return timeA - timeB;
+        });
+        
+        setMessages(messageList);
+        setLoading(false);
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, 100);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
         setMessages([]);
         setLoading(false);
-        return;
       }
-      
-      // Convert object to array and sort by timestamp
-      const messageList = Object.entries(data).map(([id, messageData]: [string, any]) => ({
-        id,
-        ...messageData
-      })).sort((a, b) => a.timestamp - b.timestamp);
-      
-      setMessages(messageList);
-      setLoading(false);
-      
-      // Scroll to bottom
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      }, 100);
-    });
+    };
+    
+    // Fetch messages initially
+    fetchMessages();
+    
+    // Poll for new messages every 5 seconds
+    const intervalId = setInterval(fetchMessages, 5000);
     
     // Cleanup
     return () => {
-      unsubscribe();
+      clearInterval(intervalId);
     };
   }, [chatId]);
   
@@ -94,14 +112,29 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
   useEffect(() => {
     if (!chatId || !user) return;
     
-    const chatRef = ref(database, `chats/${chatId}`);
+    const markAsRead = async () => {
+      try {
+        // Update unread count using API
+        const response = await fetch(`/api/chats/${chatId}/read`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            userRole: user.role
+          })
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to mark chat as read');
+        }
+      } catch (error) {
+        console.error('Error marking chat as read:', error);
+      }
+    };
     
-    // Update unread count based on user role
-    if (user.role === "founder") {
-      update(chatRef, { founderUnread: 0 });
-    } else {
-      update(chatRef, { investorUnread: 0 });
-    }
+    markAsRead();
   }, [chatId, user]);
   
   // Handle sending a new message
@@ -111,32 +144,23 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
     try {
       setSending(true);
       
-      const messagesRef = ref(database, `chats/${chatId}/messages`);
-      const newMessageRef = push(messagesRef);
+      // Create new message via API
+      const response = await fetch(`/api/chats/${chatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          text: newMessage.trim(),
+          timestamp: Date.now(),
+          chatId: chatId
+        })
+      });
       
-      const messageData = {
-        senderId: user.id,
-        text: newMessage.trim(),
-        timestamp: serverTimestamp()
-      };
-      
-      await set(newMessageRef, messageData);
-      
-      // Update last message and unread count
-      const chatRef = ref(database, `chats/${chatId}`);
-      const updates: Record<string, any> = {
-        lastMessage: newMessage.trim(),
-        timestamp: serverTimestamp()
-      };
-      
-      // Increment unread count for the other user
-      if (user.role === "founder") {
-        updates.investorUnread = (updates.investorUnread || 0) + 1;
-      } else {
-        updates.founderUnread = (updates.founderUnread || 0) + 1;
+      if (!response.ok) {
+        throw new Error('Failed to send message');
       }
-      
-      await update(chatRef, updates);
       
       // Send message via WebSocket for instant delivery
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -163,6 +187,11 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
       setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
+      toast({
+        title: "Failed to send message",
+        description: "Please try again later",
+        variant: "destructive"
+      });
     } finally {
       setSending(false);
     }
@@ -209,9 +238,20 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
       }, 3000);
     }
     
-    // Fallback to Firebase if WebSocket isn't available
-    const typingRef = ref(database, `chats/${chatId}/typing/${user.id}`);
-    set(typingRef, Date.now());
+    // Fallback to MongoDB API if WebSocket isn't available
+    fetch(`/api/chats/${chatId}/typing`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        isTyping: true,
+        timestamp: Date.now()
+      })
+    }).catch(error => {
+      console.error('Error sending typing indicator:', error);
+    });
   };
   
   // Setup WebSocket connection
@@ -347,23 +387,40 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
     };
   }, [chatId, user]);
   
-  // Listen for typing indicators (Firebase fallback)
+  // Listen for typing indicators from MongoDB
   useEffect(() => {
     if (!chatId || !otherUserId) return;
     
-    const typingRef = ref(database, `chats/${chatId}/typing/${otherUserId}`);
-    const unsubscribe = onValue(typingRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setTypingIndicator(true);
-        // Clear typing indicator after 3 seconds
-        setTimeout(() => setTypingIndicator(false), 3000);
-      } else {
-        setTypingIndicator(false);
+    const checkTypingStatus = async () => {
+      try {
+        const response = await fetch(`/api/chats/${chatId}/typing/${otherUserId}`);
+        
+        if (!response.ok) {
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.isTyping) {
+          setTypingIndicator(true);
+          // Clear typing indicator after 3 seconds
+          setTimeout(() => setTypingIndicator(false), 3000);
+        } else {
+          setTypingIndicator(false);
+        }
+      } catch (error) {
+        console.error('Error checking typing status:', error);
       }
-    });
+    };
+    
+    // Check immediately
+    checkTypingStatus();
+    
+    // And then poll every 2 seconds
+    const intervalId = setInterval(checkTypingStatus, 2000);
     
     return () => {
-      unsubscribe();
+      clearInterval(intervalId);
     };
   }, [chatId, otherUserId]);
   
@@ -413,41 +470,60 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
         if (xhr.status === 200) {
           const response = JSON.parse(xhr.responseText);
           
-          // Send file message
-          const messagesRef = ref(database, `chats/${chatId}/messages`);
-          const newMessageRef = push(messagesRef);
-          
-          const messageData = {
-            senderId: user.id,
-            text: `Shared a file: ${fileName}`,
-            timestamp: serverTimestamp(),
-            fileUrl: response.url,
-            fileName: fileName,
-            fileType: fileType
-          };
-          
-          await set(newMessageRef, messageData);
-          
-          // Update chat with last message
-          const chatRef = ref(database, `chats/${chatId}`);
-          const updates: Record<string, any> = {
-            lastMessage: `Shared a file: ${fileName}`,
-            timestamp: serverTimestamp()
-          };
-          
-          // Increment unread count for the other user
-          if (user.role === "founder") {
-            updates.investorUnread = (updates.investorUnread || 0) + 1;
-          } else {
-            updates.founderUnread = (updates.founderUnread || 0) + 1;
+          try {
+            // Send file message using MongoDB API
+            const messageResponse = await fetch(`/api/chats/${chatId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                senderId: user.id,
+                text: `Shared a file: ${fileName}`,
+                timestamp: Date.now(),
+                chatId: chatId,
+                fileUrl: response.url,
+                fileName: fileName,
+                fileType: fileType
+              })
+            });
+            
+            if (!messageResponse.ok) {
+              throw new Error('Failed to send file message');
+            }
+            
+            // Update chat with last message
+            const chatUpdateResponse = await fetch(`/api/chats/${chatId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                lastMessage: `Shared a file: ${fileName}`,
+                timestamp: Date.now(),
+                // Increment unread count for the other user
+                ...(user.role === "founder" 
+                  ? { investorUnread: 1 } // Incrementing by 1
+                  : { founderUnread: 1 })
+              })
+            });
+            
+            if (!chatUpdateResponse.ok) {
+              console.error('Failed to update chat last message');
+            }
+            
+            toast({
+              title: "File uploaded",
+              description: "File has been shared successfully"
+            });
+          } catch (error) {
+            console.error('Error sending file message:', error);
+            toast({
+              title: "Upload failed",
+              description: "Failed to send file message",
+              variant: "destructive"
+            });
           }
-          
-          await update(chatRef, updates);
-          
-          toast({
-            title: "File uploaded",
-            description: "File has been shared successfully"
-          });
         } else {
           throw new Error("Upload failed");
         }
@@ -488,94 +564,129 @@ const ChatInterface = ({ chatId, otherUserId, otherUserName, otherUserAvatar }: 
   };
   
   // Mark message as read
-  const markAsRead = async (messageId: string) => {
+  const markAsRead = async (messageId: string | number) => {
     if (!user || !chatId) return;
     
     try {
-      // First, update in Firebase
-      const messageRef = ref(database, `chats/${chatId}/messages/${messageId}`);
-      const snapshot = await get(messageRef);
+      // Send read status update to MongoDB API
+      const response = await fetch(`/api/chats/${chatId}/messages/${messageId}/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: user.id.toString(),
+          timestamp: Date.now()
+        })
+      });
       
-      if (snapshot.exists()) {
-        const message = snapshot.val();
-        const readBy = message.readBy || [];
-        
-        // Only update if the current user hasn't read it yet
-        if (!readBy.includes(String(user.id))) {
-          readBy.push(String(user.id));
-          await update(messageRef, { readBy });
-          
-          // Then, send read receipt via WebSocket for real-time notification
-          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({
-              type: 'read_receipt',
-              messageId,
-              userId: user.id.toString(),
-              chatId,
-              timestamp: Date.now()
-            }));
-          }
-        }
+      if (!response.ok) {
+        console.error('Failed to mark message as read');
+        return;
       }
+      
+      // Then, send read receipt via WebSocket for real-time notification
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: 'read_receipt',
+          messageId,
+          userId: user.id.toString(),
+          chatId,
+          timestamp: Date.now()
+        }));
+      }
+      
+      // Update local message state
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === messageId 
+            ? { 
+                ...msg, 
+                readBy: [...(msg.readBy || []), user.id.toString()]
+              } 
+            : msg
+        )
+      );
     } catch (error) {
       console.error("Error marking message as read:", error);
     }
   };
   
   // Handle message reactions
-  const handleReaction = async (messageId: string, emoji: string) => {
+  const handleReaction = async (messageId: string | number, emoji: string) => {
     if (!user || !chatId) return;
     
     try {
-      // Get the current message
-      const messageRef = ref(database, `chats/${chatId}/messages/${messageId}`);
-      const snapshot = await get(messageRef);
+      // Find the current message in our state
+      const message = messages.find(msg => msg.id === messageId);
+      if (!message) return;
       
-      if (snapshot.exists()) {
-        const message = snapshot.val();
-        const reactions: Record<string, string[]> = message.reactions || {};
-        const currentReaction: string[] = reactions[emoji] || [];
-        
-        // Check if user has already reacted with this emoji
-        const userIdStr = String(user.id);
-        const hasReacted = currentReaction.includes(userIdStr);
-        
-        // Toggle reaction: add if not present, remove if present
-        let updatedReactions: Record<string, string[]>;
-        if (hasReacted) {
-          // Remove user's reaction
-          updatedReactions = {
-            ...reactions,
-            [emoji]: currentReaction.filter((id: string) => id !== userIdStr)
-          };
-          
-          // Remove empty reaction arrays
-          if (updatedReactions[emoji].length === 0) {
-            delete updatedReactions[emoji];
+      const reactions: Record<string, string[]> = message.reactions || {};
+      const currentReaction: string[] = reactions[emoji] || [];
+      
+      // Check if user has already reacted with this emoji
+      const userIdStr = user.id.toString();
+      const hasReacted = currentReaction.includes(userIdStr);
+      
+      // Send reaction update to MongoDB API
+      const response = await fetch(`/api/chats/${chatId}/messages/${messageId}/reaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: userIdStr,
+          emoji,
+          add: !hasReacted,
+          timestamp: Date.now()
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update message reaction');
+        return;
+      }
+      
+      // Update local state
+      setMessages(prev => 
+        prev.map(msg => {
+          if (msg.id === messageId) {
+            const updatedReactions = { ...(msg.reactions || {}) };
+            const reactionUsers = [...(updatedReactions[emoji] || [])];
+            
+            if (hasReacted) {
+              // Remove user's reaction
+              const filteredUsers = reactionUsers.filter(id => id !== userIdStr);
+              if (filteredUsers.length > 0) {
+                updatedReactions[emoji] = filteredUsers;
+              } else {
+                delete updatedReactions[emoji];
+              }
+            } else {
+              // Add user's reaction
+              updatedReactions[emoji] = [...reactionUsers, userIdStr];
+            }
+            
+            return {
+              ...msg,
+              reactions: updatedReactions
+            };
           }
-        } else {
-          // Add user's reaction
-          updatedReactions = {
-            ...reactions,
-            [emoji]: [...currentReaction, userIdStr]
-          };
-        }
-        
-        // Update in Firebase
-        await update(messageRef, { reactions: updatedReactions });
-        
-        // Notify via WebSocket
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-          socketRef.current.send(JSON.stringify({
-            type: 'reaction',
-            messageId,
-            userId: userIdStr,
-            chatId,
-            emoji,
-            added: !hasReacted,
-            timestamp: Date.now()
-          }));
-        }
+          return msg;
+        })
+      );
+      
+      // Notify via WebSocket
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: 'reaction',
+          messageId,
+          userId: userIdStr,
+          chatId,
+          emoji,
+          added: !hasReacted,
+          timestamp: Date.now()
+        }));
       }
     } catch (error) {
       console.error("Error handling reaction:", error);

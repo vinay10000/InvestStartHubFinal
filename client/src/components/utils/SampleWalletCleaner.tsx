@@ -4,12 +4,43 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Trash, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// Import from our local mock implementation instead of Firebase SDK
-import { getDatabase, ref, get, remove, update } from '@/firebase/firebase';
-import { isSampleWalletAddress } from '@/firebase/getStartupWallet';
 
-// Initialize Firebase Realtime Database using our mock
-const database = getDatabase();
+// Function to check if a wallet address is a sample address
+const isSampleWalletAddress = (address: string): boolean => {
+  if (!address) return false;
+  // Common sample wallet addresses often used in development
+  const sampleWalletPrefixes = [
+    '0x0000', 
+    '0x1111', 
+    '0x2222', 
+    '0x3333',
+    '0x4444',
+    '0x5555',
+    '0xffff',
+    '0xaaaa',
+    '0xbbbb',
+    '0xcccc',
+    '0xdddd',
+    '0xeeee'
+  ];
+  
+  // Check for exact matches of common test addresses
+  const exactMatches = [
+    '0x05fe362a1cb1a55a99bfdceb7e91c6cf241ee782', // This is our designated test wallet
+    '0x000000000000000000000000000000000000dead', // Common burn address
+    '0x0000000000000000000000000000000000000000'  // Zero address
+  ];
+  
+  // Check for prefix matches
+  const lowerAddress = address.toLowerCase();
+  
+  if (exactMatches.includes(lowerAddress)) {
+    return true;
+  }
+  
+  // Check for prefixes
+  return sampleWalletPrefixes.some(prefix => lowerAddress.startsWith(prefix));
+};
 
 const SampleWalletCleaner = () => {
   const [isScanning, setIsScanning] = useState(false);
@@ -66,31 +97,34 @@ const SampleWalletCleaner = () => {
     }
   };
   
-  // Scan startups for sample wallets
+  // Scan startups for sample wallets using MongoDB API
   const scanStartupsForSampleWallets = async () => {
     const results: any[] = [];
     
     try {
-      const startupsRef = ref(database, 'startups');
-      const snapshot = await get(startupsRef);
+      // Fetch all startups from MongoDB API
+      const response = await fetch('/api/startups');
+      if (!response.ok) {
+        throw new Error('Failed to fetch startups from MongoDB');
+      }
       
-      if (snapshot.exists()) {
-        const startups = snapshot.val();
-        
-        for (const [id, startup] of Object.entries(startups)) {
-          const startupData = startup as any;
+      const data = await response.json();
+      const startups = data.startups || [];
+      
+      for (const startup of startups) {
+        // Get wallet address from the wallets collection by startup ID
+        const walletResponse = await fetch(`/api/wallets/startup/${startup.id}`);
+        if (walletResponse.ok) {
+          const walletData = await walletResponse.json();
+          const walletAddress = walletData.walletAddress;
           
-          // Check for sample wallet addresses in various fields
-          if (
-            (startupData.founderWalletAddress && isSampleWalletAddress(startupData.founderWalletAddress)) ||
-            (startupData.walletAddress && isSampleWalletAddress(startupData.walletAddress))
-          ) {
+          if (walletAddress && isSampleWalletAddress(walletAddress)) {
             results.push({
               type: 'startup',
-              id,
-              name: startupData.name || 'Unknown Startup',
-              walletAddress: startupData.founderWalletAddress || startupData.walletAddress,
-              path: `startups/${id}`
+              id: startup.id,
+              name: startup.name || 'Unknown Startup',
+              walletAddress: walletAddress,
+              path: `startups/${startup.id}`
             });
           }
         }
@@ -102,45 +136,28 @@ const SampleWalletCleaner = () => {
     return results;
   };
   
-  // Scan users for sample wallets
+  // Scan users for sample wallets using MongoDB API
   const scanUsersForSampleWallets = async () => {
     const results: any[] = [];
     
     try {
-      const usersRef = ref(database, 'users');
-      const snapshot = await get(usersRef);
+      // Fetch all users with wallets from MongoDB API
+      const response = await fetch('/api/user/profile?withWallet=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch users from MongoDB');
+      }
       
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        
-        for (const [id, user] of Object.entries(users)) {
-          const userData = user as any;
-          
-          // Check for sample wallet address
-          if (userData.walletAddress && isSampleWalletAddress(userData.walletAddress)) {
-            results.push({
-              type: 'user',
-              id,
-              name: userData.username || userData.email || 'Unknown User',
-              walletAddress: userData.walletAddress,
-              path: `users/${id}`
-            });
-          }
-          
-          // Also check the wallet field if it exists
-          if (
-            userData.wallet && 
-            userData.wallet.address && 
-            isSampleWalletAddress(userData.wallet.address)
-          ) {
-            results.push({
-              type: 'user.wallet',
-              id,
-              name: userData.username || userData.email || 'Unknown User',
-              walletAddress: userData.wallet.address,
-              path: `users/${id}/wallet`
-            });
-          }
+      const users = await response.json();
+      
+      for (const user of users) {
+        if (user.walletAddress && isSampleWalletAddress(user.walletAddress)) {
+          results.push({
+            type: 'user',
+            id: user.id,
+            name: user.username || user.email || 'Unknown User',
+            walletAddress: user.walletAddress,
+            path: `users/${user.id}`
+          });
         }
       }
     } catch (error) {
@@ -150,32 +167,16 @@ const SampleWalletCleaner = () => {
     return results;
   };
   
-  // Scan wallets collection for sample wallets
+  // Scan wallet collection for sample wallets using MongoDB API
   const scanWalletsCollectionForSampleWallets = async () => {
     const results: any[] = [];
     
     try {
-      const walletsRef = ref(database, 'wallets');
-      const snapshot = await get(walletsRef);
+      // In MongoDB implementation, wallet addresses are stored directly with users and startups
+      // This function is kept for API compatibility with the SampleWalletCleaner component
       
-      if (snapshot.exists()) {
-        const wallets = snapshot.val();
-        
-        for (const [address, wallet] of Object.entries(wallets)) {
-          const walletData = wallet as any;
-          
-          // Check if this is a sample wallet address
-          if (isSampleWalletAddress(address)) {
-            results.push({
-              type: 'wallet',
-              id: walletData.userId || 'Unknown',
-              name: walletData.username || 'Unknown User',
-              walletAddress: address,
-              path: `wallets/${address}`
-            });
-          }
-        }
-      }
+      // We would need an API endpoint to get all wallet addresses, for now, this returns empty results
+      // as other functions already cover users and startups
     } catch (error) {
       console.error("Error scanning wallets collection:", error);
     }
@@ -183,7 +184,7 @@ const SampleWalletCleaner = () => {
     return results;
   };
   
-  // Function to clean sample wallets from the database
+  // Function to clean sample wallets from the MongoDB database
   const cleanSampleWallets = async () => {
     if (foundSampleWallets.length === 0) {
       toast({
@@ -207,32 +208,25 @@ const SampleWalletCleaner = () => {
       
       for (const item of foundSampleWallets) {
         try {
-          if (item.type === 'startup') {
-            // For startups, update the wallet fields to null
-            const startupRef = ref(database, item.path);
-            await update(startupRef, {
-              founderWalletAddress: null,
-              walletAddress: null
+          if (item.type === 'startup' || item.type === 'user') {
+            // For both startups and users, update the wallet address using the wallet connection API
+            const response = await fetch('/api/user/wallet/connect', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                userId: item.id,
+                walletAddress: null, // Set to null to remove wallet
+              })
             });
-            results.push(`Cleaned startup ${item.name} (${item.id})`);
-          } else if (item.type === 'user') {
-            // For users, update the walletAddress field to null
-            const userRef = ref(database, item.path);
-            await update(userRef, {
-              walletAddress: null,
-              walletUpdatedAt: Date.now()
-            });
-            results.push(`Cleaned user ${item.name} (${item.id})`);
-          } else if (item.type === 'user.wallet') {
-            // For user wallet objects, remove the wallet field
-            const walletRef = ref(database, item.path);
-            await remove(walletRef);
-            results.push(`Removed wallet field from user ${item.name} (${item.id})`);
-          } else if (item.type === 'wallet') {
-            // For wallet collection entries, remove the entire record
-            const walletRef = ref(database, item.path);
-            await remove(walletRef);
-            results.push(`Removed wallet record ${item.walletAddress}`);
+            
+            if (response.ok) {
+              results.push(`Cleaned ${item.type} ${item.name} (${item.id})`);
+            } else {
+              const errorText = await response.text();
+              throw new Error(errorText || 'Failed to update wallet');
+            }
           }
         } catch (error) {
           console.error(`Error cleaning ${item.type} ${item.id}:`, error);

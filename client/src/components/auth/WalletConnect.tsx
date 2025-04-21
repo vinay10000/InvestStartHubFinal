@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Wallet, AlertTriangle, ChevronRight, LockKeyhole } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { addWalletAddress, getUserWallet, makeWalletPermanent, isWalletAvailable, WalletData } from '@/firebase/walletDatabase';
+import { addWalletAddress, getUserWallet, makeWalletPermanent, isWalletAvailable, WalletData } from '@/lib/mongoWalletDatabase';
 import { useLocation } from 'wouter';
 
 interface WalletConnectProps {
@@ -135,7 +135,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
     setIsLoading(true);
     
     try {
-      // Add wallet to Firebase
+      // Add wallet to MongoDB
       await addWalletAddress(
         walletAddress,
         user.id,
@@ -143,7 +143,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({
         isPermanent
       );
       
-      // If wallet was set as permanent, make it permanent in Firebase
+      // If wallet was set as permanent, make it permanent in MongoDB
       if (isPermanent) {
         await makeWalletPermanent(walletAddress, user.id);
       }

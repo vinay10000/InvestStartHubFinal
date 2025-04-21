@@ -2,9 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerImageKitRoutes } from "./imagekit";
-import { initKnownWalletAddresses } from "./wallet-utils";
 import { connectToMongoDB } from "./mongo";
-import { initKnownWalletAddresses as initMongoWalletAddresses } from "./mongo-wallet-utils";
+import { initKnownWalletAddresses } from "./mongo-wallet-utils";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -14,13 +13,13 @@ import { fileURLToPath } from "url";
  * This function attempts to initialize wallet addresses with exponential backoff
  * in case of transient connection issues
  */
-async function initializeMongoWalletAddressesWithRetry(
+async function initializeWalletAddressesWithRetry(
   attempt: number = 1, 
   maxAttempts: number = 5, 
   initialDelay: number = 1000
 ): Promise<void> {
   try {
-    await initMongoWalletAddresses();
+    await initKnownWalletAddresses();
     log('✅ Successfully initialized known wallet addresses in MongoDB');
   } catch (error) {
     const delay = initialDelay * Math.pow(2, attempt - 1);
@@ -29,7 +28,7 @@ async function initializeMongoWalletAddressesWithRetry(
     if (attempt < maxAttempts) {
       log(`⏱️ Retrying in ${delay}ms...`);
       setTimeout(() => {
-        initializeMongoWalletAddressesWithRetry(attempt + 1, maxAttempts, initialDelay)
+        initializeWalletAddressesWithRetry(attempt + 1, maxAttempts, initialDelay)
           .catch(err => log('❌ Final error in MongoDB wallet initialization:', err));
       }, delay);
     } else {
@@ -87,7 +86,6 @@ app.use((req, res, next) => {
 
 (async () => {
   // Initialize MongoDB connection with timeout
-  let mongoConnected = false;
   try {
     log('Connecting to MongoDB with timeout protection');
     
@@ -96,51 +94,52 @@ app.use((req, res, next) => {
     const connectPromise = connectToMongoDB();
     const timeoutPromise = new Promise<false>((resolve) => {
       setTimeout(() => {
-        log(`⏱️ MongoDB connection timeout after ${timeoutMs}ms, continuing startup with fallback`);
+        log(`⏱️ MongoDB connection timeout after ${timeoutMs}ms, continuing startup with retries`);
         resolve(false);
       }, timeoutMs);
     });
     
     // Race the connection against the timeout
-    mongoConnected = await Promise.race([connectPromise, timeoutPromise]);
+    const mongoConnected = await Promise.race([connectPromise, timeoutPromise]);
     
     if (mongoConnected) {
       log('✅ Successfully connected to MongoDB');
       
       // Initialize known wallet addresses in MongoDB with retries (don't block startup)
       log('Initializing known wallet addresses in MongoDB');
-      initializeMongoWalletAddressesWithRetry();
+      initializeWalletAddressesWithRetry();
     } else {
-      log('❌ Failed to connect to MongoDB, falling back to Firestore');
+      log('⚠️ Initial MongoDB connection timed out, proceeding with retries');
       
       // Continue connecting to MongoDB in the background
       connectToMongoDB().then(connected => {
         if (connected) {
           log('✅ Late MongoDB connection succeeded, initializing known wallet addresses');
-          initMongoWalletAddresses().catch(err => {
-            log('⚠️ Non-critical error initializing MongoDB wallet addresses: ' + err);
-          });
+          initializeWalletAddressesWithRetry();
+        } else {
+          log('⚠️ MongoDB connection retry failed - application may have limited functionality');
         }
       }).catch(err => {
         log('⚠️ Background MongoDB connection failed: ' + err);
       });
-      
-      // Initialize known wallet addresses in Firestore as fallback
-      log('Initializing known wallet addresses in Firestore (fallback)');
-      await initKnownWalletAddresses();
-      log('✅ Successfully initialized known wallet addresses in Firestore');
     }
   } catch (error) {
-    log('❌ Error initializing database connections and wallet addresses: ' + error);
+    log('❌ Error initializing MongoDB database connection: ' + error);
     
-    // Initialize known wallet addresses in Firestore as fallback
-    try {
-      log('Initializing known wallet addresses in Firestore (error fallback)');
-      await initKnownWalletAddresses();
-      log('✅ Successfully initialized known wallet addresses in Firestore');
-    } catch (err) {
-      log('❌ Critical error: Failed to initialize both MongoDB and Firestore wallet addresses');
-    }
+    // Try one more time to connect
+    setTimeout(() => {
+      log('🔄 Retrying MongoDB connection after error...');
+      connectToMongoDB().then(connected => {
+        if (connected) {
+          log('✅ Retry MongoDB connection succeeded, initializing known wallet addresses');
+          initializeWalletAddressesWithRetry();
+        } else {
+          log('⚠️ MongoDB connection retry failed - application may have limited functionality');
+        }
+      }).catch(err => {
+        log('❌ Final MongoDB connection attempt failed: ' + err);
+      });
+    }, 5000);
   }
 
   const server = await registerRoutes(app);

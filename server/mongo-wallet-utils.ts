@@ -81,10 +81,15 @@ const STARTUP_ASSOCIATIONS = [
 
 /**
  * Store a wallet address for a user in MongoDB
+ * @param userId The user ID
+ * @param walletAddress The wallet address (or null to remove)
+ * @param isPermanent Whether this wallet is permanent (won't be removed on logout)
+ * @param source The data source (default: 'mongodb')
  */
 export async function storeWalletAddress(
   userId: number | string,
-  walletAddress: string,
+  walletAddress: string | null,
+  isPermanent: boolean = false,
   source: string = 'mongodb'
 ): Promise<boolean> {
   // Get a connection release function
@@ -93,10 +98,23 @@ export async function storeWalletAddress(
   try {
     const userIdStr = userId.toString();
     
+    // Handle null wallet address (removal case)
+    if (!walletAddress) {
+      console.log(`[mongo-wallet] Removing wallet for user ${userIdStr}`);
+      
+      // Get database
+      const db = getDB();
+      
+      // Remove from the wallet collection
+      await db.collection(WALLET_COLLECTION).deleteOne({ userId: userIdStr });
+      
+      return true;
+    }
+    
     // Normalize wallet address
     const normalizedWalletAddress = walletAddress.toLowerCase();
     
-    console.log(`[mongo-wallet] Storing wallet ${normalizedWalletAddress} for user ${userIdStr}`);
+    console.log(`[mongo-wallet] Storing wallet ${normalizedWalletAddress} for user ${userIdStr} (${isPermanent ? 'permanent' : 'temporary'})`);
     
     // Get database
     const db = getDB();
@@ -108,6 +126,7 @@ export async function storeWalletAddress(
         $set: { 
           userId: userIdStr,
           walletAddress: normalizedWalletAddress,
+          isPermanent: isPermanent,
           dataSource: source,
           updatedAt: new Date()
         },
@@ -191,7 +210,7 @@ export async function initKnownWalletAddresses(): Promise<void> {
     // Store wallets for all known UIDs
     for (const [uid, wallet] of Object.entries(KNOWN_WALLETS)) {
       try {
-        await storeWalletAddress(uid, wallet, 'known_wallets');
+        await storeWalletAddress(uid, wallet, true, 'known_wallets');
         console.log(`[mongo-wallet] Initialized wallet for UID ${uid}: ${wallet}`);
       } catch (error) {
         console.warn(`[mongo-wallet] Failed to initialize wallet for UID ${uid}, but continuing: ${error}`);

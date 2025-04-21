@@ -18,7 +18,7 @@ import {
   getUserIdByWalletAddress,
   storeWalletAddress,
   storeStartupWalletAddress
-} from './wallet-utils';
+} from './mongo-wallet-utils';
 import walletRoutes from './wallet-routes';
 import { setupAuth, requireAuth, requireRole } from './auth';
 
@@ -202,12 +202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.body.userId);
       const walletAddress = req.body.walletAddress;
+      const isPermanent = req.body.isPermanent === true; // Convert to boolean
+      const replace = req.body.replace === true; // Whether this is replacing an existing wallet
       
       if (!walletAddress || !walletAddress.startsWith('0x')) {
         return res.status(400).json({ message: 'Invalid wallet address format' });
       }
       
-      console.log(`Connecting wallet ${walletAddress.substring(0, 10)}... to user ${userId}`);
+      console.log(`Connecting wallet ${walletAddress.substring(0, 10)}... to user ${userId} (${isPermanent ? 'permanent' : 'temporary'})`);
       
       // Update wallet in both places - user record and dedicated wallet collection
       const user = await storage.updateUserWallet(userId, walletAddress);
@@ -217,7 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Also store in dedicated wallet collection for reliable lookup
-      await storeWalletAddress(userId, walletAddress);
+      // isPermanent flag is used to determine if the wallet should persist across sessions
+      await storeWalletAddress(userId, walletAddress, isPermanent, 'api_connect');
       
       // If user is a founder, find their startups and store wallet for them too
       try {
@@ -226,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Found ${founderStartups.length} startups for founder ${userId}, updating their wallet addresses`);
           
           for (const startup of founderStartups) {
-            await storeStartupWalletAddress(startup.id, userId, walletAddress);
+            await storeStartupWalletAddress(startup.id, userId, walletAddress, 'founder_connect');
             console.log(`Updated wallet for startup ${startup.id} to ${walletAddress.substring(0, 10)}...`);
           }
         }
@@ -237,11 +240,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(200).json({ 
         user: { ...user, password: undefined },
-        walletAddress
+        walletAddress,
+        isPermanent
       });
     } catch (error) {
       console.error('Error connecting wallet:', error);
       res.status(500).json({ message: 'Failed to connect wallet' });
+    }
+  });
+
+  // Disconnect wallet from user
+  app.post('/api/user/wallet/disconnect', async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.body.userId);
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+      
+      console.log(`Disconnecting wallet for user ${userId}`);
+      
+      // Get current wallet for logging
+      const currentWallet = await getWalletAddressByUserId(userId.toString());
+      
+      // Update user record to remove wallet address
+      const user = await storage.updateUserWallet(userId, null);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // No need to remove from wallet collection - just set isPermanent to false
+      // For Firebase compatibility, let's remove the wallet from storage
+      if (currentWallet) {
+        await storeWalletAddress(userId, null, false, 'api_disconnect');
+        console.log(`Removed wallet ${currentWallet.substring(0, 10)}... from user ${userId}`);
+      }
+      
+      res.status(200).json({ 
+        user: { ...user, password: undefined },
+        walletAddress: null
+      });
+    } catch (error) {
+      console.error('Error disconnecting wallet:', error);
+      res.status(500).json({ message: 'Failed to disconnect wallet' });
+    }
+  });
+
+  // Make wallet permanent (won't be removed on logout)
+  app.post('/api/user/wallet/permanent', async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.body.userId);
+      const walletAddress = req.body.walletAddress;
+      const isPermanent = req.body.isPermanent !== false; // Default to true
+      
+      if (!userId || !walletAddress) {
+        return res.status(400).json({ message: 'User ID and wallet address are required' });
+      }
+      
+      console.log(`Setting wallet ${walletAddress.substring(0, 10)}... for user ${userId} as ${isPermanent ? 'permanent' : 'temporary'}`);
+      
+      // Update in wallet collection
+      await storeWalletAddress(userId, walletAddress, isPermanent, 'api_set_permanent');
+      
+      res.status(200).json({ 
+        userId,
+        walletAddress,
+        isPermanent
+      });
+    } catch (error) {
+      console.error('Error updating wallet permanence:', error);
+      res.status(500).json({ message: 'Failed to update wallet settings' });
     }
   });
   
@@ -267,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If the wallets don't match and both exist, sync them
       if (walletFromUtil && walletFromUser && walletFromUtil !== walletFromUser) {
         console.log(`Wallet address mismatch for user ${userId}, syncing...`);
-        await storeWalletAddress(userId, walletFromUser);
+        await storeWalletAddress(userId, walletFromUser, true, 'wallet_sync');
       }
       
       if (!walletAddress) {
@@ -337,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (founderWallet) {
           // Store it for future quick lookups
-          await storeStartupWalletAddress(startupId, founderId, founderWallet);
+          await storeStartupWalletAddress(startupId, founderId, founderWallet, 'api_startup_lookup');
           
           return res.status(200).json({
             startupId,

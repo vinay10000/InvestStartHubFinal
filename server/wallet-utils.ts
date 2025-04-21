@@ -43,10 +43,14 @@ const FIREBASE_USERS_COLLECTION = 'firebase_users';
 
 /**
  * Store a wallet address for a user
+ * @param userId The user ID
+ * @param walletAddress The Ethereum wallet address
+ * @param isPermanent Whether this is a permanent wallet that shouldn't be removed on logout
  */
 export async function storeWalletAddress(
   userId: number | string,
-  walletAddress: string
+  walletAddress: string,
+  isPermanent: boolean = false
 ): Promise<boolean> {
   try {
     const userIdStr = userId.toString();
@@ -67,6 +71,7 @@ export async function storeWalletAddress(
       await walletRef.set({ 
         userId: userIdStr,
         walletAddress: normalizedWalletAddress,
+        isPermanent: isPermanent,
         createdAt: new Date(),
         updatedAt: new Date()
       }, { merge: true });
