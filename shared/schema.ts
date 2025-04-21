@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -108,6 +108,31 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User wallet addresses (reliable storage separate from user table)
+export const userWallets = pgTable("user_wallets", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(), // User ID (can be number or Firebase UID)
+  walletAddress: text("wallet_address").notNull(),
+  source: text("source").default("postgres"), // Where this wallet was originally stored
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => {
+  return {
+    walletAddressIdx: unique("wallet_address_idx").on(table.walletAddress),
+  };
+});
+
+// Startup wallet addresses (reliable storage separate from startup table)
+export const startupWallets = pgTable("startup_wallets", {
+  id: serial("id").primaryKey(),
+  startupId: text("startup_id").notNull().unique(), // Startup ID (can be number or Firebase ID)
+  founderId: text("founder_id").notNull(), // Founder ID who owns this wallet
+  walletAddress: text("wallet_address").notNull(),
+  source: text("source").default("postgres"), // Where this wallet was originally stored
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -149,6 +174,18 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertUserWalletSchema = createInsertSchema(userWallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStartupWalletSchema = createInsertSchema(startupWallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -173,3 +210,9 @@ export type Chat = typeof chats.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export type InsertUserWallet = z.infer<typeof insertUserWalletSchema>;
+export type UserWallet = typeof userWallets.$inferSelect;
+
+export type InsertStartupWallet = z.infer<typeof insertStartupWalletSchema>;
+export type StartupWallet = typeof startupWallets.$inferSelect;

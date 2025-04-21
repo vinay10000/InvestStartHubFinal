@@ -7,6 +7,8 @@ import {
   Message, InsertMessage
 } from "@shared/schema";
 import { firestore, realtimeDb } from "./db";
+import { MongoStorage } from "./mongo-storage";
+import { connectToMongoDB } from "./mongo";
 
 export interface IStorage {
   // User operations
@@ -1035,4 +1037,18 @@ export class FirebaseStorage implements IStorage {
 }
 
 // Use FirebaseStorage for reliable wallet address storage and retrieval
-export const storage = new FirebaseStorage();
+// Initialize MongoDB connection
+connectToMongoDB()
+  .then(success => {
+    if (success) {
+      console.log("MongoDB connection successful, using MongoDB storage");
+    } else {
+      console.warn("MongoDB connection failed, falling back to Firebase storage");
+    }
+  })
+  .catch(error => {
+    console.error("Error connecting to MongoDB:", error);
+  });
+
+// Export MongoDB storage as the primary storage implementation
+export const storage = new MongoStorage();

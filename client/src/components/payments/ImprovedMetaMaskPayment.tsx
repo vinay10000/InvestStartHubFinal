@@ -20,8 +20,8 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { doc, setDoc, collection, serverTimestamp, addDoc } from 'firebase/firestore';
 import { firestore } from '../../firebase/config';
-// Removed old wallet utility with fallbacks
-import { getStartupWalletNew } from '../../utils/getStartupWalletNew';
+// Import wallet utilities with MongoDB and Firestore fallbacks
+import { getStartupWallet } from '../../utils/getStartupWalletNew';
 import { useQueryClient } from "@tanstack/react-query";
 
 interface ImprovedMetaMaskPaymentProps {
@@ -75,7 +75,7 @@ const ImprovedMetaMaskPayment = ({
     setIsLoadingWallet(true);
     try {
       // Use our new dedicated function that fetches from our reliable API
-      const wallet = await getStartupWalletNew(startupId);
+      const wallet = await getStartupWallet(startupId.toString());
       
       if (wallet && wallet.startsWith('0x')) {
         console.log("[ImprovedMetaMaskPayment] Found real startup wallet:", wallet);
@@ -338,7 +338,7 @@ const ImprovedMetaMaskPayment = ({
     // Load the real founder wallet directly from our reliable API
     // This is a more direct approach to ensure we never use a sample wallet
     console.log(`[ImprovedMetaMaskPayment] Getting startup wallet for ID: ${startupId}`);
-    const startupWallet = await getStartupWalletNew(startupId);
+    const startupWallet = await getStartupWallet(startupId.toString());
     
     // Log all wallet sources for debugging
     console.log("Investment - All wallet sources:", {

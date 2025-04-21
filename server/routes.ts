@@ -19,8 +19,12 @@ import {
   storeWalletAddress,
   storeStartupWalletAddress
 } from './wallet-utils';
+import walletRoutes from './wallet-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register wallet routes both at standard endpoint and MongoDB-specific endpoint
+  app.use('/api/wallets', walletRoutes); // Standard endpoint that the frontend expects
+  app.use('/api/mongodb/wallets', walletRoutes); // Keep this for backward compatibility
   // Auth routes
   app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
