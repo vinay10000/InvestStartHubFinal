@@ -5,8 +5,22 @@
 import { firestore as db } from './db';
 
 // Ensure we have a valid Firestore instance
-if (!db) {
-  console.error('[wallet-utils] Firestore is not initialized!');
+// Firestore safety wrapper to handle the case where db might be null
+const safeFirestore = {
+  doc: (collection: string, docId: string) => {
+    if (!db) {
+      console.error('[wallet-utils] Firestore is not initialized!');
+      throw new Error('Firestore is not initialized');
+    }
+    return doc(db, collection, docId);
+  },
+  collection: (collectionName: string) => {
+    if (!db) {
+      console.error('[wallet-utils] Firestore is not initialized!');
+      throw new Error('Firestore is not initialized');
+    }
+    return collection(db, collectionName);
+  }
 }
 import { collection, doc, getDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
 
@@ -25,7 +39,7 @@ export async function getWalletAddressByUserId(userId: number | string): Promise
     console.log(`[wallet-utils] Fetching wallet for user ${userIdStr}`);
     
     // Try getting from the dedicated wallet collection first
-    const walletRef = doc(db, WALLET_COLLECTION, userIdStr);
+    const walletRef = safeFirestore.doc(WALLET_COLLECTION, userIdStr);
     const walletDoc = await getDoc(walletRef);
     
     if (walletDoc.exists()) {
