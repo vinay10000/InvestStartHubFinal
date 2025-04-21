@@ -1,95 +1,22 @@
 /**
- * MongoDB-compatible wallet database functions
+ * MongoDB Wallet Database
  * 
- * This module handles saving, retrieving, and managing wallet addresses 
- * through the MongoDB API instead of Firebase.
+ * This module replaces the Firebase wallet database with MongoDB functionality.
+ * It manages wallet addresses for users in the MongoDB database.
  */
 
 /**
- * Migrate a wallet from a numeric user ID to a MongoDB UID
- * This is used during the transition from numeric IDs to MongoDB UIDs
- * 
- * @param numericId The ID of the user in the database (can be string or number)
- * @param mongoUid The MongoDB UID to associate with the wallet
- * @param walletAddress The wallet address to migrate
- * @returns A promise that resolves when the operation is complete
- */
-export async function migrateWalletToMongoUid(
-  numericId: string | number,
-  mongoUid: string,
-  walletAddress: string
-): Promise<void> {
-  try {
-    // Make an API call to migrate the wallet
-    const response = await fetch('/api/user/wallet/migrate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        numericId,
-        mongoUid, // Changed from firebaseUid to mongoUid
-        walletAddress
-      }),
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to migrate wallet address');
-    }
-    
-    console.log(`Wallet address ${walletAddress} migrated from user ${numericId} to MongoDB UID ${mongoUid}`);
-  } catch (error) {
-    console.error('Error migrating wallet address:', error);
-    throw error;
-  }
-}
-
-/**
- * Delete a wallet address completely
- * 
- * @param walletAddress The wallet address to remove from all associations
- * @returns A promise that resolves when the operation is complete
- */
-export async function deleteWallet(walletAddress: string): Promise<void> {
-  try {
-    // Make an API call to delete the wallet
-    const response = await fetch(`/api/wallet/delete/${walletAddress}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete wallet address');
-    }
-    
-    console.log(`Wallet address ${walletAddress} completely removed from the system`);
-  } catch (error) {
-    console.error('Error deleting wallet address:', error);
-    throw error;
-  }
-}
-
-/**
- * Save a wallet address to the MongoDB database
- * 
- * @param userId The ID of the user to associate with this wallet address
- * @param walletAddress The Ethereum wallet address to save
- * @param displayName The user's display name
- * @param role The user's role (founder or investor)
- * @param isPermanent Whether this is a permanent wallet association
- * @returns A promise that resolves when the operation is complete
+ * Save a wallet address for a user
  */
 export async function saveWalletAddress(
   userId: string,
   walletAddress: string,
-  displayName: string = 'User',
-  role: string = 'investor',
-  isPermanent: boolean = true
+  username: string = '',
+  role: string = 'investor'
 ): Promise<void> {
   try {
-    // Make an API call to save the wallet address
-    const response = await fetch('/api/wallet/associate', {
+    // Call the server API to save the wallet address
+    const response = await fetch('/api/user/wallet/connect', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -97,162 +24,146 @@ export async function saveWalletAddress(
       body: JSON.stringify({
         userId,
         walletAddress,
-        displayName,
-        role,
-        isPermanent
+        username,
+        role
       }),
       credentials: 'include'
     });
 
     if (!response.ok) {
-      throw new Error('Failed to save wallet address');
+      throw new Error(`Error saving wallet address: ${response.statusText}`);
     }
-    
-    console.log(`Wallet address ${walletAddress} saved for user ${userId}`);
+
+    console.log('Wallet address saved to MongoDB:', walletAddress);
   } catch (error) {
-    console.error('Error saving wallet address:', error);
+    console.error('Error saving wallet address to MongoDB:', error);
     throw error;
   }
 }
 
 /**
- * Get a wallet address for a user from MongoDB
- * 
- * @param userId The ID of the user
- * @returns A promise that resolves to the wallet address or null if not found
+ * Check if a wallet address is already in use
  */
-export async function getWalletAddress(userId: string): Promise<string | null> {
+export async function isWalletAddressInUse(walletAddress: string): Promise<boolean> {
   try {
-    // Make an API call to get the wallet address
-    const response = await fetch(`/api/wallet/user/${userId}`, {
-      method: 'GET',
+    // Call the server API to check if the wallet address is in use
+    const response = await fetch(`/api/wallets/address/${walletAddress}`, {
       credentials: 'include'
     });
 
     if (!response.ok) {
-      if (response.status === 404) {
-        return null; // No wallet address found
-      }
-      throw new Error('Failed to get wallet address');
+      throw new Error(`Error checking wallet address: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    return data.walletAddress;
+    // If userId exists, the wallet is in use
+    return !!data.userId;
   } catch (error) {
-    console.error('Error getting wallet address:', error);
-    return null;
-  }
-}
-
-/**
- * Find a user ID by wallet address
- * 
- * @param walletAddress The Ethereum wallet address
- * @returns A promise that resolves to the user ID or null if not found
- */
-export async function getUserIdByWalletAddress(walletAddress: string): Promise<string | null> {
-  try {
-    // Make an API call to find the user ID
-    const response = await fetch(`/api/wallet/address/${walletAddress}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null; // No user found with this wallet address
-      }
-      throw new Error('Failed to get user by wallet address');
-    }
-    
-    const data = await response.json();
-    return data.userId;
-  } catch (error) {
-    console.error('Error getting user by wallet address:', error);
-    return null;
-  }
-}
-
-/**
- * Remove a wallet address association
- * 
- * @param userId The ID of the user
- * @returns A promise that resolves when the operation is complete
- */
-export async function removeWalletAddress(userId: string): Promise<void> {
-  try {
-    // Make an API call to remove the wallet address
-    const response = await fetch(`/api/wallet/user/${userId}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to remove wallet address');
-    }
-    
-    console.log(`Wallet address removed for user ${userId}`);
-  } catch (error) {
-    console.error('Error removing wallet address:', error);
-    throw error;
-  }
-}
-
-/**
- * Check if wallets database is initialized
- * 
- * @returns A promise that resolves to a boolean indicating if the wallets DB is initialized
- */
-export async function checkWalletsInitialized(): Promise<boolean> {
-  try {
-    // Make an API call to check if wallets are initialized
-    const response = await fetch('/api/wallet/status', {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      return false;
-    }
-    
-    const data = await response.json();
-    return data.initialized;
-  } catch (error) {
-    console.error('Error checking wallets initialization status:', error);
+    console.error('Error checking wallet address in MongoDB:', error);
+    // Default to false if there's an error
     return false;
   }
 }
 
 /**
- * Initialize wallet addresses if not already initialized
- * 
- * @returns A promise that resolves when the operation is complete
+ * Get the wallet address for a user
  */
-export async function initializeWalletAddresses(): Promise<void> {
+export async function getWalletAddressByUserId(userId: string): Promise<string | null> {
   try {
-    // Check if already initialized
-    const initialized = await checkWalletsInitialized();
-    if (initialized) {
-      console.log('Wallet addresses already initialized');
-      return;
-    }
-    
-    // Make an API call to initialize wallet addresses
-    const response = await fetch('/api/wallet/initialize', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+    // Call the server API to get the wallet address
+    const response = await fetch(`/api/wallets/user/${userId}`, {
       credentials: 'include'
     });
 
     if (!response.ok) {
-      throw new Error('Failed to initialize wallet addresses');
+      throw new Error(`Error fetching wallet address: ${response.statusText}`);
     }
-    
-    console.log('Wallet addresses initialized successfully');
+
+    const data = await response.json();
+    return data.walletAddress || null;
   } catch (error) {
-    console.error('Error initializing wallet addresses:', error);
+    console.error('Error fetching wallet address from MongoDB:', error);
+    return null;
+  }
+}
+
+/**
+ * Remove a wallet address for a user
+ */
+export async function removeWalletAddress(userId: string): Promise<void> {
+  try {
+    // Call the server API to remove the wallet address
+    const response = await fetch('/api/user/wallet/disconnect', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error removing wallet address: ${response.statusText}`);
+    }
+
+    console.log('Wallet address removed from MongoDB for user:', userId);
+  } catch (error) {
+    console.error('Error removing wallet address from MongoDB:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete wallet - alias for removeWalletAddress for compatibility
+ */
+export async function deleteWallet(userId: string): Promise<void> {
+  return removeWalletAddress(userId);
+}
+
+/**
+ * Mark a wallet address as permanent for a user
+ */
+export async function markWalletAsPermanent(userId: string): Promise<void> {
+  try {
+    // Call the server API to mark the wallet as permanent
+    const response = await fetch('/api/user/wallet/permanent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error marking wallet as permanent: ${response.statusText}`);
+    }
+
+    console.log('Wallet marked as permanent in MongoDB for user:', userId);
+  } catch (error) {
+    console.error('Error marking wallet as permanent in MongoDB:', error);
+    throw error;
+  }
+}
+
+/**
+ * Migrate wallet data from a numeric ID to a MongoDB UID
+ */
+export async function migrateWalletToMongoUid(
+  numericId: string,
+  mongoUid: string,
+  walletAddress: string
+): Promise<void> {
+  try {
+    // This is a client-side implementation - on the server, we'd associate
+    // the same wallet address with the MongoDB UID to ensure both IDs
+    // reference the same wallet.
+    console.log(`Migrating wallet ${walletAddress} from ID ${numericId} to MongoDB UID ${mongoUid}`);
+
+    // Simply store the wallet under the MongoDB UID
+    await saveWalletAddress(mongoUid, walletAddress);
+  } catch (error) {
+    console.error('Error migrating wallet to MongoDB UID:', error);
     throw error;
   }
 }

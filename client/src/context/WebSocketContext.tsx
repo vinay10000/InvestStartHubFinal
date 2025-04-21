@@ -43,6 +43,14 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
   // Function to connect to WebSocket server
   const connectWebSocket = () => {
     try {
+      // Check if we already have an active socket
+      if (socket && 
+         (socket.readyState === WebSocket.CONNECTING || 
+          socket.readyState === WebSocket.OPEN)) {
+        console.log('[WebSocketContext] WebSocket connection already exists, not creating a new one');
+        return;
+      }
+      
       // Determine the WebSocket URL based on the current environment
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
@@ -90,14 +98,21 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
         setConnected(false);
         setSocket(null);
         
-        // Attempt to reconnect with exponential backoff
-        const delay = Math.min(3000 * Math.pow(1.5, reconnectAttempt), 30000);
-        console.log(`[WebSocketContext] Connection lost, reconnecting in ${delay/1000} seconds...`);
-        
-        setTimeout(() => {
-          setReconnectAttempt(prev => prev + 1);
-          connectWebSocket();
-        }, delay);
+        // Only attempt reconnection if the component is still mounted
+        // and we haven't exceeded the maximum number of attempts
+        if (reconnectAttempt < 3) {
+          // Attempt to reconnect with exponential backoff
+          const delay = Math.min(3000 * Math.pow(1.5, reconnectAttempt), 30000);
+          console.log(`[WebSocketContext] Connection lost, reconnecting in ${delay/1000} seconds...`);
+          
+          // Use a single timeout for reconnecting
+          setTimeout(() => {
+            setReconnectAttempt(prev => prev + 1);
+            connectWebSocket();
+          }, delay);
+        } else {
+          console.log('[WebSocketContext] Maximum reconnection attempts reached, not reconnecting automatically');
+        }
       };
       
       setSocket(ws);
@@ -107,13 +122,18 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     }
   };
   
-  // Initialize WebSocket connection
+  // Initialize WebSocket connection only once at component mount
+  // and when manually triggered by reconnect attempt changes
   useEffect(() => {
-    connectWebSocket();
+    // Only connect if no socket exists or socket is closed
+    if (!socket || socket.readyState === WebSocket.CLOSED) {
+      connectWebSocket();
+    }
     
     // Cleanup function
     return () => {
       if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log('[WebSocketContext] Cleaning up WebSocket connection from effect');
         socket.close();
       }
     };

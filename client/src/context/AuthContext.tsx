@@ -6,13 +6,8 @@ interface User extends SchemaUser {
   uid: string; // MongoDB ID mapped as UID for compatibility
 }
 
-// Define a MongoDB user interface for authentication
-interface MongoUser {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
-}
+// Import the User type from MongoDB auth module instead of redefining it
+import { User as MongoUser } from "../mongodb/auth";
 import { 
   signUpWithEmail as mongoSignUpWithEmail, 
   signInWithEmail as mongoSignInWithEmail, 
@@ -103,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           profilePicture: mongoUser.photoURL || '',
           role: 'investor', // Default role
           walletAddress: '',
-          createdAt: new Date().toISOString()
+          // No need to include createdAt as it will be set on the server
         };
         
         // Save the new user to MongoDB
@@ -359,12 +354,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log("Updating user profile:", userData);
       
-      // Get the current auth user
-      const { auth } = await import("@/mongodb/config");
-      const currentUser = auth.currentUser;
+      // Get user ID from current user
+      const userId = user.uid || user.id?.toString();
       
-      if (!currentUser) {
-        throw new Error("MongoDB user not found");
+      if (!userId) {
+        throw new Error("User ID not found");
       }
       
       // Sanitize data
@@ -380,10 +374,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Update user in MongoDB
-      await updateUser(currentUser.uid, updatedData);
+      await updateUser(userId, updatedData);
+      
+      // Create a minimal MongoDB user object for synchronization
+      const mongoUser: MongoUser = {
+        uid: userId,
+        email: user.email,
+        displayName: user.username,
+        photoURL: user.profilePicture
+      };
       
       // Force synchronization to get updated user data
-      await synchronizeUserData(currentUser);
+      await synchronizeUserData(mongoUser);
       
       toast({
         title: "Profile updated successfully",
@@ -408,17 +410,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log("[AuthContext] Connecting wallet:", walletAddress);
       
-      // Get the current auth user
-      const { auth } = await import("@/mongodb/config");
-      const currentUser = auth.currentUser;
+      // Get user ID from current user
+      const userId = user.uid || user.id?.toString();
       
-      if (!currentUser) {
-        throw new Error("MongoDB user not found");
+      if (!userId) {
+        throw new Error("User ID not found");
       }
       
       // Update user wallet in MongoDB
       console.log("[AuthContext] Updating user profile with wallet address:", walletAddress);
-      await updateUser(currentUser.uid, { walletAddress });
+      await updateUser(userId, { walletAddress });
       
       // Also save to our dedicated wallet database for cross-referencing
       const { saveWalletAddress, migrateWalletToMongoUid } = await import("@/mongodb/walletDatabase");
@@ -428,20 +429,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Store wallet address associated with MongoDB UID
         await saveWalletAddress(
-          currentUser.uid, 
+          userId, 
           walletAddress, 
           user.username || '', 
           user.role || ''
         );
         
-        // If we have a numeric user ID, also migrate from that to MongoDB UID
-        if (user.id && user.id.toString() !== currentUser.uid) {
-          console.log("[AuthContext] Also migrating from numeric ID to MongoDB UID:", 
-            { numericId: user.id.toString(), mongoUid: currentUser.uid });
+        // If we have a numeric user ID that's different from the string ID, migrate it
+        if (user.id && typeof user.id === 'number' && user.id.toString() !== userId) {
+          console.log("[AuthContext] Also migrating from numeric ID to MongoDB ID:", 
+            { numericId: user.id.toString(), mongoId: userId });
           
           await migrateWalletToMongoUid(
             user.id.toString(), 
-            currentUser.uid,
+            userId,
             walletAddress
           );
         }
@@ -451,10 +452,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const commonNumericIds = ["1", "2", "3", "4", "5", "10"];
         for (const numericId of commonNumericIds) {
           try {
-            // Try to migrate any existing wallets with these IDs to the MongoDB UID
+            // Try to migrate any existing wallets with these IDs to the MongoDB ID
             await migrateWalletToMongoUid(
               numericId,
-              currentUser.uid,
+              userId,
               walletAddress
             );
           } catch (migrationError) {
@@ -473,8 +474,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Set the wallet connected flag in localStorage
       localStorage.setItem('wallet_connected', 'true');
       
+      // Create a minimal MongoDB user object for synchronization
+      const mongoUser: MongoUser = {
+        uid: userId,
+        email: user.email,
+        displayName: user.username,
+        photoURL: user.profilePicture
+      };
+      
       // Force synchronization to get updated user data
-      await synchronizeUserData(currentUser);
+      await synchronizeUserData(mongoUser);
       
       toast({
         title: "Wallet connected successfully",
@@ -499,30 +508,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log("Disconnecting wallet");
       
-      // Get the current auth user
-      const { auth } = await import("@/mongodb/config");
-      const currentUser = auth.currentUser;
+      // Get user ID from current user
+      const userId = user.uid || user.id?.toString();
       
-      if (!currentUser) {
-        throw new Error("MongoDB user not found");
+      if (!userId) {
+        throw new Error("User ID not found");
       }
       
       // Save current wallet address for cleanup
       const oldWalletAddress = user.walletAddress;
       
       // Update user wallet in MongoDB with empty string
-      await updateUser(currentUser.uid, { walletAddress: '' });
+      await updateUser(userId, { walletAddress: '' });
       
       // Also remove from our dedicated wallet database for cross-referencing
       if (oldWalletAddress) {
         try {
           const { deleteWallet } = await import("@/mongodb/walletDatabase");
           
-          // Remove wallet associated with both UID and ID
-          await deleteWallet(currentUser.uid);
+          // Remove wallet associated with the user ID
+          await deleteWallet(userId);
           
-          // If we have a numeric user ID, also remove that entry
-          if (user.id && user.id.toString() !== currentUser.uid) {
+          // If we have a numeric user ID that's different, also remove that entry
+          if (user.id && typeof user.id === 'number' && user.id.toString() !== userId) {
             await deleteWallet(user.id.toString());
           }
           
@@ -536,8 +544,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Remove the wallet connected flag from localStorage
       localStorage.removeItem('wallet_connected');
       
+      // Create a minimal MongoDB user object for synchronization
+      const mongoUser: MongoUser = {
+        uid: userId,
+        email: user.email,
+        displayName: user.username,
+        photoURL: user.profilePicture
+      };
+      
       // Force synchronization to get updated user data
-      await synchronizeUserData(currentUser);
+      await synchronizeUserData(mongoUser);
       
       toast({
         title: "Wallet disconnected successfully",

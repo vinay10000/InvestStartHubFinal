@@ -76,6 +76,15 @@ export async function getUser(userId: string | number): Promise<MongoUser | null
 }
 
 /**
+ * Get a user by MongoDB UID (replaces Firebase uid function)
+ * This function is an alias for getUser for compatibility with existing code
+ */
+export async function getUserByUid(uid: string): Promise<MongoUser | null> {
+  console.log('Getting user by MongoDB uid:', uid);
+  return getUser(uid);
+}
+
+/**
  * Update a user in MongoDB
  */
 export async function updateUser(userId: string | number, userData: Partial<MongoUser>): Promise<MongoUser | null> {
