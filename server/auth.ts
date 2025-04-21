@@ -309,6 +309,11 @@ export function setupAuth(app: Express) {
     });
   });
   
+  // Serve the MongoDB auth test page
+  app.get('/mongo-auth-test', (req: Request, res: Response) => {
+    res.sendFile('test-mongo-auth.html', { root: './' });
+  });
+  
   console.log("Authentication setup complete");
 }
 

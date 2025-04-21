@@ -1,54 +1,38 @@
-import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
-import { Redirect, Route } from "wouter";
+import { useAuth } from '@/hooks/use-auth';
+import { Loader2 } from 'lucide-react';
+import { Redirect, Route } from 'wouter';
+import { ReactNode } from 'react';
 
-type ProtectedRouteProps = {
-  path: string;
-  component: () => React.ReactNode;
-  requiredRole?: "founder" | "investor";
-};
+interface ProtectedRouteProps {
+  children: ReactNode;
+  requiredRole?: string;
+}
 
-export function ProtectedRoute({
-  path,
-  component: Component,
-  requiredRole,
-}: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <Route path={path}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-border" />
-        </div>
-      </Route>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
+  // Not authenticated
   if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
+    console.log("ProtectedRoute: Not authenticated, redirecting to /auth-test");
+    return <Redirect to="/auth-test" />;
   }
 
-  // Check for specific role requirements
+  // Role check if required
   if (requiredRole && user.role !== requiredRole) {
-    console.log(`Role mismatch: User has ${user.role}, but ${requiredRole} is required`);
-    
-    // Redirect to appropriate dashboard based on user's role
-    return (
-      <Route path={path}>
-        <Redirect to={user.role === "founder" ? "/founder/dashboard" : "/investor/dashboard"} />
-      </Route>
-    );
+    console.log(`ProtectedRoute: User role (${user.role}) doesn't match required role (${requiredRole})`);
+    return <Redirect to="/" />;
   }
 
-  // If all checks pass, render the component
-  return (
-    <Route path={path}>
-      <Component />
-    </Route>
-  );
+  // User is authenticated and has the required role (if specified)
+  return <>{children}</>;
 }
+
+export default ProtectedRoute;

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MongoDB Auth Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+    .card {
+      flex: 1;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      margin-top: 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button.logout {
+      background-color: #f44336;
+    }
+    button.disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .status.success {
+      background-color: #dff0d8;
+      color: #3c763d;
+    }
+    .status.error {
+      background-color: #f2dede;
+      color: #a94442;
+    }
+    .user-info {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      background-color: #e8f4f8;
+    }
+  </style>
+</head>
+<body>
+  <h1>MongoDB Authentication Test</h1>
+  
+  <div class="container">
+    <div class="card">
+      <h2>Register</h2>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="registerUsername">Username:</label>
+          <input type="text" id="registerUsername" required>
+        </div>
+        <div class="form-group">
+          <label for="registerEmail">Email:</label>
+          <input type="email" id="registerEmail" required>
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Password:</label>
+          <input type="password" id="registerPassword" required>
+        </div>
+        <div class="form-group">
+          <label for="registerRole">Role:</label>
+          <select id="registerRole">
+            <option value="investor">Investor</option>
+            <option value="founder">Founder</option>
+          </select>
+        </div>
+        <button type="submit">Register</button>
+      </form>
+      <div id="registerResult" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="card">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginUsername">Username:</label>
+          <input type="text" id="loginUsername" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password:</label>
+          <input type="password" id="loginPassword" required>
+        </div>
+        <button type="submit">Login</button>
+      </form>
+      <div id="loginResult" class="result" style="display: none;"></div>
+    </div>
+  </div>
+  
+  <div class="card" style="margin-top: 20px;">
+    <h2>Current User</h2>
+    <button id="checkUser">Check Current User</button>
+    <button id="logout" class="logout">Logout</button>
+    <div id="userStatus" class="status" style="display: none;"></div>
+    <div id="userInfo" class="user-info" style="display: none;"></div>
+  </div>
+  
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('registerUsername').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const role = document.getElementById('registerRole').value;
+      
+      const resultElement = document.getElementById('registerResult');
+      resultElement.style.display = 'block';
+      resultElement.textContent = 'Registering...';
+      
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, email, password, role }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          resultElement.textContent = 'Registration successful: ' + JSON.stringify(data, null, 2);
+          checkCurrentUser(); // Update user info after registration
+        } else {
+          resultElement.textContent = 'Registration failed: ' + JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        resultElement.textContent = 'Error: ' + error.message;
+      }
+    });
+    
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      const resultElement = document.getElementById('loginResult');
+      resultElement.style.display = 'block';
+      resultElement.textContent = 'Logging in...';
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          resultElement.textContent = 'Login successful: ' + JSON.stringify(data, null, 2);
+          checkCurrentUser(); // Update user info after login
+        } else {
+          resultElement.textContent = 'Login failed: ' + JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        resultElement.textContent = 'Error: ' + error.message;
+      }
+    });
+    
+    document.getElementById('checkUser').addEventListener('click', checkCurrentUser);
+    
+    async function checkCurrentUser() {
+      const statusElement = document.getElementById('userStatus');
+      const infoElement = document.getElementById('userInfo');
+      
+      statusElement.style.display = 'block';
+      statusElement.textContent = 'Checking user status...';
+      statusElement.className = 'status';
+      
+      infoElement.style.display = 'none';
+      
+      try {
+        const response = await fetch('/api/user');
+        const data = await response.json();
+        
+        if (response.ok && data) {
+          statusElement.textContent = 'User is authenticated';
+          statusElement.className = 'status success';
+          
+          infoElement.style.display = 'block';
+          infoElement.innerHTML = `
+            <p><strong>ID:</strong> ${data.id}</p>
+            <p><strong>Username:</strong> ${data.username}</p>
+            <p><strong>Email:</strong> ${data.email}</p>
+            <p><strong>Role:</strong> ${data.role}</p>
+            <p><strong>Wallet Address:</strong> ${data.walletAddress || 'Not set'}</p>
+          `;
+        } else {
+          statusElement.textContent = 'User is not authenticated';
+          statusElement.className = 'status error';
+        }
+      } catch (error) {
+        statusElement.textContent = 'Error checking authentication: ' + error.message;
+        statusElement.className = 'status error';
+      }
+    }
+    
+    document.getElementById('logout').addEventListener('click', async function() {
+      const statusElement = document.getElementById('userStatus');
+      const infoElement = document.getElementById('userInfo');
+      
+      statusElement.style.display = 'block';
+      statusElement.textContent = 'Logging out...';
+      statusElement.className = 'status';
+      
+      try {
+        const response = await fetch('/api/logout', {
+          method: 'POST',
+        });
+        
+        if (response.ok) {
+          statusElement.textContent = 'Logged out successfully';
+          statusElement.className = 'status success';
+          infoElement.style.display = 'none';
+        } else {
+          const data = await response.json();
+          statusElement.textContent = 'Logout failed: ' + JSON.stringify(data);
+          statusElement.className = 'status error';
+        }
+      } catch (error) {
+        statusElement.textContent = 'Error during logout: ' + error.message;
+        statusElement.className = 'status error';
+      }
+    });
+    
+    // Check user status on page load
+    checkCurrentUser();
+  </script>
+</body>
+</html>

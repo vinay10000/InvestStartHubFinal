@@ -1,120 +1,111 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useState, useEffect } from "react";
 import {
   useQuery,
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User as SelectUser, InsertUser } from "@shared/schema";
-import { apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type AuthContextType = {
-  user: SelectUser | null;
-  isLoading: boolean;
-  error: Error | null;
-  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
-  updateProfileMutation: UseMutationResult<SelectUser, Error, Partial<SelectUser>>;
-  connectWalletMutation: UseMutationResult<SelectUser, Error, { walletAddress: string }>;
+// Define User type matching what we expect from MongoDB
+export type User = {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+  walletAddress: string | null;
+  profilePicture: string | null;
+  sameId: string | null;
+  createdAt: Date | null;
 };
 
-type LoginData = {
+// Define types for login/register data
+export type LoginData = {
   username: string;
   password: string;
 };
 
+export type RegisterData = {
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+};
+
+// Define the auth context type
+type AuthContextType = {
+  user: User | null;
+  isLoading: boolean;
+  error: Error | null;
+  loginMutation: UseMutationResult<User, Error, LoginData>;
+  logoutMutation: UseMutationResult<void, Error, void>;
+  registerMutation: UseMutationResult<User, Error, RegisterData>;
+};
+
+// Create the auth context
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+// Auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [initialized, setInitialized] = useState(false);
-
-  // Get the current user from the server
+  const [user, setUser] = useState<User | null>(null);
+  
+  // Query to fetch the current authenticated user
   const {
-    data: user,
+    data: userData,
     error,
     isLoading,
     refetch,
-  } = useQuery<SelectUser | null, Error>({
+  } = useQuery<User>({
     queryKey: ["user"],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/user", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          
-          // Store role in localStorage for routing
-          if (data.role) {
-            localStorage.setItem('user_role', data.role);
-          }
-          
-          // Store wallet connection status in localStorage
-          if (data.walletAddress) {
-            localStorage.setItem('wallet_connected', 'true');
-          } else {
-            localStorage.removeItem('wallet_connected');
-          }
-          
-          return data;
+      const res = await fetch("/api/user");
+      if (!res.ok) {
+        if (res.status === 401) {
+          return null;
         }
-        
-        return null;
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-        return null;
+        throw new Error(`Failed to fetch user: ${res.statusText}`);
       }
+      return await res.json();
     },
     retry: false,
-    refetchOnWindowFocus: false,
-    enabled: initialized,
   });
-
-  // Initialize the auth state
+  
+  // Update user state when userData changes
   useEffect(() => {
-    setInitialized(true);
-  }, []);
+    if (userData) {
+      setUser(userData);
+    } else {
+      setUser(null);
+    }
+  }, [userData]);
 
   // Login mutation
-  const loginMutation = useMutation({
+  const loginMutation = useMutation<User, Error, LoginData>({
     mutationFn: async (credentials: LoginData) => {
       const res = await fetch("/api/login", {
-        method: "POST", 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials)
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
       });
       
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Login failed");
+        throw new Error(`Login failed: ${res.statusText}`);
       }
       
       return await res.json();
     },
-    onSuccess: (data: SelectUser) => {
-      // Update user data in cache
-      queryClient.setQueryData(["user"], data);
-      
-      // Store role in localStorage for routing
-      if (data.role) {
-        localStorage.setItem('user_role', data.role);
-      }
-      
-      // Store wallet connection status in localStorage
-      if (data.walletAddress) {
-        localStorage.setItem('wallet_connected', 'true');
-      }
-      
+    onSuccess: (userData) => {
+      setUser(userData);
       toast({
         title: "Login successful",
-        description: `Welcome back, ${data.username}!`,
+        description: `Welcome back, ${userData.username}!`,
       });
+      refetch();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Login failed",
         description: error.message,
@@ -124,41 +115,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Register mutation
-  const registerMutation = useMutation({
-    mutationFn: async (userData: InsertUser) => {
+  const registerMutation = useMutation<User, Error, RegisterData>({
+    mutationFn: async (data: RegisterData) => {
       const res = await fetch("/api/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData)
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       });
       
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Registration failed");
+        throw new Error(`Registration failed: ${res.statusText}`);
       }
       
       return await res.json();
     },
-    onSuccess: (data: SelectUser) => {
-      // Update user data in cache
-      queryClient.setQueryData(["user"], data);
-      
-      // Store role in localStorage for routing
-      if (data.role) {
-        localStorage.setItem('user_role', data.role);
-      }
-      
-      // Store wallet connection status in localStorage
-      if (data.walletAddress) {
-        localStorage.setItem('wallet_connected', 'true');
-      }
-      
+    onSuccess: (userData) => {
+      setUser(userData);
       toast({
         title: "Registration successful",
-        description: `Welcome, ${data.username}!`,
+        description: `Welcome, ${userData.username}!`,
       });
+      refetch();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Registration failed",
         description: error.message,
@@ -168,32 +149,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Logout mutation
-  const logoutMutation = useMutation({
+  const logoutMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       const res = await fetch("/api/logout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
       });
       
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Logout failed");
+        throw new Error(`Logout failed: ${res.statusText}`);
       }
     },
     onSuccess: () => {
-      // Clear user data from cache
-      queryClient.setQueryData(["user"], null);
-      
-      // Clear localStorage
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('wallet_connected');
-      
+      setUser(null);
       toast({
         title: "Logout successful",
         description: "You have been logged out.",
       });
+      refetch();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Logout failed",
         description: error.message,
@@ -201,83 +175,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
-  
-  // Update profile mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (userData: Partial<SelectUser>) => {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData)
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Profile update failed");
-      }
-      
-      return await res.json();
-    },
-    onSuccess: (data: SelectUser) => {
-      // Update user data in cache
-      queryClient.setQueryData(["user"], data);
-      
-      // Update role in localStorage if it changed
-      if (data.role) {
-        localStorage.setItem('user_role', data.role);
-      }
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Profile update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Connect wallet mutation
-  const connectWalletMutation = useMutation({
-    mutationFn: async ({ walletAddress }: { walletAddress: string }) => {
-      const res = await fetch("/api/user/wallet/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress })
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Wallet connection failed");
-      }
-      
-      return await res.json();
-    },
-    onSuccess: (data: SelectUser) => {
-      // Update user data in cache
-      queryClient.setQueryData(["user"], data);
-      
-      // Store wallet connection status in localStorage
-      localStorage.setItem('wallet_connected', 'true');
-      
-      toast({
-        title: "Wallet connected",
-        description: "Your wallet has been connected successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Wallet connection failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
+  // Provide the auth context
   return (
     <AuthContext.Provider
       value={{
@@ -287,8 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
-        updateProfileMutation,
-        connectWalletMutation,
       }}
     >
       {children}
@@ -296,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Hook to use the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

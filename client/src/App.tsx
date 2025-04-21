@@ -2,9 +2,9 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/context/AuthContext"; // Use the main AuthContext with Firebase
+import { AuthProvider } from "./hooks/use-auth"; // Use our new MongoDB-compatible auth provider
 import { WebSocketProvider } from "@/context/WebSocketContext"; // WebSocket context for real-time updates
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { ProtectedRoute } from "./lib/protected-route"; // New MongoDB-compatible protected route
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import NotFound from "@/pages/not-found";
@@ -24,17 +24,18 @@ import WalletDiagnostics from "@/pages/WalletDiagnostics";
 import ImageKitTest from "@/pages/ImageKitTest";
 import MediaViewerTest from "@/pages/MediaViewerTest";
 import StartupMediaExplorer from "@/pages/StartupMediaExplorer";
+import AuthTest from "@/pages/AuthTest";
 import { useState, useEffect } from "react";
-import { useAuth } from "./hooks/useAuth";
+import { useAuth } from "./hooks/use-auth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
 
 // AutoRedirect component to handle automatic redirection after login
 function AutoRedirect() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!isLoading && user) {
       // Check if the user has connected a wallet
       const shouldPromptWallet = 
         // Either they have no wallet address
@@ -73,10 +74,10 @@ function AutoRedirect() {
         console.log("Auto-redirecting to investor dashboard. Stored role:", confirmedStoredRole);
         navigate('/investor/dashboard');
       }
-    } else if (!loading && !user) {
+    } else if (!isLoading && !user) {
       console.log("AutoRedirect - No authenticated user");
     }
-  }, [loading, user, navigate]);
+  }, [isLoading, user, navigate]);
 
   return null;
 }
@@ -87,6 +88,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/signin" component={SignIn} />
       <Route path="/signup" component={SignUp} />
+      <Route path="/auth-test" component={AuthTest} />
       
       {/* Auto-redirect route */}
       <Route path="/dashboard">
