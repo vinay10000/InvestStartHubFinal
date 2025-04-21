@@ -9,11 +9,19 @@ import {
   RefreshCcw,
   AlertTriangle
 } from 'lucide-react';
-import { useWebSocket } from '@/context/WebSocketContext';
+// Use .js extension and type it as any to avoid TypeScript errors
+import useWebSocketConnection from '@/hooks/useWebSocketConnection.js';
 
 interface WebSocketDiagnosticsProps {
   startupId?: string;
   className?: string;
+}
+
+// Define types for diagnostic results
+interface DiagnosticResults {
+  walletFound: boolean;
+  methodsAttempted?: string[];
+  timeElapsed?: number;
 }
 
 /**
@@ -24,24 +32,23 @@ const WebSocketDiagnostics: React.FC<WebSocketDiagnosticsProps> = ({
   className 
 }) => {
   const [isRunning, setIsRunning] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<DiagnosticResults | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   
-  // Use the global WebSocket context
-  // Use the global WebSocket context
+  // Use the new WebSocket connection hook
   const { 
-    isConnected, 
-    sendMessage, 
+    connected, 
+    send, 
     connectionId, 
     lastMessage, 
     error: contextError 
-  } = useWebSocket();
+  } = useWebSocketConnection();
   
   // Store a reference to the current startup ID for message filtering
   const startupIdRef = useRef(startupId);
   
-  // Combine errors from context and local state
-  const error = localError || contextError;
+  // Combine errors from context and local state (convert Error to string if needed)
+  const errorMessage = localError || (contextError ? contextError.message || contextError.toString() : null);
   
   // Process incoming messages from WebSocket
   useEffect(() => {
@@ -73,7 +80,7 @@ const WebSocketDiagnostics: React.FC<WebSocketDiagnosticsProps> = ({
   
   // Run diagnostics
   const runDiagnostics = () => {
-    if (!isConnected) {
+    if (!connected) {
       setLocalError('WebSocket not connected');
       return;
     }
@@ -87,21 +94,25 @@ const WebSocketDiagnostics: React.FC<WebSocketDiagnosticsProps> = ({
     setLocalError(null);
     setResults(null);
     
-    // Use the global sendMessage function
-    const success = sendMessage('wallet_diagnostics', { startupId });
+    // Send diagnostic request
+    send({
+      type: 'wallet_diagnostics',
+      startupId,
+      timestamp: Date.now()
+    });
   };
   
   return (
     <Card className={className} id="websocket-diagnostics">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <RefreshCcw className={`h-5 w-5 ${isConnected ? 'text-green-500' : 'text-red-500'} ${isRunning ? 'animate-spin' : ''}`} />
+          <RefreshCcw className={`h-5 w-5 ${connected ? 'text-green-500' : 'text-red-500'} ${isRunning ? 'animate-spin' : ''}`} />
           WebSocket Wallet Diagnostics
         </CardTitle>
         <CardDescription>
           Status: {' '}
-          <Badge variant={isConnected ? 'default' : 'destructive'}>
-            {isConnected ? 'Connected' : 'Disconnected'}
+          <Badge variant={connected ? 'default' : 'destructive'}>
+            {connected ? 'Connected' : 'Disconnected'}
           </Badge>
           {connectionId && (
             <span className="ml-2 text-xs text-muted-foreground">ID: {connectionId}</span>
@@ -110,10 +121,10 @@ const WebSocketDiagnostics: React.FC<WebSocketDiagnosticsProps> = ({
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {error && (
+        {errorMessage && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         )}
         
@@ -145,7 +156,7 @@ const WebSocketDiagnostics: React.FC<WebSocketDiagnosticsProps> = ({
       <CardFooter className="flex justify-between">
         <Button
           onClick={runDiagnostics}
-          disabled={!isConnected || isRunning || !startupId}
+          disabled={!connected || isRunning || !startupId}
         >
           {isRunning ? (
             <>

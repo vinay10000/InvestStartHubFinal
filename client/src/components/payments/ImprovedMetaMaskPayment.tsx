@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
 import { useWallet } from "@/hooks/useWallet";
-import { useWebSocket } from "@/context/WebSocketContext";
+import useWebSocketConnection from "@/hooks/useWebSocketConnection.js";
 import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -55,8 +55,8 @@ const ImprovedMetaMaskPayment = ({
   const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true);
   const [walletSource, setWalletSource] = useState<string>("unknown");
   
-  // Import WebSocket context
-  const { lastMessage } = useWebSocket();
+  // Import WebSocket connection
+  const { lastMessage } = useWebSocketConnection();
   
   // Websocket message sending function
   const sendWebSocketMessage = (type: string, data: any) => {

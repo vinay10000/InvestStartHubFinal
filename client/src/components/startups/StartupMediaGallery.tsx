@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useWebSocket } from "@/context/WebSocketContext";
+import useWebSocketConnection from "@/hooks/useWebSocketConnection.js";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,7 +38,7 @@ export default function StartupMediaGallery() {
   } | null>(null);
   
   // Get WebSocket connection
-  const { connected, lastMessage } = useWebSocket();
+  const { connected, lastMessage } = useWebSocketConnection();
   const queryClient = useQueryClient();
 
   // Fetch list of startups

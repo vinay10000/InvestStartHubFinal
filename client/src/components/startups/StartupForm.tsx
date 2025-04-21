@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -132,8 +132,40 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
     }
   };
 
-  // Get user from auth context
-  const { user } = useAuth();
+  // Get user and auth methods from auth context
+  const { user, updateProfile } = useAuth();
+  
+  // Add a force refresh function for the user data
+  const [refreshCounter, setRefreshCounter] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Helper function to fetch latest user data
+  const refreshUserData = async () => {
+    try {
+      setIsRefreshing(true);
+      // Get fresh user data from the API
+      const response = await fetch('/api/user');
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('Refreshed user data in StartupForm:', userData);
+        
+        // If the userData has a walletAddress but our user state doesn't, update it in the auth context
+        if (userData.walletAddress && (!user || !user.walletAddress)) {
+          console.log('Updating auth context with wallet:', userData.walletAddress);
+          await updateProfile({ walletAddress: userData.walletAddress });
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+  
+  // Force refresh user data when component mounts and when wallet connect status changes
+  useEffect(() => {
+    refreshUserData();
+  }, [refreshCounter]);
   
   const handleSubmit = async (data: StartupFormValues) => {
     // Only include UPI QR code file, no media files
@@ -484,11 +516,40 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
 
 
 
-        {/* Wallet information section */}
+        {/* Wallet information section with manual refresh button */}
         <div className="mt-8 p-4 border rounded-lg bg-gray-50">
           {user?.walletAddress ? (
             <div>
-              <h3 className="text-lg font-medium">Wallet Connected</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-medium">Wallet Connected</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setRefreshCounter(c => c + 1)}
+                  disabled={isRefreshing}
+                  className="text-xs"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                      </svg>
+                      Refresh
+                    </>
+                  )}
+                </Button>
+              </div>
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
                 <span>Your wallet is connected: {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(user.walletAddress.length - 4)}</span>
@@ -498,18 +559,46 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
               </p>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-medium text-amber-700">Wallet Required</h3>
                 <p className="text-sm text-gray-500">
                   You need to connect a wallet first in your profile settings to receive cryptocurrency investments
                 </p>
               </div>
-              <Link to="/profile">
-                <Button variant="outline">
-                  Go to Profile
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setRefreshCounter(c => c + 1)}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                      </svg>
+                      Check Again
+                    </>
+                  )}
                 </Button>
-              </Link>
+                <Link to="/profile">
+                  <Button variant="outline">
+                    Go to Profile
+                  </Button>
+                </Link>
+              </div>
             </div>
           )}
         </div>
