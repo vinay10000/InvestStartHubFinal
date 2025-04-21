@@ -85,61 +85,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize MongoDB connection with timeout
+  // Skip MongoDB connection for now and use in-memory storage
+  log('⚠️ Using in-memory storage instead of MongoDB');
+  
   try {
-    log('Connecting to MongoDB with timeout protection');
-    
-    // Set up a promise race between the MongoDB connection and a timeout
-    const timeoutMs = 10000; // 10 seconds timeout
-    const connectPromise = connectToMongoDB();
-    const timeoutPromise = new Promise<false>((resolve) => {
-      setTimeout(() => {
-        log(`⏱️ MongoDB connection timeout after ${timeoutMs}ms, continuing startup with retries`);
-        resolve(false);
-      }, timeoutMs);
-    });
-    
-    // Race the connection against the timeout
-    const mongoConnected = await Promise.race([connectPromise, timeoutPromise]);
-    
-    if (mongoConnected) {
-      log('✅ Successfully connected to MongoDB');
-      
-      // Initialize known wallet addresses in MongoDB with retries (don't block startup)
-      log('Initializing known wallet addresses in MongoDB');
-      initializeWalletAddressesWithRetry();
-    } else {
-      log('⚠️ Initial MongoDB connection timed out, proceeding with retries');
-      
-      // Continue connecting to MongoDB in the background
-      connectToMongoDB().then(connected => {
-        if (connected) {
-          log('✅ Late MongoDB connection succeeded, initializing known wallet addresses');
-          initializeWalletAddressesWithRetry();
-        } else {
-          log('⚠️ MongoDB connection retry failed - application may have limited functionality');
-        }
-      }).catch(err => {
-        log('⚠️ Background MongoDB connection failed: ' + err);
-      });
-    }
+    // Initialize known wallet addresses directly without MongoDB
+    log('Initializing known wallet addresses in memory');
+    await initKnownWalletAddresses();
+    log('✅ Successfully initialized known wallet addresses in memory');
   } catch (error) {
-    log('❌ Error initializing MongoDB database connection: ' + error);
-    
-    // Try one more time to connect
-    setTimeout(() => {
-      log('🔄 Retrying MongoDB connection after error...');
-      connectToMongoDB().then(connected => {
-        if (connected) {
-          log('✅ Retry MongoDB connection succeeded, initializing known wallet addresses');
-          initializeWalletAddressesWithRetry();
-        } else {
-          log('⚠️ MongoDB connection retry failed - application may have limited functionality');
-        }
-      }).catch(err => {
-        log('❌ Final MongoDB connection attempt failed: ' + err);
-      });
-    }, 5000);
+    log('⚠️ Error initializing known wallet addresses: ' + error);
+    // Continue anyway as we have fallback mechanisms
   }
 
   const server = await registerRoutes(app);
