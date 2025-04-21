@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { 
   insertUserSchema, insertStartupSchema, insertDocumentSchema, 
   insertTransactionSchema, insertChatSchema, insertMessageSchema,
@@ -20,12 +20,17 @@ import {
   storeStartupWalletAddress
 } from './wallet-utils';
 import walletRoutes from './wallet-routes';
+import { setupAuth, requireAuth, requireRole } from './auth';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up MongoDB authentication with Passport
+  setupAuth(app);
+  
   // Register wallet routes both at standard endpoint and MongoDB-specific endpoint
   app.use('/api/wallets', walletRoutes); // Standard endpoint that the frontend expects
   app.use('/api/mongodb/wallets', walletRoutes); // Keep this for backward compatibility
-  // Auth routes
+  
+  // Legacy Auth routes - these will be replaced by the Passport-based authentication
   app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
       // Get uid from request if it exists
