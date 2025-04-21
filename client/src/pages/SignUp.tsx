@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/useAuth"; // Use the main auth context
+import { useAuth } from "@/hooks/use-auth"; // Use MongoDB-compatible auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
-import { getUserByUid } from "@/firebase/database"; // Import Firebase database functions
-import { auth } from "@/firebase/config"; // Import Firebase auth
+import { useToast } from "@/hooks/use-toast";
 
 const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth(); // Use the main auth context
+  const { registerMutation } = useAuth(); // Use MongoDB-compatible auth context 
   const [location, navigate] = useLocation();
+  const { toast } = useToast();
   
   // Get role from URL query parameter
   const searchParams = new URLSearchParams(window.location.search);
@@ -24,7 +24,7 @@ const SignUp = () => {
       setIsLoading(true);
       
       // Log before signup
-      console.log("Starting signup process for:", email, "with role:", selectedRole);
+      console.log("Starting MongoDB signup process for:", username, "with role:", selectedRole);
       
       // Make sure we clear any previous role data first
       localStorage.removeItem('user_role');
@@ -34,98 +34,59 @@ const SignUp = () => {
       localStorage.setItem('user_role', targetRole);
       console.log("User role set to:", targetRole);
       
-      // Sign up with Firebase using the main auth context
+      // Register with MongoDB using the registerMutation
       if (walletAddress) {
         console.log("Including wallet address in signup:", walletAddress);
       }
-      await signUp(email, password, username, targetRole, walletAddress);
-      console.log("Signup successful");
       
-      // Get the current Firebase user
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        try {
-          // Get the user's data from Firebase Realtime Database
-          const dbUser = await getUserByUid(currentUser.uid);
-          console.log("Database user data after signup:", dbUser);
-          
-          // Direct redirect based on role
-          if (targetRole === 'founder') {
-            console.log("Redirecting new user to founder dashboard");
-            navigate('/founder/dashboard');
-          } else {
-            console.log("Redirecting new user to investor dashboard");
-            navigate('/investor/dashboard');
-          }
-          return;
-        } catch (error) {
-          console.error("Error getting user data after signup:", error);
+      // Use our MongoDB register mutation
+      const userData = await registerMutation.mutateAsync({
+        username,
+        email,
+        password,
+        role: targetRole
+      });
+      
+      console.log("MongoDB signup successful");
+      
+      if (userData) {
+        toast({
+          title: "Registration Successful",
+          description: `Welcome to StartupConnect, ${userData.username}!`,
+        });
+        
+        // Direct redirect based on role
+        if (targetRole === 'founder') {
+          console.log("Redirecting new user to founder dashboard");
+          navigate('/founder/dashboard');
+        } else {
+          console.log("Redirecting new user to investor dashboard");
+          navigate('/investor/dashboard');
         }
+      } else {
+        // Fallback redirect if we couldn't get the user data
+        console.log("Fallback: redirecting to dashboard route");
+        navigate("/dashboard");
       }
-      
-      // Fallback redirect if we couldn't get the current user
-      console.log("Fallback: redirecting to dashboard route");
-      navigate("/dashboard");
     } catch (error) {
-      console.error("Error signing up:", error);
+      console.error("Error signing up with MongoDB:", error);
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "There was a problem creating your account.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Google sign-in is not supported with MongoDB authentication
   const handleGoogleSignIn = async () => {
-    try {
-      setIsLoading(true);
-      console.log("Starting Google sign-in with role:", selectedRole);
-      
-      // Clear any previous role data
-      localStorage.removeItem('user_role');
-      
-      // Store selected role in localStorage before auth
-      const targetRole = selectedRole;
-      localStorage.setItem('user_role', targetRole);
-      console.log("User role set to:", targetRole);
-      
-      // Sign in with Google
-      await signInWithGoogle();
-      console.log("Google sign-in successful");
-      
-      // Get the current Firebase user
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        try {
-          // Get the user data from Firebase Realtime Database
-          const dbUser = await getUserByUid(currentUser.uid);
-          console.log("Database user data after Google sign-in:", dbUser);
-          
-          // Update the role in the database if needed
-          if (dbUser && (!dbUser.role || dbUser.role !== targetRole)) {
-            console.log("Updating user role in database to match selected role:", targetRole);
-            // Update would happen through context
-          }
-          
-          // Direct redirect based on role
-          if (targetRole === 'founder') {
-            console.log("Redirecting Google user to founder dashboard");
-            navigate('/founder/dashboard');
-          } else {
-            console.log("Redirecting Google user to investor dashboard");
-            navigate('/investor/dashboard');
-          }
-          return;
-        } catch (error) {
-          console.error("Error getting user data after Google sign-in:", error);
-        }
-      }
-      
-      // Fallback redirect if we couldn't get the current user
-      console.log("Fallback: redirecting to dashboard route");
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    toast({
+      title: "Not Available",
+      description: "Google sign-in is no longer available as we've migrated to MongoDB authentication.",
+      variant: "destructive"
+    });
   };
 
   return (

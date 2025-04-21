@@ -2,9 +2,9 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "./hooks/use-auth"; // Use our new MongoDB-compatible auth provider
+import { AuthProvider } from "./hooks/use-auth"; // Use our MongoDB-compatible auth provider
 import { WebSocketProvider } from "@/context/WebSocketContext"; // WebSocket context for real-time updates
-import { ProtectedRoute } from "./lib/protected-route"; // New MongoDB-compatible protected route
+import { ProtectedRoute } from "./lib/protected-route"; // MongoDB-compatible protected route
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import NotFound from "@/pages/not-found";
@@ -24,7 +24,6 @@ import WalletDiagnostics from "@/pages/WalletDiagnostics";
 import ImageKitTest from "@/pages/ImageKitTest";
 import MediaViewerTest from "@/pages/MediaViewerTest";
 import StartupMediaExplorer from "@/pages/StartupMediaExplorer";
-import AuthTest from "@/pages/AuthTest";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/use-auth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
@@ -88,7 +87,6 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/signin" component={SignIn} />
       <Route path="/signup" component={SignUp} />
-      <Route path="/auth-test" component={AuthTest} />
       
       {/* Auto-redirect route */}
       <Route path="/dashboard">
@@ -228,22 +226,18 @@ function WalletDatabaseInitializer() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <WebSocketProvider>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow">
-              <Router />
-            </main>
-            <Footer />
-            <GlobalWalletChecker />
-            <WalletDatabaseInitializer />
-          </div>
-          <Toaster />
-        </WebSocketProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow">
+          <Router />
+        </main>
+        <Footer />
+        <GlobalWalletChecker />
+        <WalletDatabaseInitializer />
+      </div>
+      <Toaster />
+    </AuthProvider>
   );
 }
 

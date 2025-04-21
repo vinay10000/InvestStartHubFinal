@@ -21,8 +21,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   // Not authenticated
   if (!user) {
-    console.log("ProtectedRoute: Not authenticated, redirecting to /auth-test");
-    return <Redirect to="/auth-test" />;
+    console.log("ProtectedRoute: Not authenticated, redirecting to /signin");
+    return <Redirect to="/signin" />;
   }
 
   // Role check if required

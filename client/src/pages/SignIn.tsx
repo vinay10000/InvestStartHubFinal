@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hooks/useAuth"; // Use our main auth context
+import { useAuth } from "@/hooks/use-auth"; // Use our MongoDB-compatible auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
-import { getUserByUid } from "@/firebase/database"; // Use Firebase Realtime Database
-import { auth } from "@/firebase/config"; // Import Firebase auth
+import { useToast } from "@/hooks/use-toast";
 
 const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth(); // Use our main auth context
+  const { loginMutation } = useAuth(); // Use MongoDB-compatible auth context
   const [location, navigate] = useLocation();
+  const { toast } = useToast();
 
   // Extract redirect URL from query parameters if available
   const getRedirectUrl = () => {
@@ -24,111 +24,62 @@ const SignIn = () => {
   const handleSignIn = async (email: string, password: string, username: string) => {
     try {
       setIsLoading(true);
-      // If email is empty but username is provided, use username as email
-      // This fixes the auth/invalid-email error
-      const loginEmail = email || username;
-      console.log("Starting sign-in process using email:", loginEmail);
+      // If email is empty but username is provided, use username for login
+      const loginUsername = username || email;
+      console.log("Starting sign-in process using username:", loginUsername);
       
-      await signIn(loginEmail, password);
-      console.log("Sign-in successful");
+      // Use our MongoDB login mutation
+      const user = await loginMutation.mutateAsync({
+        username: loginUsername,
+        password: password
+      });
       
-      // Get the user from Firebase Authentication
-      const currentUser = auth.currentUser;
+      console.log("Sign-in successful with MongoDB");
       
-      if (currentUser && currentUser.uid) {
-        try {
-          // Try to get the user's role from Firebase Realtime Database
-          const dbUser = await getUserByUid(currentUser.uid);
-          console.log("Database user data:", dbUser);
-          
-          if (dbUser && dbUser.role) {
-            // Store the role in localStorage for convenience
-            const userRole = dbUser.role.toLowerCase();
-            localStorage.setItem('user_role', userRole);
-            console.log("Set user role from Firebase DB:", userRole);
-            
-            // Direct redirect based on role instead of going through /dashboard
-            if (userRole === 'founder') {
-              console.log("Redirecting to founder dashboard");
-              navigate('/founder/dashboard');
-            } else {
-              console.log("Redirecting to investor dashboard");
-              navigate('/investor/dashboard');
-            }
-            return; // Skip the generic redirect below
-          } else {
-            console.error("No role found in user data, using default 'investor'");
-            localStorage.setItem('user_role', 'investor');
-          }
-        } catch (error) {
-          console.error("Error getting user from Firebase DB:", error);
-          localStorage.setItem('user_role', 'investor');
+      if (user) {
+        // Store the role in localStorage for convenience
+        const userRole = user.role.toLowerCase();
+        localStorage.setItem('user_role', userRole);
+        console.log("Set user role from MongoDB:", userRole);
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${user.username}!`,
+        });
+        
+        // Direct redirect based on role
+        if (userRole === 'founder') {
+          console.log("Redirecting to founder dashboard");
+          navigate('/founder/dashboard');
+        } else {
+          console.log("Redirecting to investor dashboard");
+          navigate('/investor/dashboard');
         }
+      } else {
+        // Default to dashboard if we can't determine role
+        console.log("User data incomplete, redirecting to dashboard");
+        localStorage.setItem('user_role', 'investor');
+        navigate('/dashboard');
       }
-      
-      // Generic fallback redirect - only happens if we couldn't get the role above
-      console.log("Redirecting to the dashboard (generic)");
-      navigate('/dashboard');
     } catch (error) {
-      console.error("Error signing in:", error);
+      console.error("Error signing in with MongoDB:", error);
+      toast({
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Authentication failed. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Google sign-in is not supported with MongoDB authentication
   const handleGoogleSignIn = async () => {
-    try {
-      setIsLoading(true);
-      console.log("Starting Google sign-in process");
-      
-      await signInWithGoogle();
-      console.log("Google sign-in successful");
-      
-      // After Google sign-in, get the user from Firebase Authentication
-      const currentUser = auth.currentUser;
-      
-      if (currentUser && currentUser.uid) {
-        try {
-          // Try to get the user's role from Firebase Realtime Database
-          const dbUser = await getUserByUid(currentUser.uid);
-          console.log("Database user data (Google login):", dbUser);
-          
-          if (dbUser && dbUser.role) {
-            // Store the role in localStorage for convenience
-            const userRole = dbUser.role.toLowerCase();
-            localStorage.setItem('user_role', userRole);
-            console.log("Set user role from Firebase DB (Google login):", userRole);
-            
-            // Direct redirect based on role instead of going through /dashboard
-            if (userRole === 'founder') {
-              console.log("Redirecting to founder dashboard (Google login)");
-              navigate('/founder/dashboard');
-              return; // Skip the generic redirect below
-            } else {
-              console.log("Redirecting to investor dashboard (Google login)");
-              navigate('/investor/dashboard');
-              return; // Skip the generic redirect below
-            }
-          } else {
-            // Default to investor if we can't get the role
-            localStorage.setItem('user_role', 'investor');
-            console.log("Using default investor role (Google login)");
-          }
-        } catch (error) {
-          console.error("Error getting user from Firebase DB (Google login):", error);
-          // Default to investor if we can't get the role
-          localStorage.setItem('user_role', 'investor');
-        }
-      }
-      
-      // Generic fallback redirect if we couldn't determine the role above
-      console.log("Redirecting to the dashboard (Google login - generic fallback)");
-      navigate('/dashboard');
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    toast({
+      title: "Not Available",
+      description: "Google sign-in is no longer available as we've migrated to MongoDB authentication.",
+      variant: "destructive"
+    });
   };
 
   return (
