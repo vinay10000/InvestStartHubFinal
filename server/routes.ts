@@ -288,8 +288,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If not found in dedicated collection, try to get the founder and their wallet
       if (!walletAddress) {
-        const startup = await storage.getStartup(parseInt(startupId)) || 
-                       await storage.getStartupByFirebaseId(startupId);
+        // Check if the ID is numeric or a Firebase UID
+        const isNumericId = !isNaN(Number(startupId));
+        let startup = null;
+        
+        if (isNumericId) {
+          // Try to get as numeric ID first
+          startup = await storage.getStartup(Number(startupId));
+        }
+        
+        if (!startup) {
+          // Try as a Firebase ID as fallback
+          startup = await storage.getStartupByFirebaseId(startupId);
+        }
         
         if (!startup) {
           return res.status(404).json({ 
@@ -451,31 +462,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/startups/:id', async (req: Request, res: Response) => {
     try {
-      const startupId = parseInt(req.params.id);
-      const startup = await storage.getStartup(startupId);
+      // Accept both numeric IDs and string IDs (for Firebase compatibility)
+      const startupIdParam = req.params.id;
+      console.log(`Getting startup details for ID: ${startupIdParam} (type: ${typeof startupIdParam})`);
+      
+      // Check if the ID is numeric or a Firebase UID
+      const isNumericId = !isNaN(Number(startupIdParam));
+      let startup = null;
+      
+      if (isNumericId) {
+        // Try to get as numeric ID first
+        startup = await storage.getStartup(Number(startupIdParam));
+      }
       
       if (!startup) {
-        return res.status(404).json({ message: 'Startup not found' });
+        // Try as a Firebase ID as fallback
+        startup = await storage.getStartupByFirebaseId(startupIdParam);
+      }
+      
+      if (!startup) {
+        return res.status(404).json({ 
+          message: 'Startup not found',
+          startupId: startupIdParam
+        });
       }
       
       res.status(200).json({ startup });
     } catch (error) {
+      console.error('Error fetching startup:', error);
       res.status(500).json({ message: 'Failed to fetch startup' });
     }
   });
 
   app.put('/api/startups/:id', async (req: Request, res: Response) => {
     try {
-      const startupId = parseInt(req.params.id);
+      // Accept both numeric IDs and string IDs (for Firebase compatibility)
+      const startupIdParam = req.params.id;
+      console.log(`Updating startup with ID: ${startupIdParam} (type: ${typeof startupIdParam})`);
+      
+      // Check if the ID is numeric or a Firebase UID
+      const isNumericId = !isNaN(Number(startupIdParam));
+      const startupId = isNumericId ? Number(startupIdParam) : startupIdParam;
       const startupData = req.body;
-      const updatedStartup = await storage.updateStartup(startupId, startupData);
+      
+      // Try numeric update first for backward compatibility
+      let updatedStartup = null;
+      
+      if (isNumericId) {
+        updatedStartup = await storage.updateStartup(Number(startupId), startupData);
+      }
+      
+      // If not found with numeric ID, try with string ID
+      if (!updatedStartup && typeof startupIdParam === 'string') {
+        // This will be implemented in storage class for Firebase compatibility 
+        // using string IDs
+        updatedStartup = await storage.updateStartup(startupIdParam, startupData);
+      }
       
       if (!updatedStartup) {
-        return res.status(404).json({ message: 'Startup not found' });
+        return res.status(404).json({ 
+          message: 'Startup not found',
+          startupId: startupIdParam
+        });
       }
       
       res.status(200).json({ startup: updatedStartup });
     } catch (error) {
+      console.error('Error updating startup:', error);
       res.status(500).json({ message: 'Failed to update startup' });
     }
   });
@@ -610,18 +663,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/investments', async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(req.query.userId as string);
+      const userIdParam = req.query.userId as string;
       const role = req.query.role as string;
+      
+      console.log(`Getting investments for user ID: ${userIdParam} with role: ${role}`);
+      
+      // Check if the ID is numeric or a Firebase UID
+      const isNumericId = !isNaN(Number(userIdParam));
+      const userId = isNumericId ? Number(userIdParam) : userIdParam;
       
       let transactions;
       if (role === 'founder') {
-        transactions = await storage.getTransactionsByFounderId(userId);
+        if (isNumericId) {
+          transactions = await storage.getTransactionsByFounderId(Number(userId));
+        } else {
+          // For Firebase UIDs (string IDs), we need a method that accepts string IDs
+          // This will be implemented in the storage class
+          transactions = await storage.getTransactionsByFounderId(userId as string);
+        }
       } else {
-        transactions = await storage.getTransactionsByInvestorId(userId);
+        if (isNumericId) {
+          transactions = await storage.getTransactionsByInvestorId(Number(userId));
+        } else {
+          // For Firebase UIDs (string IDs)
+          transactions = await storage.getTransactionsByInvestorId(userId as string);
+        }
       }
       
       res.status(200).json({ transactions });
     } catch (error) {
+      console.error('Error fetching investments:', error);
       res.status(500).json({ message: 'Failed to fetch investments' });
     }
   });
@@ -659,18 +730,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat routes
   app.get('/api/chats', async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(req.query.userId as string);
+      const userIdParam = req.query.userId as string;
       const role = req.query.role as string;
+      
+      console.log(`Getting chats for user ID: ${userIdParam} with role: ${role}`);
+      
+      // Check if the ID is numeric or a Firebase UID
+      const isNumericId = !isNaN(Number(userIdParam));
+      const userId = isNumericId ? Number(userIdParam) : userIdParam;
       
       let chats;
       if (role === 'founder') {
-        chats = await storage.getChatsByFounderId(userId);
+        if (isNumericId) {
+          chats = await storage.getChatsByFounderId(Number(userId));
+        } else {
+          // For Firebase UIDs (string IDs), we need a method that accepts string IDs
+          // This will be implemented in the storage class
+          chats = await storage.getChatsByFounderId(userId as string);
+        }
       } else {
-        chats = await storage.getChatsByInvestorId(userId);
+        if (isNumericId) {
+          chats = await storage.getChatsByInvestorId(Number(userId));
+        } else {
+          // For Firebase UIDs (string IDs)
+          chats = await storage.getChatsByInvestorId(userId as string);
+        }
       }
       
       res.status(200).json({ chats });
     } catch (error) {
+      console.error('Error fetching chats:', error);
       res.status(500).json({ message: 'Failed to fetch chats' });
     }
   });
@@ -690,22 +779,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/chats/:id/messages', async (req: Request, res: Response) => {
     try {
-      const chatId = parseInt(req.params.id);
-      const messages = await storage.getMessagesByChatId(chatId);
+      const chatIdParam = req.params.id;
+      
+      console.log(`Getting messages for chat ID: ${chatIdParam}`);
+      
+      // Check if the ID is numeric or a Firebase UID
+      const isNumericId = !isNaN(Number(chatIdParam));
+      const chatId = isNumericId ? Number(chatIdParam) : chatIdParam;
+      
+      let messages;
+      if (isNumericId) {
+        messages = await storage.getMessagesByChatId(Number(chatId));
+      } else {
+        // For Firebase UIDs (string IDs), we'll need a method that accepts string IDs
+        messages = await storage.getMessagesByChatId(chatId as string);
+      }
+      
       res.status(200).json({ messages });
     } catch (error) {
+      console.error('Error fetching messages:', error);
       res.status(500).json({ message: 'Failed to fetch messages' });
     }
   });
 
   app.post('/api/chats/:id/messages', async (req: Request, res: Response) => {
     try {
-      const chatId = parseInt(req.params.id);
+      const chatIdParam = req.params.id;
+      
+      console.log(`Creating message for chat ID: ${chatIdParam}`);
+      
+      // Check if the ID is numeric or a Firebase UID
+      const isNumericId = !isNaN(Number(chatIdParam));
+      const chatId = isNumericId ? Number(chatIdParam) : chatIdParam;
+      
       const messageData = { ...req.body, chatId };
       const validatedData = insertMessageSchema.parse(messageData);
       const message = await storage.createMessage(validatedData);
+      
       res.status(201).json({ message });
     } catch (error) {
+      console.error('Error creating message:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: 'Invalid message data', errors: error.errors });
       }
@@ -789,9 +902,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Store message in database
             if (data.chatId && data.senderId && data.content) {
               try {
+                // Handle both numeric IDs and string IDs (for Firebase UIDs)
+                const chatIdParam = data.chatId;
+                const senderIdParam = data.senderId;
+                
+                // Process chat ID
+                const isChatIdNumeric = !isNaN(Number(chatIdParam));
+                const chatId = isChatIdNumeric ? Number(chatIdParam) : chatIdParam;
+                
+                // Process sender ID
+                const isSenderIdNumeric = !isNaN(Number(senderIdParam));
+                const senderId = isSenderIdNumeric ? Number(senderIdParam) : senderIdParam;
+                
+                console.log(`WebSocket chat message - ChatID: ${chatId} (${typeof chatId}), SenderID: ${senderId} (${typeof senderId})`);
+                
                 const messageData = insertMessageSchema.parse({
-                  chatId: parseInt(data.chatId),
-                  senderId: parseInt(data.senderId),
+                  chatId,
+                  senderId,
                   content: data.content
                 });
                 
@@ -809,6 +936,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               } catch (error) {
                 console.error('Error processing chat message:', error);
+                
+                // Send error back to the sender
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    type: 'error',
+                    source: 'chat_message',
+                    message: error instanceof Error ? error.message : 'Unknown error processing chat message',
+                    timestamp: Date.now()
+                  }));
+                }
               }
             }
             break;
