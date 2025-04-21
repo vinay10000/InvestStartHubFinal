@@ -90,6 +90,9 @@ const SignIn = () => {
           <CardDescription className="text-center">
             Enter your credentials to access your account
           </CardDescription>
+          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded text-center">
+            <p>We've migrated to MongoDB authentication. Please log in with your username instead of email.</p>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <AuthForm 

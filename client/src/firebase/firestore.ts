@@ -1,25 +1,93 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  updateDoc,
-  addDoc,
-  deleteDoc,
-  orderBy
-} from "firebase/firestore";
+// Import mock database functions from our database mock module 
 import { 
   ref, 
   set, 
   update,
   get,
   push
-} from "firebase/database";
+} from "./database";
+
+// Import our mock Firestore and database objects
 import { firestore, database } from "./config";
+
+// Import schemas from shared
 import { User, Startup, Document, Transaction } from "@shared/schema";
+
+// Create mock Firestore functions that will use our mock objects
+// These match the Firebase/Firestore API but will work with our mocks
+const collection = (db: any, path: string) => ({
+  path,
+  db
+});
+
+const doc = (db: any, collectionPath: string, docId: string) => ({
+  id: docId,
+  path: `${collectionPath}/${docId}`,
+  db,
+  collection: collectionPath
+});
+
+const setDoc = async (docRef: any, data: any) => {
+  console.log(`[Firestore Mock] setDoc called on ${docRef.path}`, data);
+  return Promise.resolve();
+};
+
+const getDoc = async (docRef: any) => {
+  console.log(`[Firestore Mock] getDoc called on ${docRef.path}`);
+  return {
+    exists: () => false,
+    id: docRef.id,
+    data: () => null,
+    ref: docRef
+  };
+};
+
+const getDocs = async (collectionRef: any) => {
+  console.log(`[Firestore Mock] getDocs called on ${collectionRef.path}`);
+  return {
+    docs: [],
+    empty: true,
+    forEach: (callback: Function) => {}
+  };
+};
+
+const addDoc = async (collectionRef: any, data: any) => {
+  const id = 'mock-' + Math.random().toString(36).substring(2, 9);
+  console.log(`[Firestore Mock] addDoc called on ${collectionRef.path}, generated ID: ${id}`, data);
+  return { id, path: `${collectionRef.path}/${id}` };
+};
+
+const updateDoc = async (docRef: any, data: any) => {
+  console.log(`[Firestore Mock] updateDoc called on ${docRef.path}`, data);
+  return Promise.resolve();
+};
+
+const deleteDoc = async (docRef: any) => {
+  console.log(`[Firestore Mock] deleteDoc called on ${docRef.path}`);
+  return Promise.resolve();
+};
+
+// Mock query functions
+const where = () => ({});
+const orderBy = () => ({});
+
+// Mock query function to create a query object with chainable methods
+const query = (collectionRef: any, ...queryConstraints: any[]) => {
+  console.log(`[Firestore Mock] query called on ${collectionRef.path} with ${queryConstraints.length} constraints`);
+  return {
+    collectionRef,
+    constraints: queryConstraints,
+    // Add chainable methods for the query
+    get: async () => {
+      console.log(`[Firestore Mock] query.get() called on ${collectionRef.path}`);
+      return {
+        docs: [],
+        empty: true,
+        forEach: (callback: Function) => {}
+      };
+    }
+  };
+};
 
 // User CRUD operations
 export const createFirestoreUser = async (

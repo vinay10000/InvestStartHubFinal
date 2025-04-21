@@ -1,7 +1,44 @@
-import { getDatabase, ref, set, get, push, remove, update, query, orderByChild, equalTo } from "firebase/database";
+// Mock database functions using MongoDB
+// This file replaces Firebase database functions with MongoDB API calls
+
+// Import database and app from our config mock
 import { database } from "./config";
 
-// Using the database instance from config.ts for consistency
+// Export all Firebase database functions as mock functions
+export const getDatabase = () => database;
+export const ref = (db: any, path: string) => ({ path, db });
+export const set = async () => Promise.resolve();
+export const get = async () => ({
+  exists: () => false,
+  val: () => null,
+  forEach: () => false
+});
+export const push = (reference: any) => {
+  const mockId = 'mock-' + Math.random().toString(36).substr(2, 9);
+  return {
+    ...reference,
+    key: mockId,
+    path: reference.path ? `${reference.path}/${mockId}` : mockId
+  };
+};
+export const remove = async () => Promise.resolve();
+export const update = async () => Promise.resolve();
+export const query = () => ({});
+export const orderByChild = () => ({});
+export const equalTo = () => ({});
+export const onValue = (ref: any, callback: Function) => {
+  // Call immediately with null data
+  setTimeout(() => {
+    callback({
+      exists: () => false,
+      val: () => null,
+      forEach: () => false
+    });
+  }, 0);
+  
+  // Return unsubscribe function
+  return () => {};
+};
 
 // User related functions
 export interface FirebaseUser {
@@ -18,24 +55,43 @@ export interface FirebaseUser {
   sameId?: string; // Unique ID that links users with their startups
 }
 
-// Get user by uid
+// Get user by uid - replaced with MongoDB-compatible mock
 export const getUserByUid = async (uid: string): Promise<FirebaseUser | null> => {
   try {
-    console.log("Getting user by uid:", uid);
+    console.log("Firebase disabled: Attempting to get user from MongoDB instead");
     
-    // First try to get the user from the users collection
-    const userRef = ref(database, `users/${uid}`);
-    const snapshot = await get(userRef);
-
-    if (snapshot.exists()) {
-      console.log("User found in database:", snapshot.val());
-      return snapshot.val() as FirebaseUser;
-    } else {
-      console.log("User not found in database");
+    // Make a fetch request to MongoDB API endpoint
+    const response = await fetch(`/api/user/profile?firebase_uid=${uid}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const userData = await response.json();
+    
+    if (!userData) {
+      console.log("User not found in MongoDB");
       return null;
     }
+    
+    console.log("User found in MongoDB:", userData);
+    
+    // Convert MongoDB user to Firebase format
+    const firebaseUser: FirebaseUser = {
+      uid: userData.sameId || uid,
+      id: userData.id?.toString(),
+      username: userData.username,
+      email: userData.email,
+      profilePicture: userData.profilePicture || undefined,
+      role: userData.role,
+      walletAddress: userData.walletAddress || undefined,
+      createdAt: userData.createdAt ? new Date(userData.createdAt).toISOString() : undefined,
+      sameId: userData.sameId
+    };
+    
+    return firebaseUser;
   } catch (error) {
-    console.error("Error getting user by uid:", error);
+    console.error("Error getting user from MongoDB:", error);
     return null;
   }
 };

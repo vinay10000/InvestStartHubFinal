@@ -1,52 +1,54 @@
-import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getDatabase } from "firebase/database";
+/**
+ * Firebase Mock Module
+ * 
+ * This file provides mock objects to satisfy Firebase imports throughout the codebase
+ * without actually initializing Firebase, since we're migrating to MongoDB.
+ */
 
-// Firebase configuration from environment variables
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`
+// Import the same robust mock from config to ensure consistency
+import { app as configApp, auth as configAuth, database as configDatabase } from './config';
+
+// Use the same mock objects as in config.ts to ensure consistency
+export const app = configApp;
+export const auth = configAuth;
+export const database = configDatabase;
+
+// Add any Firebase SDK functions that might be directly imported
+export const getAuth = () => auth;
+
+// Create more complete Firestore mock with _instanceStarted property
+export const getFirestore = () => ({
+  _instanceStarted: true,
+  collection: () => ({}),
+  doc: () => ({}),
+  batch: () => ({}),
+  runTransaction: async () => ({}),
+  app: app,
+  _delegate: { app }
+});
+
+// Create more complete Storage mock with _instanceStarted property
+export const getStorage = () => ({
+  _instanceStarted: true,
+  ref: () => ({}),
+  app: app,
+  _delegate: { app }
+});
+
+// Make sure database has _instanceStarted property
+export const getDatabase = () => {
+  // Add the _instanceStarted property to the database mock
+  database._instanceStarted = true;
+  return database;
 };
 
-// Check if Firebase environment variables are set
-const areEnvVarsAvailable = () => {
-  const firebaseVars = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
-  };
-
-  // Only log once in development
-  if (import.meta.env.DEV) {
-    console.log("Firebase environment variables available:", {
-      apiKey: !!firebaseVars.apiKey,
-      projectId: !!firebaseVars.projectId,
-      messagingSenderId: !!firebaseVars.messagingSenderId,
-      appId: !!firebaseVars.appId,
-      databaseURL: !!firebaseVars.databaseURL
-    });
-  }
-  
-  return Object.values(firebaseVars).some(value => !!value);
-};
-
-// Initialize Firebase (prevent duplicate initialization)
-export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
-export const database = getDatabase(app);
-
-// Log Firebase initialization
-if (areEnvVarsAvailable() && import.meta.env.DEV) {
-  console.log("Firebase initialized with project:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
-} else if (import.meta.env.DEV) {
-  console.warn("Firebase initialized without complete environment variables. Some features may not work correctly.");
+// Add mock Firebase SDK constructors/initializers
+export function initializeApp() { return app; }
+export function onAuthStateChanged(callback: (user: null) => void) {
+  setTimeout(() => callback(null), 0);
+  return () => {};
 }
+
+console.log("Firebase is disabled - using MongoDB authentication instead");
 
 export default app;

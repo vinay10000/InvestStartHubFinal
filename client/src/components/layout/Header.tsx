@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth"; // Use the main auth hook
+import { useAuth } from "@/hooks/use-auth"; // Use the MongoDB auth hook
 import {
   Sheet,
   SheetContent,
@@ -21,15 +21,15 @@ import ThemeToggle from "../theme/ThemeToggle";
 
 const Header = () => {
   const [location, navigate] = useLocation();
-  const { user, loading, signOut } = useAuth(); // Use our main auth context
+  const { user, isLoading, logoutMutation } = useAuth(); // Using renamed variables from MongoDB auth hook
   const [isOpen, setIsOpen] = useState(false);
 
   // Debug auth state in the header
-  console.log("Header rendering with auth state:", { user, loading });
+  console.log("Header rendering with auth state:", { user, isLoading });
 
   const handleSignOut = async () => {
     console.log("Signing out user");
-    await signOut();
+    await logoutMutation.mutateAsync();
     navigate("/");
   };
 
@@ -86,7 +86,7 @@ const Header = () => {
             </nav>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {loading ? (
+            {isLoading ? (
               // Show a loading state
               <div className="flex items-center space-x-4">
                 <div className="h-8 w-20 bg-gray-200 animate-pulse rounded-md"></div>
@@ -185,7 +185,7 @@ const Header = () => {
                 <div className="flex flex-col space-y-4 mt-4">
                   {/* Removed Home link from mobile menu as requested */}
                   
-                  {loading ? (
+                  {isLoading ? (
                     // Mobile loading state
                     <div className="border-t border-gray-200 pt-4 pb-3">
                       <div className="flex items-center px-4">

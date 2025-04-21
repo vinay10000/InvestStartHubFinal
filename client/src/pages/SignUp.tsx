@@ -97,6 +97,9 @@ const SignUp = () => {
           <CardDescription className="text-center">
             Select your role and enter your details to create an account
           </CardDescription>
+          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded text-center">
+            <p>We've migrated to MongoDB authentication. Your account will be created with MongoDB.</p>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Tabs defaultValue={selectedRole} onValueChange={(value) => setSelectedRole(value as "founder" | "investor")}>

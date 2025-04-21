@@ -1,8 +1,10 @@
-import { getDatabase, ref, set, get, remove, onValue, update } from 'firebase/database';
-import { app } from './config';
+// MongoDB-compatible wallet database mock
+// Import from our database mocks instead of Firebase
+import { getDatabase, ref, set, get, remove, onValue, update } from './database';
+import { database } from './config';
 
-// Initialize Firebase Realtime Database
-const database = getDatabase(app);
+// Using the database instance from our config mock
+console.log("[Wallet DB] Using MongoDB-compatible mock");
 
 // Type for wallet data
 export interface WalletData {

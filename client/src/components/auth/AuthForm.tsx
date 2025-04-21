@@ -10,9 +10,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { useWeb3 } from "@/hooks/useWeb3";
 import { Badge } from "@/components/ui/badge";
 
-// Form schema for sign in
+// Form schema for sign in - use username for MongoDB
 const signInSchema = z.object({
-  username: z.string().email("Please enter a valid email address").min(1, "Email is required"),
+  username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -112,11 +112,11 @@ const AuthForm = ({ type, onSubmit, isLoading }: AuthFormProps) => {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{type === "signin" ? "Email" : "Username"}</FormLabel>
+              <FormLabel>Username</FormLabel>
               <FormControl>
                 <Input 
-                  placeholder={type === "signin" ? "Enter your email" : "Enter your username"} 
-                  type={type === "signin" ? "email" : "text"}
+                  placeholder="Enter your username" 
+                  type="text"
                   {...field} 
                   disabled={isLoading}
                 />
