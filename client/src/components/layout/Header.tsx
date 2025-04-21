@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth"; // Use the MongoDB auth hook
+import { useAuth } from "@/context/MongoAuthContext"; // Use the MongoDB auth hook
 import {
   Sheet,
   SheetContent,
@@ -21,7 +21,7 @@ import ThemeToggle from "../theme/ThemeToggle";
 
 const Header = () => {
   const [location, navigate] = useLocation();
-  const { user, isLoading, logoutMutation } = useAuth(); // Using renamed variables from MongoDB auth hook
+  const { user, isLoading, signOut } = useAuth(); // Using renamed variables from MongoDB auth hook
   const [isOpen, setIsOpen] = useState(false);
 
   // Debug auth state in the header
@@ -29,8 +29,12 @@ const Header = () => {
 
   const handleSignOut = async () => {
     console.log("Signing out user");
-    await logoutMutation.mutateAsync();
-    navigate("/");
+    try {
+      await signOut();
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   const getInitials = (name: string) => {

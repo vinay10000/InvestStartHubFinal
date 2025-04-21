@@ -3,14 +3,14 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hooks/use-auth"; // Use our MongoDB-compatible auth context
+import { useAuth } from "@/context/MongoAuthContext"; // Use MongoDB native auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { loginMutation } = useAuth(); // Use MongoDB-compatible auth context
+  const { signIn } = useAuth(); // Use MongoDB native auth context
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -28,39 +28,21 @@ const SignIn = () => {
       const loginUsername = username || email;
       console.log("Starting sign-in process using username:", loginUsername);
       
-      // Use our MongoDB login mutation
-      const user = await loginMutation.mutateAsync({
-        username: loginUsername,
-        password: password
-      });
+      // Use our MongoDB signIn function
+      await signIn(loginUsername, password);
       
       console.log("Sign-in successful with MongoDB");
       
-      if (user) {
-        // Store the role in localStorage for convenience
-        const userRole = user.role.toLowerCase();
-        localStorage.setItem('user_role', userRole);
-        console.log("Set user role from MongoDB:", userRole);
-        
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${user.username}!`,
-        });
-        
-        // Direct redirect based on role
-        if (userRole === 'founder') {
-          console.log("Redirecting to founder dashboard");
-          navigate('/founder/dashboard');
-        } else {
-          console.log("Redirecting to investor dashboard");
-          navigate('/investor/dashboard');
-        }
-      } else {
-        // Default to dashboard if we can't determine role
-        console.log("User data incomplete, redirecting to dashboard");
-        localStorage.setItem('user_role', 'investor');
-        navigate('/dashboard');
-      }
+      // The auth context will handle redirecting to the appropriate dashboard
+      // based on the user's role, so we don't need to do anything else here
+      
+      toast({
+        title: "Login Successful",
+        description: "Welcome back! You'll be redirected to your dashboard.",
+      });
+      
+      // Navigate to the dashboard, where the role-based redirect will happen
+      navigate('/dashboard');
     } catch (error) {
       console.error("Error signing in with MongoDB:", error);
       toast({

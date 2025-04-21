@@ -3,14 +3,14 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/use-auth"; // Use MongoDB-compatible auth context
+import { useAuth } from "@/context/MongoAuthContext"; // Use MongoDB native auth context
 import AuthForm from "@/components/auth/AuthForm";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { registerMutation } = useAuth(); // Use MongoDB-compatible auth context 
+  const { signUp } = useAuth(); // Use MongoDB native auth context
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   
@@ -34,39 +34,31 @@ const SignUp = () => {
       localStorage.setItem('user_role', targetRole);
       console.log("User role set to:", targetRole);
       
-      // Register with MongoDB using the registerMutation
+      // Register with MongoDB using the signUp function
       if (walletAddress) {
         console.log("Including wallet address in signup:", walletAddress);
       }
       
-      // Use our MongoDB register mutation
-      const userData = await registerMutation.mutateAsync({
-        username,
-        email,
-        password,
-        role: targetRole
-      });
+      // Use our MongoDB signUp function
+      await signUp(email, password, username, targetRole);
+      
+      // Note: walletAddress is not supported in the current MongoDB signUp function
+      // If wallet integration is needed, it will be handled separately after signup
       
       console.log("MongoDB signup successful");
       
-      if (userData) {
-        toast({
-          title: "Registration Successful",
-          description: `Welcome to StartupConnect, ${userData.username}!`,
-        });
-        
-        // Direct redirect based on role
-        if (targetRole === 'founder') {
-          console.log("Redirecting new user to founder dashboard");
-          navigate('/founder/dashboard');
-        } else {
-          console.log("Redirecting new user to investor dashboard");
-          navigate('/investor/dashboard');
-        }
+      toast({
+        title: "Registration Successful",
+        description: `Welcome to StartupConnect, ${username}!`,
+      });
+      
+      // Direct redirect based on role
+      if (targetRole === 'founder') {
+        console.log("Redirecting new user to founder dashboard");
+        navigate('/founder/dashboard');
       } else {
-        // Fallback redirect if we couldn't get the user data
-        console.log("Fallback: redirecting to dashboard route");
-        navigate("/dashboard");
+        console.log("Redirecting new user to investor dashboard");
+        navigate('/investor/dashboard');
       }
     } catch (error) {
       console.error("Error signing up with MongoDB:", error);

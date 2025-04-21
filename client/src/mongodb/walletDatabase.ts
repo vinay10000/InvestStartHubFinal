@@ -6,6 +6,71 @@
  */
 
 /**
+ * Migrate a wallet from a numeric user ID to a Firebase UID
+ * This is used during the transition from MongoDB to Firebase
+ * 
+ * @param numericId The numeric ID of the user in the database
+ * @param firebaseUid The Firebase UID to associate with the wallet
+ * @param walletAddress The wallet address to migrate
+ * @returns A promise that resolves when the operation is complete
+ */
+export async function migrateWalletToFirebaseUid(
+  numericId: number,
+  firebaseUid: string,
+  walletAddress: string
+): Promise<void> {
+  try {
+    // Make an API call to migrate the wallet
+    const response = await fetch('/api/user/wallet/migrate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        numericId,
+        firebaseUid,
+        walletAddress
+      }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to migrate wallet address');
+    }
+    
+    console.log(`Wallet address ${walletAddress} migrated from user ${numericId} to Firebase UID ${firebaseUid}`);
+  } catch (error) {
+    console.error('Error migrating wallet address:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a wallet address completely
+ * 
+ * @param walletAddress The wallet address to remove from all associations
+ * @returns A promise that resolves when the operation is complete
+ */
+export async function deleteWallet(walletAddress: string): Promise<void> {
+  try {
+    // Make an API call to delete the wallet
+    const response = await fetch(`/api/wallet/delete/${walletAddress}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete wallet address');
+    }
+    
+    console.log(`Wallet address ${walletAddress} completely removed from the system`);
+  } catch (error) {
+    console.error('Error deleting wallet address:', error);
+    throw error;
+  }
+}
+
+/**
  * Save a wallet address to the MongoDB database
  * 
  * @param userId The ID of the user to associate with this wallet address

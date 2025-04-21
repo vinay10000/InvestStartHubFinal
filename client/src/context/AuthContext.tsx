@@ -5,17 +5,25 @@ import { User as SchemaUser } from "@shared/schema";
 interface User extends SchemaUser {
   uid: string; // MongoDB ID mapped as UID for compatibility
 }
+
+// Define a Firebase-compatible user interface since we're transitioning from Firebase
+interface FirebaseUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
 import { 
   signUpWithEmail as mongoSignUpWithEmail, 
   signInWithEmail as mongoSignInWithEmail, 
   signInWithGoogle as mongoSignInWithGoogle, 
   signOut as mongoSignOut,
   onAuthChange 
-} from "@/mongodb/auth";
+} from "../mongodb/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 // Use MongoDB database adapter instead of Firebase
-import { getUserByUid, updateUser } from "@/mongodb/database";
+import { getUserByUid, updateUser } from "../mongodb/database";
 
 interface AuthContextType {
   user: User | null;
