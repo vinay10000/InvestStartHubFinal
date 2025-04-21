@@ -10,6 +10,7 @@ import {
 import { z } from 'zod';
 import { WebSocketServer } from 'ws';
 import { WebSocket } from 'ws';
+import { setActiveConnections } from './imagekit';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -534,6 +535,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Store active connections
   const connections = new Map<string, WebSocket>();
+  
+  // Share connections with imagekit module
+  setActiveConnections(connections);
   
   // Handle WebSocket error event
   wss.on('error', (error) => {

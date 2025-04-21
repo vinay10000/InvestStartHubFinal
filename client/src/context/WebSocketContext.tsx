@@ -1,151 +1,156 @@
-import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-interface WebSocketContextType {
-  isConnected: boolean;
-  sendMessage: (type: string, data: any) => void;
-  connectionId: string | null;
-  lastMessage: any | null;
-  error: string | null;
+// Define types for WebSocket messages
+export interface WebSocketMessage {
+  type: string;
+  timestamp: number;
+  [key: string]: any;
 }
 
-// Default context value
-const defaultContext: WebSocketContextType = {
-  isConnected: false,
-  sendMessage: () => {},
-  connectionId: null,
+// Define the WebSocket context type
+interface WebSocketContextType {
+  connected: boolean;
+  send: (message: any) => void;
+  lastMessage: WebSocketMessage | null;
+  connectionId: string | null;
+  error: Error | null;
+}
+
+// Create the context with default values
+const WebSocketContext = createContext<WebSocketContextType>({
+  connected: false,
+  send: () => {},
   lastMessage: null,
+  connectionId: null,
   error: null
-};
+});
 
-// Create the context
-const WebSocketContext = createContext<WebSocketContextType>(defaultContext);
+// Custom hook to access WebSocket context
+export const useWebSocket = () => useContext(WebSocketContext);
 
-// Provider component
-export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isConnected, setIsConnected] = useState(false);
+interface WebSocketProviderProps {
+  children: ReactNode;
+}
+
+export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [lastMessage, setLastMessage] = useState<any | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  
-  useEffect(() => {
-    // Connect to the WebSocket server
-    const connectWebSocket = () => {
-      try {
-        // Determine WebSocket URL
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+  const [error, setError] = useState<Error | null>(null);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+
+  // Function to connect to WebSocket server
+  const connectWebSocket = () => {
+    try {
+      // Determine the WebSocket URL based on the current environment
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      console.log('[WebSocketContext] Connecting to WebSocket server:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('[WebSocketContext] WebSocket connection established');
+        setConnected(true);
+        setError(null);
+        setReconnectAttempt(0);
         
-        console.log('[WebSocketContext] Connecting to WebSocket server:', wsUrl);
-        
-        const socket = new WebSocket(wsUrl);
-        socketRef.current = socket;
-        
-        // Connection opened handler
-        socket.addEventListener('open', () => {
-          console.log('[WebSocketContext] WebSocket connection established');
-          setIsConnected(true);
-          setError(null);
-          
-          // Send a test ping to verify connection
-          socket.send(JSON.stringify({
-            type: 'ping',
-            timestamp: Date.now()
-          }));
-        });
-        
-        // Message handler
-        socket.addEventListener('message', (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('[WebSocketContext] Received message:', data);
-            
-            // Store the last message received
-            setLastMessage(data);
-            
-            // Handle connection established message
-            if (data.type === 'connection_established') {
-              setConnectionId(data.connectionId);
-            }
-          } catch (err) {
-            console.error('[WebSocketContext] Error parsing message:', err);
-          }
-        });
-        
-        // Connection closed handler
-        socket.addEventListener('close', (event) => {
-          console.log('[WebSocketContext] WebSocket connection closed:', event);
-          setIsConnected(false);
-          
-          // Attempt to reconnect after a delay unless closing was intentional
-          if (!event.wasClean) {
-            console.log('[WebSocketContext] Connection lost, reconnecting in 3 seconds...');
-            setTimeout(connectWebSocket, 3000);
-          }
-        });
-        
-        // Error handler
-        socket.addEventListener('error', (event) => {
-          console.error('[WebSocketContext] WebSocket error:', event);
-          setError('WebSocket connection error');
-        });
-      } catch (err) {
-        console.error('[WebSocketContext] Failed to create WebSocket connection:', err);
-        setError('Failed to establish WebSocket connection');
-        
-        // Attempt to reconnect after a delay
-        setTimeout(connectWebSocket, 5000);
-      }
-    };
-    
-    // Initial connection
-    connectWebSocket();
-    
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
-  }, []);
-  
-  // Function to send a message through the WebSocket
-  const sendMessage = (type: string, data: any) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      const message = {
-        type,
-        ...data,
-        timestamp: Date.now()
+        // Send a ping to verify connection
+        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
       };
       
-      socketRef.current.send(JSON.stringify(message));
-      console.log('[WebSocketContext] Sent message:', message);
-      return true;
-    } else {
-      console.error('[WebSocketContext] Cannot send message, socket not connected');
-      setError('WebSocket not connected');
-      return false;
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[WebSocketContext] Received message:', data);
+          
+          // Set connection ID from the welcome message
+          if (data.type === 'connection_established' && data.connectionId) {
+            setConnectionId(data.connectionId);
+          }
+          
+          // Update last message
+          setLastMessage(data);
+        } catch (err) {
+          console.error('[WebSocketContext] Error parsing message:', err);
+        }
+      };
+      
+      ws.onerror = (event) => {
+        console.error('[WebSocketContext] WebSocket error:', event);
+        setError(new Error('WebSocket connection error'));
+      };
+      
+      ws.onclose = (event) => {
+        console.log('[WebSocketContext] WebSocket connection closed:', event);
+        setConnected(false);
+        setSocket(null);
+        
+        // Attempt to reconnect with exponential backoff
+        const delay = Math.min(3000 * Math.pow(1.5, reconnectAttempt), 30000);
+        console.log(`[WebSocketContext] Connection lost, reconnecting in ${delay/1000} seconds...`);
+        
+        setTimeout(() => {
+          setReconnectAttempt(prev => prev + 1);
+          connectWebSocket();
+        }, delay);
+      };
+      
+      setSocket(ws);
+    } catch (err) {
+      console.error('[WebSocketContext] Failed to create WebSocket connection:', err);
+      setError(err instanceof Error ? err : new Error('Unknown WebSocket error'));
     }
   };
   
-  // Create the context value
-  const contextValue: WebSocketContextType = {
-    isConnected,
-    sendMessage,
-    connectionId,
+  // Initialize WebSocket connection
+  useEffect(() => {
+    connectWebSocket();
+    
+    // Cleanup function
+    return () => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
+    };
+  }, [reconnectAttempt]);
+  
+  // Function to send messages
+  const send = (message: any) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+    } else {
+      console.warn('[WebSocketContext] Cannot send message, socket not connected');
+    }
+  };
+  
+  // Set up ping interval to keep connection alive
+  useEffect(() => {
+    if (!socket || !connected) return;
+    
+    const pingInterval = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        send({ type: 'ping', timestamp: Date.now() });
+      }
+    }, 25000); // 25 seconds
+    
+    return () => clearInterval(pingInterval);
+  }, [socket, connected]);
+  
+  // Context value
+  const value = {
+    connected,
+    send,
     lastMessage,
+    connectionId,
     error
   };
   
-  // Provide the context to children
   return (
-    <WebSocketContext.Provider value={contextValue}>
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   );
 };
-
-// Custom hook to use the WebSocket context
-export const useWebSocket = () => useContext(WebSocketContext);
-
-export default WebSocketContext;

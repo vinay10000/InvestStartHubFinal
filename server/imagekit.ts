@@ -63,6 +63,30 @@ const hasRealImageKitCredentials = () => {
 };
 
 // Register ImageKit routes
+import { WebSocket } from 'ws';
+
+// Store active WebSocket connections reference - will be populated by the WebSocket server
+let activeConnections: Map<string, WebSocket> | null = null;
+
+// Function to set WebSocket connections - called from routes.ts
+export function setActiveConnections(connections: Map<string, WebSocket>) {
+  activeConnections = connections;
+}
+
+// Function to broadcast a message to all connected clients
+function broadcastMessage(message: any) {
+  if (!activeConnections) {
+    console.log('No active WebSocket connections available for broadcasting');
+    return;
+  }
+  
+  activeConnections.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(message));
+    }
+  });
+}
+
 export function registerImageKitRoutes(app: Express): void {
   // Authentication endpoint (may still be used for certain operations)
   app.get('/api/imagekit/auth', (req: Request, res: Response) => {
@@ -402,6 +426,43 @@ export function registerImageKitRoutes(app: Express): void {
       // Store the media records in the database
       // This would typically be handled by inserting into a database table
       // For now, we'll just return the results
+      
+      // Get startup name if available (for better notifications)
+      let startupName = 'A startup';
+      try {
+        const startup = await fetch(`http://localhost:5000/api/startups/${startupId}`).then(r => r.json());
+        if (startup && startup.name) {
+          startupName = startup.name;
+        }
+      } catch (error) {
+        log(`Error fetching startup name: ${error}`, 'imagekit');
+      }
+      
+      // Broadcast WebSocket notification for each uploaded media file
+      uploadResults.forEach(media => {
+        // Determine the media type category
+        const mediaType = media.mimeType.startsWith('image/') 
+          ? 'image' 
+          : media.mimeType.startsWith('video/') 
+            ? 'video' 
+            : 'file';
+        
+        // Create the notification message
+        const notificationMessage = {
+          type: 'new_media_uploaded',
+          startupId,
+          startupName,
+          mediaId: media.fileId,
+          mediaType,
+          fileName: media.fileName,
+          fileUrl: media.fileUrl,
+          timestamp: Date.now()
+        };
+        
+        // Broadcast to all connected clients
+        broadcastMessage(notificationMessage);
+        log(`Broadcasting new media upload: ${media.fileName} for startup ${startupId}`, 'imagekit');
+      });
       
       res.status(200).json({ 
         success: true,

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, LogOut, User, MessageSquare, Wallet, Wrench } from "lucide-react";
+import { Menu, LogOut, User, MessageSquare, Wallet, Wrench, Image } from "lucide-react";
 import NotificationIcon from "../chat/NotificationIcon";
 import ThemeToggle from "../theme/ThemeToggle";
 
@@ -73,8 +73,16 @@ const Header = () => {
                 <span className="text-primary font-bold text-xl cursor-pointer">StartupConnect</span>
               </Link>
             </div>
-            {/* Removed Home link from navbar as requested */}
+            {/* Main navbar links */}
             <nav className="hidden sm:ml-6 sm:flex sm:space-x-8" aria-label="Global">
+              {user && (
+                <>
+                  <Link href="/media-explorer" className="inline-flex items-center px-1 pt-1 text-sm font-medium">
+                    <Image className="mr-1 h-4 w-4" />
+                    Media Explorer
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
@@ -230,6 +238,11 @@ const Header = () => {
                               </span>
                             </Link>
                           )}
+                          <Link href="/media-explorer">
+                            <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
+                              Media Explorer
+                            </span>
+                          </Link>
                           <Link href="/chat">
                             <span className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 cursor-pointer" onClick={() => setIsOpen(false)}>
                               Messages

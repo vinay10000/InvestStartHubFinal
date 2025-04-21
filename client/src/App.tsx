@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext"; // Use the main AuthContext with Firebase
+import { WebSocketProvider } from "@/context/WebSocketContext"; // WebSocket context for real-time updates
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -21,6 +22,8 @@ import WalletConnection from "@/pages/WalletConnection";
 import WalletSetup from "@/pages/WalletSetup";
 import WalletDiagnostics from "@/pages/WalletDiagnostics";
 import ImageKitTest from "@/pages/ImageKitTest";
+import MediaViewerTest from "@/pages/MediaViewerTest";
+import StartupMediaExplorer from "@/pages/StartupMediaExplorer";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import WalletPrompt from "@/components/auth/WalletPrompt";
@@ -173,6 +176,16 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      {/* Media Viewer test page (public for easy testing) */}
+      <Route path="/media-viewer-test" component={MediaViewerTest} />
+      
+      {/* Media Explorer page */}
+      <Route path="/media-explorer">
+        <ProtectedRoute>
+          <StartupMediaExplorer />
+        </ProtectedRoute>
+      </Route>
+      
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
@@ -215,16 +228,18 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-grow">
-            <Router />
-          </main>
-          <Footer />
-          <GlobalWalletChecker />
-          <WalletDatabaseInitializer />
-        </div>
-        <Toaster />
+        <WebSocketProvider>
+          <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-grow">
+              <Router />
+            </main>
+            <Footer />
+            <GlobalWalletChecker />
+            <WalletDatabaseInitializer />
+          </div>
+          <Toaster />
+        </WebSocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
