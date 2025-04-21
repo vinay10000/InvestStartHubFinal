@@ -25,6 +25,7 @@ export interface IStorage {
   getAllStartups(): Promise<Startup[]>;
   getStartup(id: number): Promise<Startup | undefined>;
   getStartupByFounderId(founderId: string | number): Promise<Startup | undefined>;
+  getStartupByMongoId(mongoId: string): Promise<Startup | undefined>;
   getStartupsByFounderId(founderId: number): Promise<Startup[]>;
   createStartup(startup: InsertStartup): Promise<Startup>;
   updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined>;
@@ -162,6 +163,16 @@ export class MemStorage implements IStorage {
     
     return startups.find(
       (startup) => String(startup.founderId) === founderIdStr
+    );
+  }
+  
+  async getStartupByMongoId(mongoId: string): Promise<Startup | undefined> {
+    // For memory storage, search for startups with a matching ID string
+    const startups = Array.from(this.startups.values());
+    
+    // Find by string ID (could be MongoDB ID)
+    return startups.find(
+      (startup) => String(startup.id) === mongoId
     );
   }
 

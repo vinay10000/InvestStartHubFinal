@@ -14,7 +14,7 @@ import { setActiveConnections } from './imagekit';
 import { 
   getWalletAddressByUserId, 
   getWalletAddressByStartupId,
-  getWalletAddressByFirebaseUid,
+  getWalletAddressByMongoUid,
   getUserIdByWalletAddress,
   storeWalletAddress,
   storeStartupWalletAddress
@@ -187,11 +187,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get uid from request if it exists
       const { uid, ...restData } = req.body;
       
-      // Add Firebase uid to password field as "firebase_{uid}" to track the association
-      // This allows us to find users by Firebase UID later
+      // Add MongoDB uid to password field as "mongo_{uid}" to track the association
+      // This allows us to find users by MongoDB UID later
       const userData = insertUserSchema.parse({
         ...restData,
-        password: uid ? `firebase_${uid}_${restData.password}` : restData.password
+        password: uid ? `mongo_${uid}_${restData.password}` : restData.password
       });
 
       const user = await storage.createUser(userData);
@@ -233,9 +233,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sameId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
       console.log('Generated sameId for new user:', sameId);
       
-      // Check if user already exists with this Firebase UID
+      // Check if user already exists with this MongoDB UID
       const users = await storage.getAllUsers();
-      let user = users.find((u: User) => u.password.includes(`firebase_${uid}`));
+      let user = users.find((u: User) => u.password.includes(`mongo_${uid}`));
       
       if (!user) {
         // Try finding by email
@@ -247,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newUser = {
           username: displayName || email.split('@')[0], // Use display name or extract username from email
           email,
-          password: `firebase_${uid}_google`, // Special password format for Google Firebase users
+          password: `mongo_${uid}_google`, // Special password format for Google MongoDB users
           role: role || "investor", // Use provided role or default to investor
           profilePicture: photoURL || "",
           walletAddress: "",
@@ -256,17 +256,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         user = await storage.createUser(newUser);
-        console.log('Created new user from Google auth:', email, 'with Firebase UID:', uid);
+        console.log('Created new user from Google auth:', email, 'with MongoDB UID:', uid);
         
         // If this is a founder, we need to remember the sameId for later when they create startups
         if (role === "founder") {
           console.log('New founder created with sameId:', sameId);
         }
-      } else if (!user.password.includes(`firebase_${uid}`)) {
-        // Update existing user to include Firebase UID if it doesn't already have it
+      } else if (!user.password.includes(`mongo_${uid}`)) {
+        // Update existing user to include MongoDB UID if it doesn't already have it
         // Also update the sameId if this is a founder and they don't have one yet
         const updates: Partial<User> = {
-          password: `firebase_${uid}_google`
+          password: `mongo_${uid}_google`
         };
         
         // Add sameId for founders if they don't have one yet
@@ -279,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (updatedUser) {
           user = updatedUser;
-          console.log('Updated existing user with Firebase UID:', uid);
+          console.log('Updated existing user with MongoDB UID:', uid);
         }
       }
       
@@ -293,29 +293,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.get('/api/user/profile', async (req: Request, res: Response) => {
     try {
-      // Handle Firebase UID (string) or database user ID (number)
+      // Handle MongoDB UID (string) or database user ID (number)
       const userId = req.query.userId as string;
       
       let user;
-      // If userId looks like a Firebase UID (not a number)
+      // If userId looks like a MongoDB UID (not a number)
       if (isNaN(Number(userId))) {
-        // This is a Firebase UID, check if we have a user with password containing this UID
+        // This is a MongoDB UID, check if we have a user with password containing this UID
         const users = await storage.getAllUsers();
         
-        // Look for either firebase_{uid}_ or google_{uid}
+        // Look for either mongo_{uid}_ or google_{uid}
         user = users.find((u: User) => 
-          u.password.includes(`firebase_${userId}`) || 
+          u.password.includes(`mongo_${userId}`) || 
           u.password.includes(`google_${userId}`)
         );
         
-        console.log('Looking for Firebase user with UID:', userId);
+        console.log('Looking for MongoDB user with UID:', userId);
         
         if (!user) {
-          console.log('Firebase user not found with UID:', userId);
-          return res.status(404).json({ message: 'Firebase user not found' });
+          console.log('MongoDB user not found with UID:', userId);
+          return res.status(404).json({ message: 'MongoDB user not found' });
         }
         
-        console.log('Found Firebase user:', user.username);
+        console.log('Found MongoDB user:', user.username);
       } else {
         // Regular numeric user ID from our database
         user = await storage.getUser(parseInt(userId));
@@ -421,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // No need to remove from wallet collection - just set isPermanent to false
-      // For Firebase compatibility, let's remove the wallet from storage
+      // For MongoDB compatibility, let's remove the wallet from storage
       if (currentWallet) {
         await storeWalletAddress(userId, null, false, 'api_disconnect');
         console.log(`Removed wallet ${currentWallet.substring(0, 10)}... from user ${userId}`);
@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get wallet address for a startup
   app.get('/api/wallets/startup/:startupId', async (req: Request, res: Response) => {
     try {
-      // Accept both numeric IDs and string IDs (for Firebase compatibility)
+      // Accept both numeric IDs and string IDs (for MongoDB compatibility)
       const startupId = req.params.startupId;
       
       // Get the startup wallet from the dedicated collection
@@ -517,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If not found in dedicated collection, try to get the founder and their wallet
       if (!walletAddress) {
-        // Check if the ID is numeric or a Firebase UID
+        // Check if the ID is numeric or a MongoDB ID
         const isNumericId = !isNaN(Number(startupId));
         let startup = null;
         
@@ -527,8 +527,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         if (!startup) {
-          // Try as a Firebase ID as fallback
-          startup = await storage.getStartupByFirebaseId(startupId);
+          // Try as a MongoDB ID as fallback
+          startup = await storage.getStartupByMongoId(startupId);
         }
         
         if (!startup) {
@@ -538,17 +538,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Get founder's wallet - check if it's a Firebase UID or numeric ID
+        // Get founder's wallet - check if it's a MongoDB UID or numeric ID
         const founderId = startup.founderId;
         let founderWallet = null;
         
-        // Check if the founderId looks like a Firebase UID (non-numeric string)
-        const isFirebaseUid = typeof founderId === 'string' && isNaN(Number(founderId)) && founderId.length > 10;
+        // Check if the founderId looks like a MongoDB UID (non-numeric string)
+        const isMongoUid = typeof founderId === 'string' && isNaN(Number(founderId)) && founderId.length > 10;
         
-        if (isFirebaseUid) {
-          console.log(`[routes] Detected Firebase UID as founderId: ${founderId}`);
-          // Use the new Firebase UID specific method
-          founderWallet = await getWalletAddressByFirebaseUid(founderId as string);
+        if (isMongoUid) {
+          console.log(`[routes] Detected MongoDB UID as founderId: ${founderId}`);
+          // Use the MongoDB UID specific method
+          founderWallet = await getWalletAddressByMongoUid(founderId as string);
         } else {
           // Use the regular numeric ID method
           founderWallet = await getWalletAddressByUserId(founderId);
@@ -570,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Wallet address not found for startup or founder',
           startupId,
           founderId,
-          isFirebaseUid
+          isMongoUid
         });
       }
       
@@ -691,11 +691,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/startups/:id', async (req: Request, res: Response) => {
     try {
-      // Accept both numeric IDs and string IDs (for Firebase compatibility)
+      // Accept both numeric IDs and string IDs (for MongoDB compatibility)
       const startupIdParam = req.params.id;
       console.log(`Getting startup details for ID: ${startupIdParam} (type: ${typeof startupIdParam})`);
       
-      // Check if the ID is numeric or a Firebase UID
+      // Check if the ID is numeric or a MongoDB ID
       const isNumericId = !isNaN(Number(startupIdParam));
       let startup = null;
       
@@ -705,8 +705,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!startup) {
-        // Try as a Firebase ID as fallback
-        startup = await storage.getStartupByFirebaseId(startupIdParam);
+        // Try as a MongoDB ID as fallback
+        startup = await storage.getStartupByMongoId(startupIdParam);
       }
       
       if (!startup) {
@@ -725,11 +725,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/startups/:id', async (req: Request, res: Response) => {
     try {
-      // Accept both numeric IDs and string IDs (for Firebase compatibility)
+      // Accept both numeric IDs and string IDs (for MongoDB compatibility)
       const startupIdParam = req.params.id;
       console.log(`Updating startup with ID: ${startupIdParam} (type: ${typeof startupIdParam})`);
       
-      // Check if the ID is numeric or a Firebase UID
+      // Check if the ID is numeric or a MongoDB ID
       const isNumericId = !isNaN(Number(startupIdParam));
       const startupId = isNumericId ? Number(startupIdParam) : startupIdParam;
       const startupData = req.body;
@@ -743,7 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If not found with numeric ID, try with string ID
       if (!updatedStartup && typeof startupIdParam === 'string') {
-        // This will be implemented in storage class for Firebase compatibility 
+        // This will be implemented in storage class for MongoDB compatibility 
         // using string IDs
         updatedStartup = await storage.updateStartup(startupIdParam, startupData);
       }
@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document routes
   app.post('/api/startups/:id/documents', async (req: Request, res: Response) => {
     try {
-      // Handle both numeric IDs and Firebase string IDs
+      // Handle both numeric IDs and MongoDB string IDs
       const startupIdParam = req.params.id;
       // Use the ID as is without trying to parse it - storage layer will handle it
       const startupId = startupIdParam;
@@ -787,7 +787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/startups/:id/documents', async (req: Request, res: Response) => {
     try {
-      // Handle both numeric IDs and Firebase string IDs
+      // Handle both numeric IDs and MongoDB string IDs
       const startupIdParam = req.params.id;
       // Use the ID as is without trying to parse it - storage layer will handle it
       const startupId = startupIdParam;
@@ -805,14 +805,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get startup media files
   app.get('/api/startups/:id/media', async (req: Request, res: Response) => {
     try {
-      // Handle both numeric IDs and Firebase string IDs
+      // Handle both numeric IDs and MongoDB string IDs
       const startupIdParam = req.params.id;
       const startupId = startupIdParam;
       
       console.log(`Getting media for startup ID: ${startupId} (type: ${typeof startupId})`);
       
       // This would typically fetch from a database table
-      // For now, we'll return an empty array (media will be handled through Firebase/client-side)
+      // For now, we'll return an empty array (media will be handled through MongoDB/client-side)
       // In a real implementation, this would fetch from storage.getMediaByStartupId(startupId)
       res.status(200).json({ media: [] });
     } catch (error) {
@@ -827,7 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get startup updates
   app.get('/api/startups/:id/updates', async (req: Request, res: Response) => {
     try {
-      // Handle both numeric IDs and Firebase string IDs
+      // Handle both numeric IDs and MongoDB string IDs
       const startupIdParam = req.params.id;
       const startupId = startupIdParam;
       
@@ -897,7 +897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Getting investments for user ID: ${userIdParam} with role: ${role}`);
       
-      // Check if the ID is numeric or a Firebase UID
+      // Check if the ID is numeric or a MongoDB UID
       const isNumericId = !isNaN(Number(userIdParam));
       const userId = isNumericId ? Number(userIdParam) : userIdParam;
       
@@ -906,7 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNumericId) {
           transactions = await storage.getTransactionsByFounderId(Number(userId));
         } else {
-          // For Firebase UIDs (string IDs), we need a method that accepts string IDs
+          // For MongoDB UIDs (string IDs), we need a method that accepts string IDs
           // This will be implemented in the storage class
           transactions = await storage.getTransactionsByFounderId(userId as string);
         }
@@ -914,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNumericId) {
           transactions = await storage.getTransactionsByInvestorId(Number(userId));
         } else {
-          // For Firebase UIDs (string IDs)
+          // For MongoDB UIDs (string IDs)
           transactions = await storage.getTransactionsByInvestorId(userId as string);
         }
       }
@@ -964,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Getting chats for user ID: ${userIdParam} with role: ${role}`);
       
-      // Check if the ID is numeric or a Firebase UID
+      // Check if the ID is numeric or a MongoDB UID
       const isNumericId = !isNaN(Number(userIdParam));
       const userId = isNumericId ? Number(userIdParam) : userIdParam;
       
@@ -973,7 +973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNumericId) {
           chats = await storage.getChatsByFounderId(Number(userId));
         } else {
-          // For Firebase UIDs (string IDs), we need a method that accepts string IDs
+          // For MongoDB UIDs (string IDs), we need a method that accepts string IDs
           // This will be implemented in the storage class
           chats = await storage.getChatsByFounderId(userId as string);
         }
@@ -981,7 +981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNumericId) {
           chats = await storage.getChatsByInvestorId(Number(userId));
         } else {
-          // For Firebase UIDs (string IDs)
+          // For MongoDB UIDs (string IDs)
           chats = await storage.getChatsByInvestorId(userId as string);
         }
       }
@@ -1012,7 +1012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Getting messages for chat ID: ${chatIdParam}`);
       
-      // Check if the ID is numeric or a Firebase UID
+      // Check if the ID is numeric or a MongoDB UID
       const isNumericId = !isNaN(Number(chatIdParam));
       const chatId = isNumericId ? Number(chatIdParam) : chatIdParam;
       
@@ -1020,7 +1020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNumericId) {
         messages = await storage.getMessagesByChatId(Number(chatId));
       } else {
-        // For Firebase UIDs (string IDs), we'll need a method that accepts string IDs
+        // For MongoDB UIDs (string IDs), we'll need a method that accepts string IDs
         messages = await storage.getMessagesByChatId(chatId as string);
       }
       
@@ -1037,7 +1037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Creating message for chat ID: ${chatIdParam}`);
       
-      // Check if the ID is numeric or a Firebase UID
+      // Check if the ID is numeric or a MongoDB UID
       const isNumericId = !isNaN(Number(chatIdParam));
       const chatId = isNumericId ? Number(chatIdParam) : chatIdParam;
       
@@ -1131,7 +1131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Store message in database
             if (data.chatId && data.senderId && data.content) {
               try {
-                // Handle both numeric IDs and string IDs (for Firebase UIDs)
+                // Handle both numeric IDs and string IDs (for MongoDB UIDs)
                 const chatIdParam = data.chatId;
                 const senderIdParam = data.senderId;
                 

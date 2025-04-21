@@ -23,7 +23,7 @@ import StartupForm from "@/components/startups/StartupForm";
 import StartupMediaUpload from "@/components/startups/StartupMediaUpload";
 import StartupMediaViewer from "@/components/startups/StartupMediaViewer";
 import StartupUpdates from "@/components/startups/StartupUpdates";
-import { FirebaseStartup, FirebaseDocument } from "@/firebase/database";
+import { MongoStartup, MongoDocument } from "@/mongodb/database";
 import { Document } from "@/services/documentService";
 import ImprovedMetaMaskPayment from "@/components/payments/ImprovedMetaMaskPayment";
 import SimpleMetaMaskPayment from "@/components/payments/SimpleMetaMaskPayment";
@@ -52,7 +52,7 @@ function getNumericStartupId(id: any): number {
       return parsed;
     }
     
-    // If it's a string that can't be parsed as a number (like a Firebase ID),
+    // If it's a string that can't be parsed as a number (like a MongoDB ID),
     // generate a consistent numeric hash from the string
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
@@ -128,8 +128,8 @@ const StartupDetails = () => {
   // Safely extract data with null checks and type handling
   const startup = startupData;
   
-  // Convert FirebaseDocument to Document type expected by DocumentViewer
-  const convertToDocumentType = (doc: FirebaseDocument | any): Document => {
+  // Convert MongoDocument to Document type expected by DocumentViewer
+  const convertToDocumentType = (doc: MongoDocument | any): Document => {
     return {
       id: doc.id || '',
       startupId: doc.startupId || '',
@@ -239,7 +239,7 @@ const StartupDetails = () => {
           if (!isNaN(parsed)) {
             startupIdNumber = parsed;
           } else {
-            // If it's a Firebase ID (non-numeric string), generate a numeric hash
+            // If it's a MongoDB ID (non-numeric string), generate a numeric hash
             const stringToNumber = (str: string): number => {
               let hash = 0;
               for (let i = 0; i < str.length; i++) {

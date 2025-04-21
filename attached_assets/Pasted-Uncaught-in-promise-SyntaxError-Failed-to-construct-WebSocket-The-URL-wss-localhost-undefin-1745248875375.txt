@@ -1,0 +1,38 @@
+Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=4luo09UXhnIh' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+chunk-RPCDYKBN.js?v=1fe1d772:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+Header.tsx:28 Header rendering with auth state: 
+{user: null, isLoading: true}
+App.tsx:210 Wallet initialization complete - using real wallets from startup signups
+WebSocketContext.tsx:50 [WebSocketContext] Connecting to WebSocket server: wss://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.dev:5000/ws
+VM421:2 Executing DR script (add)...
+Header.tsx:28 Header rendering with auth state: 
+{user: {…}, isLoading: false}
+Header.tsx:54 Header - Using role from user object: founder
+FounderDashboard.tsx:521 Uncaught ReferenceError: firebaseTransactions is not defined
+    at FounderDashboard (FounderDashboard.tsx:521:7)
+Header.tsx:28 Header rendering with auth state: 
+{user: {…}, isLoading: false}
+Header.tsx:54 Header - Using role from user object: founder
+FounderDashboard.tsx:521 Uncaught ReferenceError: firebaseTransactions is not defined
+    at FounderDashboard (FounderDashboard.tsx:521:7)
+chunk-RPCDYKBN.js?v=1fe1d772:14032 The above error occurred in the <FounderDashboard> component:
+
+    at FounderDashboard (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.dev:5000/src/pages/FounderDashboard.tsx:37:44)
+    at Route (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1fe1d772:323:16)
+    at ProtectedRoute (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.dev:5000/src/lib/protected-route.tsx:22:3)
+    at Switch (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1fe1d772:379:17)
+    at Router
+    at main
+    at div
+    at AuthProvider (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.dev:5000/src/context/MongoAuthContext.tsx:36:32)
+    at App
+    at WebSocketProvider (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.dev:5000/src/context/WebSocketContext.tsx?v=JQLnae0DoLhR0tx6Chszh:32:37)
+    at QueryClientProvider (https://5319a6c2-47d5-4c06-b09f-b15b11625a0f-00-lsqso8zbjlyw.sisko.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1fe1d772:2805:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=1fe1d772:19413 Uncaught ReferenceError: firebaseTransactions is not defined
+    at FounderDashboard (FounderDashboard.tsx:521:7)

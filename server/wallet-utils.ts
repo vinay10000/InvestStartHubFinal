@@ -10,15 +10,15 @@
  * 3. Never use in-memory caching or predetermined wallet constants for lookups
  * 4. Only use predefined wallet constants for initialization purposes
  * 
- * Firebase has been completely removed from this file - all operations now use MongoDB.
+ * MongoDB is the only database used in this file.
  * - storeWalletAddress - Uses MongoDB
  * - storeStartupWalletAddress - Uses MongoDB
  * - getWalletAddressByUserId - Uses MongoDB
- * - getWalletAddressByFirebaseUid - Uses MongoDB (keeping the name for compatibility)
+ * - getWalletAddressByMongoUid - Uses MongoDB
  * - getUserIdByWalletAddress - Uses MongoDB
  * - getWalletAddressByStartupId - Uses MongoDB
  */
-import { getDB, WALLET_COLLECTION, STARTUP_WALLET_COLLECTION, USERS_COLLECTION, FIREBASE_USERS_COLLECTION, STARTUPS_COLLECTION } from './mongo';
+import { getDB, WALLET_COLLECTION, STARTUP_WALLET_COLLECTION, USERS_COLLECTION, USER_AUTH_COLLECTION, STARTUPS_COLLECTION } from './mongo';
 
 /**
  * Pre-initialized wallet addresses for known critical startups and founders
@@ -99,7 +99,7 @@ export async function storeWalletAddress(
       
       // Create dedicated MongoDB users entry for longer UIDs
       if (userIdStr.length > 20) { // Likely a MongoDB UID
-        await db.collection(FIREBASE_USERS_COLLECTION).updateOne(
+        await db.collection(USER_AUTH_COLLECTION).updateOne(
           { _id: userIdStr }, // filter
           { 
             $set: {
@@ -288,39 +288,39 @@ export async function getWalletAddressByUserId(userId: number | string): Promise
 }
 
 /**
- * Get a wallet address by Firebase UID
+ * Get a wallet address by MongoDB UID
  * Exclusively uses MongoDB for wallet lookups with no fallbacks
  */
-export async function getWalletAddressByFirebaseUid(firebaseUid: string): Promise<string | null> {
-  console.log(`[wallet-utils] Looking up wallet for Firebase UID: ${firebaseUid}`);
+export async function getWalletAddressByMongoUid(mongoUid: string): Promise<string | null> {
+  console.log(`[wallet-utils] Looking up wallet for MongoDB UID: ${mongoUid}`);
 
   const db = getDB();
   if (!db) {
-    console.error(`[wallet-utils] ❌ MongoDB not available for Firebase UID ${firebaseUid}`);
+    console.error(`[wallet-utils] ❌ MongoDB not available for MongoDB UID ${mongoUid}`);
     return null;
   }
 
   try {
-    // Check in firebase_users collection first
-    const firebaseDoc = await db.collection(FIREBASE_USERS_COLLECTION).findOne({ _id: firebaseUid });
+    // Check in user_auth collection first
+    const userAuthDoc = await db.collection(USER_AUTH_COLLECTION).findOne({ _id: mongoUid });
     
-    if (firebaseDoc && firebaseDoc.walletAddress) {
-      console.log(`[wallet-utils] ✅ Found wallet in Firebase UID record from MongoDB: ${firebaseDoc.walletAddress}`);
-      return firebaseDoc.walletAddress;
+    if (userAuthDoc && userAuthDoc.walletAddress) {
+      console.log(`[wallet-utils] ✅ Found wallet in user auth record from MongoDB: ${userAuthDoc.walletAddress}`);
+      return userAuthDoc.walletAddress;
     }
     
     // Try wallet_addresses collection next
-    const walletDoc = await db.collection(WALLET_COLLECTION).findOne({ userId: firebaseUid });
+    const walletDoc = await db.collection(WALLET_COLLECTION).findOne({ userId: mongoUid });
     
     if (walletDoc && walletDoc.walletAddress) {
       console.log(`[wallet-utils] ✅ Found wallet in wallet collection from MongoDB: ${walletDoc.walletAddress}`);
       return walletDoc.walletAddress;
     }
     
-    console.log(`[wallet-utils] ❌ No wallet found in MongoDB for Firebase UID ${firebaseUid}`);
+    console.log(`[wallet-utils] ❌ No wallet found in MongoDB for MongoDB UID ${mongoUid}`);
     return null;
   } catch (error) {
-    console.error(`[wallet-utils] ❌ Error getting wallet from MongoDB for Firebase UID ${firebaseUid}:`, error);
+    console.error(`[wallet-utils] ❌ Error getting wallet from MongoDB for MongoDB UID ${mongoUid}:`, error);
     return null;
   }
 }

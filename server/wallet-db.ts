@@ -134,11 +134,11 @@ export async function getWalletAddressByUserId(userId: number | string): Promise
 }
 
 /**
- * Get a wallet address by Firebase UID from PostgreSQL
- * Same as getWalletAddressByUserId since we store Firebase UIDs as userIds
+ * Get a wallet address by MongoDB UID from PostgreSQL
+ * Same as getWalletAddressByUserId since we store MongoDB UIDs as userIds
  */
-export async function getWalletAddressByFirebaseUid(firebaseUid: string): Promise<string | null> {
-  return getWalletAddressByUserId(firebaseUid);
+export async function getWalletAddressByMongoUid(mongoUid: string): Promise<string | null> {
+  return getWalletAddressByUserId(mongoUid);
 }
 
 /**

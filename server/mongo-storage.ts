@@ -230,17 +230,17 @@ export class MongoStorage implements IStorage {
     }
   }
 
-  async getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined> {
+  async getStartupByMongoId(mongoId: string): Promise<Startup | undefined> {
     // Get a connection release function
     const releaseConnection = useMongoConnection();
     
     try {
       const db = getDB();
-      // Try to find by string ID which could be a Firebase ID
-      const startup = await db.collection(STARTUPS_COLLECTION).findOne({ id: firebaseId });
+      // Try to find by string ID which could be a MongoDB ID
+      const startup = await db.collection(STARTUPS_COLLECTION).findOne({ id: mongoId });
       return startup ? startup as Startup : undefined;
     } catch (error) {
-      console.error(`[mongo-storage] Error getting startup by Firebase ID ${firebaseId}:`, error);
+      console.error(`[mongo-storage] Error getting startup by MongoDB ID ${mongoId}:`, error);
       return undefined;
     } finally {
       // Always release the connection

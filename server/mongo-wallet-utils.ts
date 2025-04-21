@@ -271,11 +271,11 @@ export async function getWalletAddressByUserId(userId: number | string): Promise
 }
 
 /**
- * Get a wallet address by Firebase UID from MongoDB
- * This uses the same collection as getWalletAddressByUserId since Firebase UIDs are stored as userIds
+ * Get a wallet address by MongoDB UID
+ * This uses the same collection as getWalletAddressByUserId since MongoDB UIDs are stored as userIds
  */
-export async function getWalletAddressByFirebaseUid(firebaseUid: string): Promise<string | null> {
-  return getWalletAddressByUserId(firebaseUid);
+export async function getWalletAddressByMongoUid(mongoUid: string): Promise<string | null> {
+  return getWalletAddressByUserId(mongoUid);
 }
 
 /**
