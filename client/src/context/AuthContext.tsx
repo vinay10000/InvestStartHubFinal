@@ -6,8 +6,8 @@ interface User extends SchemaUser {
   uid: string; // MongoDB ID mapped as UID for compatibility
 }
 
-// Define a Firebase-compatible user interface since we're transitioning from Firebase
-interface FirebaseUser {
+// Define a MongoDB user interface for authentication
+interface MongoUser {
   uid: string;
   email: string | null;
   displayName: string | null;
@@ -62,25 +62,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Function to synchronize user data from Firebase to context
-  const synchronizeUserData = async (firebaseUser: FirebaseUser) => {
+  // Function to synchronize user data from MongoDB to context
+  const synchronizeUserData = async (mongoUser: MongoUser) => {
     try {
-      console.log("Synchronizing user data for:", firebaseUser.uid);
-      // Get user data from Firebase Realtime Database
-      const userData = await getUserByUid(firebaseUser.uid);
+      console.log("Synchronizing user data for:", mongoUser.uid);
+      // Get user data from MongoDB
+      const userData = await getUserByUid(mongoUser.uid);
       
       if (userData) {
-        console.log("Found user data in Firebase Realtime DB:", userData);
-        // Convert Firebase data format to our User type
-        // We need to maintain both the schema's numeric id and the Firebase string id
+        console.log("Found user data in MongoDB:", userData);
+        // Convert MongoDB data format to our User type
+        // We need to maintain both the schema's numeric id and the string id
         const formattedUser = {
           // Use the actual ID if present, or a temporary one
-          id: userData.id || firebaseUser.uid,
-          // Store the Firebase UID directly in the user object to make it available everywhere
-          uid: firebaseUser.uid,
-          username: userData.username || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          email: userData.email || firebaseUser.email || '',
-          profilePicture: userData.profilePicture || firebaseUser.photoURL || '',
+          id: userData.id || mongoUser.uid,
+          // Store the UID directly in the user object to make it available everywhere
+          uid: mongoUser.uid,
+          username: userData.username || mongoUser.displayName || mongoUser.email?.split('@')[0] || 'User',
+          email: userData.email || mongoUser.email || '',
+          profilePicture: userData.profilePicture || mongoUser.photoURL || '',
           role: userData.role || 'investor',
           walletAddress: userData.walletAddress || '',
           createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
@@ -93,27 +93,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(formattedUser);
         return formattedUser;
       } else {
-        console.log("No existing user data found in Firebase database. Creating new user data...");
+        console.log("No existing user data found in MongoDB. Creating new user data...");
         
-        // Create a new user in Firebase Realtime Database
+        // Create a new user in MongoDB
         const newUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          profilePicture: firebaseUser.photoURL || '',
+          uid: mongoUser.uid,
+          email: mongoUser.email || '',
+          username: mongoUser.displayName || mongoUser.email?.split('@')[0] || 'User',
+          profilePicture: mongoUser.photoURL || '',
           role: 'investor', // Default role
           walletAddress: '',
           createdAt: new Date().toISOString()
         };
         
-        // Save the new user to Firebase
-        const savedUser = await updateUser(firebaseUser.uid, newUser);
-        console.log("Created new user in Firebase Realtime DB:", savedUser);
+        // Save the new user to MongoDB
+        const savedUser = await updateUser(mongoUser.uid, newUser);
+        console.log("Created new user in MongoDB:", savedUser);
         
         // Format the user for the context
         const formattedUser = {
-          id: firebaseUser.uid,
-          uid: firebaseUser.uid,
+          id: mongoUser.uid,
+          uid: mongoUser.uid,
           username: newUser.username,
           email: newUser.email,
           profilePicture: newUser.profilePicture,
@@ -132,13 +132,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error synchronizing user data:", error);
       // Even if there's an error with the database, we can still create a minimal user object
-      // from the Firebase authentication data to allow basic functionality
+      // from the MongoDB authentication data to allow basic functionality
       const minimalUser = {
-        id: firebaseUser.uid,
-        uid: firebaseUser.uid,
-        username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-        email: firebaseUser.email || '',
-        profilePicture: firebaseUser.photoURL || '',
+        id: mongoUser.uid,
+        uid: mongoUser.uid,
+        username: mongoUser.displayName || mongoUser.email?.split('@')[0] || 'User',
+        email: mongoUser.email || '',
+        profilePicture: mongoUser.photoURL || '',
         role: 'investor', // Default role
         walletAddress: '',
         createdAt: new Date(),
@@ -158,12 +158,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("Setting up auth state listener");
     setLoading(true);
     
-    const unsubscribe = onAuthChange(async (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser ? firebaseUser.uid : "null");
+    const unsubscribe = onAuthChange(async (mongoUser) => {
+      console.log("Auth state changed:", mongoUser ? mongoUser.uid : "null");
       
-      if (firebaseUser) {
+      if (mongoUser) {
         try {
-          const userData = await synchronizeUserData(firebaseUser);
+          const userData = await synchronizeUserData(mongoUser);
           
           if (userData) {
             // Successfully synchronized user data
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
-        console.log("No firebase user - signed out");
+        console.log("No MongoDB user - signed out");
         setUser(null);
       }
       
@@ -364,7 +364,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
-        throw new Error("Firebase user not found");
+        throw new Error("MongoDB user not found");
       }
       
       // Sanitize data
@@ -379,7 +379,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("AuthContext: Updated user_role in localStorage:", updatedData.role);
       }
       
-      // Update user in Firebase Realtime Database
+      // Update user in MongoDB
       await updateUser(currentUser.uid, updatedData);
       
       // Force synchronization to get updated user data
@@ -413,20 +413,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
-        throw new Error("Firebase user not found");
+        throw new Error("MongoDB user not found");
       }
       
-      // Update user wallet in Firebase Realtime Database
+      // Update user wallet in MongoDB
       console.log("[AuthContext] Updating user profile with wallet address:", walletAddress);
       await updateUser(currentUser.uid, { walletAddress });
       
       // Also save to our dedicated wallet database for cross-referencing
-      const { saveWalletAddress, migrateWalletToFirebaseUid } = await import("@/mongodb/walletDatabase");
+      const { saveWalletAddress, migrateWalletToMongoUid } = await import("@/mongodb/walletDatabase");
       
       try {
         console.log("[AuthContext] Saving wallet address to dedicated wallet database");
         
-        // Store wallet address associated with Firebase UID
+        // Store wallet address associated with MongoDB UID
         await saveWalletAddress(
           currentUser.uid, 
           walletAddress, 
@@ -434,12 +434,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user.role || ''
         );
         
-        // If we have a numeric user ID, also migrate from that to Firebase UID
+        // If we have a numeric user ID, also migrate from that to MongoDB UID
         if (user.id && user.id.toString() !== currentUser.uid) {
-          console.log("[AuthContext] Also migrating from numeric ID to Firebase UID:", 
-            { numericId: user.id.toString(), firebaseUid: currentUser.uid });
+          console.log("[AuthContext] Also migrating from numeric ID to MongoDB UID:", 
+            { numericId: user.id.toString(), mongoUid: currentUser.uid });
           
-          await migrateWalletToFirebaseUid(
+          await migrateWalletToMongoUid(
             user.id.toString(), 
             currentUser.uid,
             walletAddress
@@ -451,8 +451,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const commonNumericIds = ["1", "2", "3", "4", "5", "10"];
         for (const numericId of commonNumericIds) {
           try {
-            // Try to migrate any existing wallets with these IDs to the Firebase UID
-            await migrateWalletToFirebaseUid(
+            // Try to migrate any existing wallets with these IDs to the MongoDB UID
+            await migrateWalletToMongoUid(
               numericId,
               currentUser.uid,
               walletAddress
@@ -504,13 +504,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
-        throw new Error("Firebase user not found");
+        throw new Error("MongoDB user not found");
       }
       
       // Save current wallet address for cleanup
       const oldWalletAddress = user.walletAddress;
       
-      // Update user wallet in Firebase Realtime Database with empty string
+      // Update user wallet in MongoDB with empty string
       await updateUser(currentUser.uid, { walletAddress: '' });
       
       // Also remove from our dedicated wallet database for cross-referencing

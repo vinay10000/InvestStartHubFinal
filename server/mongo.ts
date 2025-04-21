@@ -43,6 +43,7 @@ export const CHATS_COLLECTION = 'chats';
 export const MESSAGES_COLLECTION = 'messages';
 export const WALLET_COLLECTION = 'wallet_addresses';
 export const STARTUP_WALLET_COLLECTION = 'startup_wallet_addresses';
+export const FIREBASE_USERS_COLLECTION = 'firebase_users';
 
 // Initialize MongoDB connection with fallback strategies
 export async function connectToMongoDB() {
@@ -107,7 +108,8 @@ export async function connectToMongoDB() {
         CHATS_COLLECTION,
         MESSAGES_COLLECTION,
         WALLET_COLLECTION,
-        STARTUP_WALLET_COLLECTION
+        STARTUP_WALLET_COLLECTION,
+        FIREBASE_USERS_COLLECTION
       ];
       
       // Create each collection if it doesn't exist
@@ -160,7 +162,8 @@ const inMemoryStorage: Record<string, Map<string, any>> = {
   [CHATS_COLLECTION]: new Map<string, any>(),
   [MESSAGES_COLLECTION]: new Map<string, any>(),
   [WALLET_COLLECTION]: new Map<string, any>(),
-  [STARTUP_WALLET_COLLECTION]: new Map<string, any>()
+  [STARTUP_WALLET_COLLECTION]: new Map<string, any>(),
+  [FIREBASE_USERS_COLLECTION]: new Map<string, any>()
 };
 
 // Get MongoDB database instance with fallback support

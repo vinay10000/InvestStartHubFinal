@@ -1,28 +1,16 @@
 /**
- * Firebase database initialization
- * This file initializes Firebase Admin SDK for server-side access to Firestore and Realtime Database
+ * MongoDB Database Placeholders
+ * 
+ * This file provides placeholder exports for what was previously Firebase functionality.
+ * Now the system exclusively uses MongoDB for all database operations.
  */
-import admin from 'firebase-admin';
 import { log } from './vite';
 
-// Initialize Firebase Admin SDK
-let firebaseApp: admin.app.App | null = null;
-let firestore: admin.firestore.Firestore | null = null;
-let realtimeDb: admin.database.Database | null = null;
+// Define null values to avoid reference errors when imported
+const firebaseApp = null;
+const firestore = null;
+const realtimeDb = null;
 
-try {
-  // Initialize Firebase Admin SDK with default credentials
-  firebaseApp = admin.initializeApp({
-    databaseURL: 'https://ggfinal-3eda9-default-rtdb.asia-southeast1.firebasedatabase.app'
-  });
-
-  // Initialize Firestore and Realtime Database
-  firestore = admin.firestore();
-  realtimeDb = admin.database();
-  
-  log('Firebase Admin SDK initialized successfully');
-} catch (error) {
-  log('Error initializing Firebase Admin SDK:', error instanceof Error ? error.message : String(error));
-}
+log('Using MongoDB exclusively - Firebase has been removed');
 
 export { firebaseApp, firestore, realtimeDb };

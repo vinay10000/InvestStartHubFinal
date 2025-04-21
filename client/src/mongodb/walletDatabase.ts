@@ -6,17 +6,17 @@
  */
 
 /**
- * Migrate a wallet from a numeric user ID to a Firebase UID
- * This is used during the transition from MongoDB to Firebase
+ * Migrate a wallet from a numeric user ID to a MongoDB UID
+ * This is used during the transition from numeric IDs to MongoDB UIDs
  * 
- * @param numericId The numeric ID of the user in the database
- * @param firebaseUid The Firebase UID to associate with the wallet
+ * @param numericId The ID of the user in the database (can be string or number)
+ * @param mongoUid The MongoDB UID to associate with the wallet
  * @param walletAddress The wallet address to migrate
  * @returns A promise that resolves when the operation is complete
  */
-export async function migrateWalletToFirebaseUid(
-  numericId: number,
-  firebaseUid: string,
+export async function migrateWalletToMongoUid(
+  numericId: string | number,
+  mongoUid: string,
   walletAddress: string
 ): Promise<void> {
   try {
@@ -28,7 +28,7 @@ export async function migrateWalletToFirebaseUid(
       },
       body: JSON.stringify({
         numericId,
-        firebaseUid,
+        mongoUid, // Changed from firebaseUid to mongoUid
         walletAddress
       }),
       credentials: 'include'
@@ -38,7 +38,7 @@ export async function migrateWalletToFirebaseUid(
       throw new Error('Failed to migrate wallet address');
     }
     
-    console.log(`Wallet address ${walletAddress} migrated from user ${numericId} to Firebase UID ${firebaseUid}`);
+    console.log(`Wallet address ${walletAddress} migrated from user ${numericId} to MongoDB UID ${mongoUid}`);
   } catch (error) {
     console.error('Error migrating wallet address:', error);
     throw error;

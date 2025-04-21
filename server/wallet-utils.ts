@@ -9,8 +9,16 @@
  * 2. Return null if MongoDB lookup fails (no fallbacks)
  * 3. Never use in-memory caching or predetermined wallet constants for lookups
  * 4. Only use predefined wallet constants for initialization purposes
+ * 
+ * Firebase has been completely removed from this file - all operations now use MongoDB.
+ * - storeWalletAddress - Uses MongoDB
+ * - storeStartupWalletAddress - Uses MongoDB
+ * - getWalletAddressByUserId - Uses MongoDB
+ * - getWalletAddressByFirebaseUid - Uses MongoDB (keeping the name for compatibility)
+ * - getUserIdByWalletAddress - Uses MongoDB
+ * - getWalletAddressByStartupId - Uses MongoDB
  */
-import { getDB } from './mongo';
+import { getDB, WALLET_COLLECTION, STARTUP_WALLET_COLLECTION, USERS_COLLECTION, FIREBASE_USERS_COLLECTION, STARTUPS_COLLECTION } from './mongo';
 
 /**
  * Pre-initialized wallet addresses for known critical startups and founders
@@ -34,12 +42,6 @@ const KNOWN_WALLETS: Record<string, string> = {
 
 // Note: No in-memory cache is used. All wallet lookups go directly to MongoDB
 
-// Collection names
-const WALLET_COLLECTION = 'wallet_addresses';
-const STARTUP_WALLET_COLLECTION = 'startup_wallet_addresses';
-const USERS_COLLECTION = 'users';
-const STARTUPS_COLLECTION = 'startups';
-
 /**
  * Store a wallet address for a user
  * @param userId The user ID
@@ -59,42 +61,60 @@ export async function storeWalletAddress(
     
     console.log(`[wallet-utils] Storing wallet ${normalizedWalletAddress} for user ${userIdStr}`);
     
-    if (!firestore) {
-      console.error('[wallet-utils] Firestore is not initialized!');
+    const db = getDB();
+    if (!db) {
+      console.error('[wallet-utils] MongoDB is not initialized!');
       return false;
     }
     
     // Store in the wallet collection
     try {
-      const walletRef = firestore.collection(WALLET_COLLECTION).doc(userIdStr);
-      await walletRef.set({ 
+      // Create the wallet record object
+      const walletRecord = { 
         userId: userIdStr,
         walletAddress: normalizedWalletAddress,
         isPermanent: isPermanent,
         createdAt: new Date(),
         updatedAt: new Date()
-      }, { merge: true });
+      };
+      
+      // Insert or update in wallet_addresses collection
+      await db.collection(WALLET_COLLECTION).updateOne(
+        { userId: userIdStr }, // filter
+        { $set: walletRecord }, // update
+        { upsert: true } // create if it doesn't exist
+      );
       
       // Also update the user's record
-      const userRef = firestore.collection(USERS_COLLECTION).doc(userIdStr);
-      await userRef.set({ 
-        walletAddress: normalizedWalletAddress,
-        walletAddressUpdatedAt: new Date()
-      }, { merge: true });
+      await db.collection(USERS_COLLECTION).updateOne(
+        { _id: userIdStr }, // filter
+        { 
+          $set: { 
+            walletAddress: normalizedWalletAddress,
+            walletAddressUpdatedAt: new Date()
+          } 
+        },
+        { upsert: true } // create if it doesn't exist
+      );
       
-      // Create dedicated firebase_users entry for Firebase UIDs
-      if (userIdStr.length > 20) { // Likely a Firebase UID
-        const firebaseUserRef = firestore.collection(FIREBASE_USERS_COLLECTION).doc(userIdStr);
-        await firebaseUserRef.set({
-          walletAddress: normalizedWalletAddress,
-          updatedAt: new Date()
-        }, { merge: true });
+      // Create dedicated MongoDB users entry for longer UIDs
+      if (userIdStr.length > 20) { // Likely a MongoDB UID
+        await db.collection(FIREBASE_USERS_COLLECTION).updateOne(
+          { _id: userIdStr }, // filter
+          { 
+            $set: {
+              walletAddress: normalizedWalletAddress,
+              updatedAt: new Date()
+            } 
+          },
+          { upsert: true } // create if it doesn't exist
+        );
       }
       
-      console.log(`[wallet-utils] Successfully stored wallet in Firestore for user ${userIdStr}`);
+      console.log(`[wallet-utils] Successfully stored wallet in MongoDB for user ${userIdStr}`);
       return true;
-    } catch (firestoreError) {
-      console.error(`[wallet-utils] Error storing wallet in Firestore:`, firestoreError);
+    } catch (mongoError) {
+      console.error(`[wallet-utils] Error storing wallet in MongoDB:`, mongoError);
       return false;
     }
   } catch (error) {
@@ -133,35 +153,47 @@ export async function storeStartupWalletAddress(
       console.log(`[wallet-utils] Successfully updated wallet for critical startup and founders`);
     }
     
-    if (!firestore) {
-      console.error('[wallet-utils] Firestore is not initialized!');
+    const db = getDB();
+    if (!db) {
+      console.error('[wallet-utils] MongoDB is not initialized!');
       return false;
     }
     
     try {
-      // Store in the startup wallet collection
-      const walletRef = firestore.collection(STARTUP_WALLET_COLLECTION).doc(startupIdStr);
-      await walletRef.set({ 
+      // Create the startup wallet record
+      const walletRecord = {
         startupId: startupIdStr,
         founderId: founderIdStr,
         walletAddress: normalizedWalletAddress,
         createdAt: new Date(),
         updatedAt: new Date()
-      }, { merge: true });
+      };
+      
+      // Store in the startup wallet collection
+      await db.collection(STARTUP_WALLET_COLLECTION).updateOne(
+        { startupId: startupIdStr }, // filter
+        { $set: walletRecord }, // update
+        { upsert: true } // create if it doesn't exist
+      );
       
       // Also update the startup record
-      const startupRef = firestore.collection(STARTUPS_COLLECTION).doc(startupIdStr);
-      await startupRef.set({ 
-        walletAddress: normalizedWalletAddress,
-        founderWalletAddress: normalizedWalletAddress,
-        founderId: founderIdStr,
-        walletAddressUpdatedAt: new Date()
-      }, { merge: true });
+      await db.collection(STARTUPS_COLLECTION).updateOne(
+        { _id: startupIdStr }, // filter
+        { 
+          $set: {
+            walletAddress: normalizedWalletAddress,
+            founderWalletAddress: normalizedWalletAddress,
+            founderId: founderIdStr,
+            walletAddressUpdatedAt: new Date()
+          }
+        },
+        { upsert: true } // create if it doesn't exist
+      );
       
-      console.log(`[wallet-utils] Successfully stored wallet in Firestore for startup ${startupIdStr}`);
+      console.log(`[wallet-utils] Successfully stored wallet in MongoDB for startup ${startupIdStr}`);
       return true;
-    } catch (firestoreError) {
-      console.error(`[wallet-utils] Error storing startup wallet in Firestore:`, firestoreError);
+    } catch (mongoError) {
+      console.error(`[wallet-utils] Error storing startup wallet in MongoDB:`, mongoError);
       return false;
     }
   } catch (error) {
@@ -174,7 +206,7 @@ export async function storeStartupWalletAddress(
  * Init wallet addresses for the known founders and startups
  * This ensures the data is in the database
  * 
- * This version is more resilient to Firebase connection failures and does not 
+ * This version is resilient to MongoDB connection issues and does not 
  * throw exceptions that could crash the application startup
  */
 export async function initKnownWalletAddresses(): Promise<void> {
@@ -217,103 +249,87 @@ export async function initKnownWalletAddresses(): Promise<void> {
 
 /**
  * Get a wallet address by user ID
- * Exclusively uses Firestore for wallet lookups with no fallbacks
+ * Exclusively uses MongoDB for wallet lookups with no fallbacks
  */
 export async function getWalletAddressByUserId(userId: number | string): Promise<string | null> {
   const userIdStr = userId.toString();
   
   console.log(`[wallet-utils] Looking up wallet address for user ID: ${userIdStr}`);
 
-  // Only use Firestore - no fallbacks
-  if (!firestore) {
-    console.error(`[wallet-utils] ❌ Firestore not available for user ${userIdStr}`);
+  const db = getDB();
+  if (!db) {
+    console.error(`[wallet-utils] ❌ MongoDB not available for user ${userIdStr}`);
     return null;
   }
 
   try {
     // Check in the wallet_addresses collection
-    const walletRef = firestore.collection(WALLET_COLLECTION).doc(userIdStr);
-    const walletDoc = await walletRef.get();
+    const walletDoc = await db.collection(WALLET_COLLECTION).findOne({ userId: userIdStr });
     
-    if (walletDoc.exists) {
-      const walletData = walletDoc.data();
-      if (walletData?.walletAddress) {
-        console.log(`[wallet-utils] ✅ Found wallet for user ${userIdStr} in Firestore: ${walletData.walletAddress}`);
-        return walletData.walletAddress;
-      }
+    if (walletDoc && walletDoc.walletAddress) {
+      console.log(`[wallet-utils] ✅ Found wallet for user ${userIdStr} in MongoDB: ${walletDoc.walletAddress}`);
+      return walletDoc.walletAddress;
     }
     
     // If not found in wallet collection, check in users
-    const userRef = firestore.collection(USERS_COLLECTION).doc(userIdStr);
-    const userDoc = await userRef.get();
+    const userDoc = await db.collection(USERS_COLLECTION).findOne({ _id: userIdStr });
     
-    if (userDoc.exists) {
-      const userData = userDoc.data();
-      if (userData?.walletAddress) {
-        console.log(`[wallet-utils] ✅ Found wallet in user record from Firestore: ${userData.walletAddress}`);
-        return userData.walletAddress;
-      }
+    if (userDoc && userDoc.walletAddress) {
+      console.log(`[wallet-utils] ✅ Found wallet in user record from MongoDB: ${userDoc.walletAddress}`);
+      return userDoc.walletAddress;
     }
     
-    console.log(`[wallet-utils] ❌ No wallet found in Firestore for user ${userIdStr}`);
+    console.log(`[wallet-utils] ❌ No wallet found in MongoDB for user ${userIdStr}`);
     return null;
   } catch (error) {
-    console.error(`[wallet-utils] ❌ Error getting wallet from Firestore for user ${userIdStr}:`, error);
+    console.error(`[wallet-utils] ❌ Error getting wallet from MongoDB for user ${userIdStr}:`, error);
     return null;
   }
 }
 
 /**
  * Get a wallet address by Firebase UID
- * Exclusively uses Firestore for wallet lookups with no fallbacks
+ * Exclusively uses MongoDB for wallet lookups with no fallbacks
  */
 export async function getWalletAddressByFirebaseUid(firebaseUid: string): Promise<string | null> {
   console.log(`[wallet-utils] Looking up wallet for Firebase UID: ${firebaseUid}`);
 
-  // Only use Firestore - no fallbacks
-  if (!firestore) {
-    console.error(`[wallet-utils] ❌ Firestore not available for Firebase UID ${firebaseUid}`);
+  const db = getDB();
+  if (!db) {
+    console.error(`[wallet-utils] ❌ MongoDB not available for Firebase UID ${firebaseUid}`);
     return null;
   }
 
   try {
     // Check in firebase_users collection first
-    const firebaseRef = firestore.collection(FIREBASE_USERS_COLLECTION).doc(firebaseUid);
-    const firebaseDoc = await firebaseRef.get();
+    const firebaseDoc = await db.collection(FIREBASE_USERS_COLLECTION).findOne({ _id: firebaseUid });
     
-    if (firebaseDoc.exists) {
-      const fbData = firebaseDoc.data();
-      if (fbData?.walletAddress) {
-        console.log(`[wallet-utils] ✅ Found wallet in Firebase UID record from Firestore: ${fbData.walletAddress}`);
-        return fbData.walletAddress;
-      }
+    if (firebaseDoc && firebaseDoc.walletAddress) {
+      console.log(`[wallet-utils] ✅ Found wallet in Firebase UID record from MongoDB: ${firebaseDoc.walletAddress}`);
+      return firebaseDoc.walletAddress;
     }
     
     // Try wallet_addresses collection next
-    const walletRef = firestore.collection(WALLET_COLLECTION).doc(firebaseUid);
-    const walletDoc = await walletRef.get();
+    const walletDoc = await db.collection(WALLET_COLLECTION).findOne({ userId: firebaseUid });
     
-    if (walletDoc.exists) {
-      const walletData = walletDoc.data();
-      if (walletData?.walletAddress) {
-        console.log(`[wallet-utils] ✅ Found wallet in wallet collection from Firestore: ${walletData.walletAddress}`);
-        return walletData.walletAddress;
-      }
+    if (walletDoc && walletDoc.walletAddress) {
+      console.log(`[wallet-utils] ✅ Found wallet in wallet collection from MongoDB: ${walletDoc.walletAddress}`);
+      return walletDoc.walletAddress;
     }
     
-    console.log(`[wallet-utils] ❌ No wallet found in Firestore for Firebase UID ${firebaseUid}`);
+    console.log(`[wallet-utils] ❌ No wallet found in MongoDB for Firebase UID ${firebaseUid}`);
     return null;
   } catch (error) {
-    console.error(`[wallet-utils] ❌ Error getting wallet from Firestore for Firebase UID ${firebaseUid}:`, error);
+    console.error(`[wallet-utils] ❌ Error getting wallet from MongoDB for Firebase UID ${firebaseUid}:`, error);
     return null;
   }
 }
 
-// Note: No in-memory reverse cache is used. All wallet lookups go directly to Firestore
+// Note: No in-memory reverse cache is used. All wallet lookups go directly to MongoDB
 
 /**
  * Get user ID by wallet address
- * Exclusively uses Firestore for wallet lookups with no fallbacks
+ * Exclusively uses MongoDB for wallet lookups with no fallbacks
  */
 export async function getUserIdByWalletAddress(walletAddress: string): Promise<number | null> {
   if (!walletAddress) {
@@ -326,82 +342,76 @@ export async function getUserIdByWalletAddress(walletAddress: string): Promise<n
   
   console.log(`[wallet-utils] Looking up user for wallet address: ${normalizedWalletAddress}`);
   
-  // Only use Firestore - no fallbacks
-  if (!firestore) {
-    console.error(`[wallet-utils] ❌ Firestore not available for wallet lookup ${normalizedWalletAddress}`);
+  const db = getDB();
+  if (!db) {
+    console.error(`[wallet-utils] ❌ MongoDB not available for wallet lookup ${normalizedWalletAddress}`);
     return null;
   }
 
   try {
     // Query the wallet_addresses collection
-    const walletSnapshot = await firestore.collection(WALLET_COLLECTION)
-      .where('walletAddress', '==', normalizedWalletAddress)
-      .get();
+    const walletDoc = await db.collection(WALLET_COLLECTION).findOne({ walletAddress: normalizedWalletAddress });
     
-    if (!walletSnapshot.empty) {
-      const userIdStr = walletSnapshot.docs[0].id;
-      console.log(`[wallet-utils] ✅ Found user ${userIdStr} for wallet in Firestore wallet collection`);
+    if (walletDoc) {
+      const userIdStr = walletDoc.userId || walletDoc._id;
+      console.log(`[wallet-utils] ✅ Found user ${userIdStr} for wallet in MongoDB wallet collection`);
       
       const numericId = parseInt(userIdStr);
       return isNaN(numericId) ? null : numericId;
     }
     
     // Query the users collection
-    const userSnapshot = await firestore.collection(USERS_COLLECTION)
-      .where('walletAddress', '==', normalizedWalletAddress)
-      .get();
+    const userDoc = await db.collection(USERS_COLLECTION).findOne({ walletAddress: normalizedWalletAddress });
     
-    if (!userSnapshot.empty) {
-      const userIdStr = userSnapshot.docs[0].id;
-      console.log(`[wallet-utils] ✅ Found user ${userIdStr} for wallet in Firestore users collection`);
+    if (userDoc) {
+      const userIdStr = userDoc._id;
+      console.log(`[wallet-utils] ✅ Found user ${userIdStr} for wallet in MongoDB users collection`);
       
       const numericId = parseInt(userIdStr);
       return isNaN(numericId) ? null : numericId;
     }
     
-    console.log(`[wallet-utils] ❌ No user found in Firestore for wallet address ${normalizedWalletAddress}`);
+    console.log(`[wallet-utils] ❌ No user found in MongoDB for wallet address ${normalizedWalletAddress}`);
     return null;
   } catch (error) {
-    console.error(`[wallet-utils] ❌ Error looking up user by wallet address in Firestore:`, error);
+    console.error(`[wallet-utils] ❌ Error looking up user by wallet address in MongoDB:`, error);
     return null;
   }
 }
 
 /**
  * Get a wallet address by startup ID
- * Exclusively uses Firestore for wallet lookups with absolutely no fallbacks
+ * Exclusively uses MongoDB for wallet lookups with absolutely no fallbacks
  */
 export async function getWalletAddressByStartupId(startupId: number | string): Promise<string | null> {
   const startupIdStr = startupId.toString();
   
   console.log(`[wallet-utils] Looking up wallet address for startup ID: ${startupIdStr}`);
   
-  // Only use Firestore - no fallbacks
-  if (!firestore) {
-    console.error(`[wallet-utils] ❌ Firestore not available for startup ${startupIdStr}`);
+  const db = getDB();
+  if (!db) {
+    console.error(`[wallet-utils] ❌ MongoDB not available for startup ${startupIdStr}`);
     return null;
   }
 
   try {
     // Check in startup_wallet_addresses collection first
-    const walletRef = firestore.collection(STARTUP_WALLET_COLLECTION).doc(startupIdStr);
-    const walletDoc = await walletRef.get();
+    const walletDoc = await db.collection(STARTUP_WALLET_COLLECTION).findOne({ startupId: startupIdStr });
     
-    if (walletDoc.exists) {
-      const walletData = walletDoc.data();
-      if (walletData?.walletAddress) {
-        console.log(`[wallet-utils] ✅ Found wallet in startup wallet collection from Firestore: ${walletData.walletAddress}`);
-        return walletData.walletAddress;
+    if (walletDoc) {
+      if (walletDoc.walletAddress) {
+        console.log(`[wallet-utils] ✅ Found wallet in startup wallet collection from MongoDB: ${walletDoc.walletAddress}`);
+        return walletDoc.walletAddress;
       }
       
       // If no wallet but has founderId, try getting founder's wallet
-      if (walletData?.founderId) {
-        const founderWallet = await getWalletAddressByUserId(walletData.founderId);
+      if (walletDoc.founderId) {
+        const founderWallet = await getWalletAddressByUserId(walletDoc.founderId);
         if (founderWallet) {
-          console.log(`[wallet-utils] ✅ Found wallet via founder lookup from Firestore: ${founderWallet}`);
+          console.log(`[wallet-utils] ✅ Found wallet via founder lookup from MongoDB: ${founderWallet}`);
           
           // Store for future lookups
-          storeStartupWalletAddress(startupIdStr, walletData.founderId, founderWallet).catch(err =>
+          storeStartupWalletAddress(startupIdStr, walletDoc.founderId, founderWallet).catch(err =>
             console.warn(`[wallet-utils] Non-critical error storing startup wallet from founder:`, err)
           );
           
@@ -411,32 +421,29 @@ export async function getWalletAddressByStartupId(startupId: number | string): P
     }
     
     // Check in startups collection
-    const startupRef = firestore.collection(STARTUPS_COLLECTION).doc(startupIdStr);
-    const startupDoc = await startupRef.get();
+    const startupDoc = await db.collection(STARTUPS_COLLECTION).findOne({ _id: startupIdStr });
     
-    if (startupDoc.exists) {
-      const startupData = startupDoc.data();
-      
+    if (startupDoc) {
       // First try walletAddress in startup record
-      if (startupData?.walletAddress) {
-        console.log(`[wallet-utils] ✅ Found wallet in startup record from Firestore: ${startupData.walletAddress}`);
-        return startupData.walletAddress;
+      if (startupDoc.walletAddress) {
+        console.log(`[wallet-utils] ✅ Found wallet in startup record from MongoDB: ${startupDoc.walletAddress}`);
+        return startupDoc.walletAddress;
       }
       
       // Next try founderWalletAddress
-      if (startupData?.founderWalletAddress) {
-        console.log(`[wallet-utils] ✅ Found founder wallet in startup record from Firestore: ${startupData.founderWalletAddress}`);
-        return startupData.founderWalletAddress;
+      if (startupDoc.founderWalletAddress) {
+        console.log(`[wallet-utils] ✅ Found founder wallet in startup record from MongoDB: ${startupDoc.founderWalletAddress}`);
+        return startupDoc.founderWalletAddress;
       }
       
       // If has founderId, try getting founder's wallet
-      if (startupData?.founderId) {
-        const founderWallet = await getWalletAddressByUserId(startupData.founderId);
+      if (startupDoc.founderId) {
+        const founderWallet = await getWalletAddressByUserId(startupDoc.founderId);
         if (founderWallet) {
-          console.log(`[wallet-utils] ✅ Found wallet via founder ID lookup from Firestore: ${founderWallet}`);
+          console.log(`[wallet-utils] ✅ Found wallet via founder ID lookup from MongoDB: ${founderWallet}`);
           
           // Store for future lookups
-          storeStartupWalletAddress(startupIdStr, startupData.founderId, founderWallet).catch(err =>
+          storeStartupWalletAddress(startupIdStr, startupDoc.founderId, founderWallet).catch(err =>
             console.warn(`[wallet-utils] Non-critical error storing startup wallet from founder ID:`, err)
           );
           
@@ -445,10 +452,10 @@ export async function getWalletAddressByStartupId(startupId: number | string): P
       }
     }
     
-    console.log(`[wallet-utils] ❌ No wallet found in Firestore for startup ${startupIdStr}`);
+    console.log(`[wallet-utils] ❌ No wallet found in MongoDB for startup ${startupIdStr}`);
     return null;
   } catch (error) {
-    console.error(`[wallet-utils] ❌ Error getting wallet from Firestore for startup ${startupIdStr}:`, error);
+    console.error(`[wallet-utils] ❌ Error getting wallet from MongoDB for startup ${startupIdStr}:`, error);
     return null;
   }
 }

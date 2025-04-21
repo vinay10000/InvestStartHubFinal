@@ -1,7 +1,6 @@
 import express from 'express';
 import { Request, Response } from 'express';
 import * as mongoWalletUtils from './mongo-wallet-utils';
-import * as firestoreWalletUtils from './wallet-utils';
 
 const router = express.Router();
 
@@ -36,29 +35,18 @@ router.post('/initialize', async (req: Request, res: Response) => {
 
 /**
  * Get wallet address by user ID
- * First tries MongoDB, falls back to Firestore if no wallet found
+ * Uses MongoDB exclusively
  */
 router.get('/user/:userId', async (req: Request, res: Response) => {
   const userId = req.params.userId;
   console.log(`[wallet-routes] Getting wallet address for user: ${userId}`);
   
   try {
-    // First try MongoDB
+    // Use MongoDB only
     const mongoWallet = await mongoWalletUtils.getWalletAddressByUserId(userId);
     if (mongoWallet) {
       console.log(`[wallet-routes] ✅ Found wallet for user ${userId} in MongoDB: ${mongoWallet}`);
       return res.json({ walletAddress: mongoWallet, source: 'mongodb' });
-    }
-    
-    // If not found in MongoDB, try Firestore
-    const firestoreWallet = await firestoreWalletUtils.getWalletAddressByUserId(userId);
-    if (firestoreWallet) {
-      console.log(`[wallet-routes] ✅ Found wallet for user ${userId} in Firestore: ${firestoreWallet}`);
-      
-      // Store in MongoDB for future lookups
-      await mongoWalletUtils.storeWalletAddress(userId, firestoreWallet);
-      
-      return res.json({ walletAddress: firestoreWallet, source: 'firestore' });
     }
     
     console.log(`[wallet-routes] ❌ No wallet found for user ${userId}`);
@@ -71,30 +59,18 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
 
 /**
  * Get wallet address by startup ID
- * First tries MongoDB, falls back to Firestore if no wallet found
+ * Uses MongoDB exclusively
  */
 router.get('/startup/:startupId', async (req: Request, res: Response) => {
   const startupId = req.params.startupId;
   console.log(`[wallet-routes] Getting wallet address for startup: ${startupId}`);
   
   try {
-    // First try MongoDB
+    // Use MongoDB only
     const mongoWallet = await mongoWalletUtils.getWalletAddressByStartupId(startupId);
     if (mongoWallet) {
       console.log(`[wallet-routes] ✅ Found wallet for startup ${startupId} in MongoDB: ${mongoWallet}`);
       return res.json({ walletAddress: mongoWallet, source: 'mongodb' });
-    }
-    
-    // If not found in MongoDB, try Firestore
-    const firestoreWallet = await firestoreWalletUtils.getWalletAddressByStartupId(startupId);
-    if (firestoreWallet) {
-      console.log(`[wallet-routes] ✅ Found wallet for startup ${startupId} in Firestore: ${firestoreWallet}`);
-      
-      // Store in MongoDB for future lookups
-      // We don't have the founder ID here, but we can use the startup ID as a placeholder
-      await mongoWalletUtils.storeStartupWalletAddress(startupId, startupId, firestoreWallet);
-      
-      return res.json({ walletAddress: firestoreWallet, source: 'firestore' });
     }
     
     console.log(`[wallet-routes] ❌ No wallet found for startup ${startupId}`);
@@ -107,29 +83,18 @@ router.get('/startup/:startupId', async (req: Request, res: Response) => {
 
 /**
  * Get user ID by wallet address
- * First tries MongoDB, falls back to Firestore if no user found
+ * Uses MongoDB exclusively
  */
 router.get('/address/:walletAddress', async (req: Request, res: Response) => {
   const walletAddress = req.params.walletAddress;
   console.log(`[wallet-routes] Getting user for wallet address: ${walletAddress}`);
   
   try {
-    // First try MongoDB
+    // Use MongoDB only
     const mongoUserId = await mongoWalletUtils.getUserIdByWalletAddress(walletAddress);
     if (mongoUserId !== null) {
       console.log(`[wallet-routes] ✅ Found user ${mongoUserId} for wallet in MongoDB`);
       return res.json({ userId: mongoUserId, source: 'mongodb' });
-    }
-    
-    // If not found in MongoDB, try Firestore
-    const firestoreUserId = await firestoreWalletUtils.getUserIdByWalletAddress(walletAddress);
-    if (firestoreUserId !== null) {
-      console.log(`[wallet-routes] ✅ Found user ${firestoreUserId} for wallet in Firestore`);
-      
-      // Store in MongoDB for future lookups
-      await mongoWalletUtils.storeWalletAddress(firestoreUserId, walletAddress);
-      
-      return res.json({ userId: firestoreUserId, source: 'firestore' });
     }
     
     console.log(`[wallet-routes] ❌ No user found for wallet ${walletAddress}`);
@@ -142,6 +107,7 @@ router.get('/address/:walletAddress', async (req: Request, res: Response) => {
 
 /**
  * Connect wallet to user or startup
+ * Uses MongoDB exclusively
  */
 router.post('/connect', async (req: Request, res: Response) => {
   const { userId, startupId, walletAddress } = req.body;
@@ -152,23 +118,21 @@ router.post('/connect', async (req: Request, res: Response) => {
   
   try {
     if (userId) {
-      // Store wallet for user in both MongoDB and Firestore
-      const mongoResult = await mongoWalletUtils.storeWalletAddress(userId, walletAddress);
-      const firestoreResult = await firestoreWalletUtils.storeWalletAddress(userId, walletAddress);
+      // Store wallet for user in MongoDB
+      const result = await mongoWalletUtils.storeWalletAddress(userId, walletAddress);
       
-      console.log(`[wallet-routes] Wallet connected for user ${userId}: MongoDB=${mongoResult}, Firestore=${firestoreResult}`);
+      console.log(`[wallet-routes] Wallet connected for user ${userId}: MongoDB=${result}`);
       return res.json({ success: true, userId, walletAddress });
     }
     
     if (startupId) {
-      // Store wallet for startup in both MongoDB and Firestore
+      // Store wallet for startup in MongoDB
       // We need founderId for proper association, but if not available, use startupId as placeholder
       const founderId = req.body.founderId || startupId;
       
-      const mongoResult = await mongoWalletUtils.storeStartupWalletAddress(startupId, founderId, walletAddress);
-      const firestoreResult = await firestoreWalletUtils.storeStartupWalletAddress(startupId, founderId, walletAddress);
+      const result = await mongoWalletUtils.storeStartupWalletAddress(startupId, founderId, walletAddress);
       
-      console.log(`[wallet-routes] Wallet connected for startup ${startupId}: MongoDB=${mongoResult}, Firestore=${firestoreResult}`);
+      console.log(`[wallet-routes] Wallet connected for startup ${startupId}: MongoDB=${result}`);
       return res.json({ success: true, startupId, founderId, walletAddress });
     }
     
