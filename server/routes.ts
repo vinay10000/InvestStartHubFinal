@@ -11,6 +11,13 @@ import { z } from 'zod';
 import { WebSocketServer } from 'ws';
 import { WebSocket } from 'ws';
 import { setActiveConnections } from './imagekit';
+import { 
+  getWalletAddressByUserId, 
+  getWalletAddressByStartupId, 
+  getUserIdByWalletAddress,
+  storeWalletAddress,
+  storeStartupWalletAddress
+} from './wallet-utils';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -184,15 +191,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.body.userId);
       const walletAddress = req.body.walletAddress;
+      
+      if (!walletAddress || !walletAddress.startsWith('0x')) {
+        return res.status(400).json({ message: 'Invalid wallet address format' });
+      }
+      
+      console.log(`Connecting wallet ${walletAddress.substring(0, 10)}... to user ${userId}`);
+      
+      // Update wallet in both places - user record and dedicated wallet collection
       const user = await storage.updateUserWallet(userId, walletAddress);
       
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
       
-      res.status(200).json({ user: { ...user, password: undefined } });
+      // Also store in dedicated wallet collection for reliable lookup
+      await storeWalletAddress(userId, walletAddress);
+      
+      // If user is a founder, find their startups and store wallet for them too
+      try {
+        const founderStartups = await storage.getStartupsByFounderId(userId);
+        if (founderStartups.length > 0) {
+          console.log(`Found ${founderStartups.length} startups for founder ${userId}, updating their wallet addresses`);
+          
+          for (const startup of founderStartups) {
+            await storeStartupWalletAddress(startup.id, userId, walletAddress);
+            console.log(`Updated wallet for startup ${startup.id} to ${walletAddress.substring(0, 10)}...`);
+          }
+        }
+      } catch (startupError) {
+        console.error('Error updating startup wallets:', startupError);
+        // Don't fail the whole operation if this part fails
+      }
+      
+      res.status(200).json({ 
+        user: { ...user, password: undefined },
+        walletAddress
+      });
     } catch (error) {
+      console.error('Error connecting wallet:', error);
       res.status(500).json({ message: 'Failed to connect wallet' });
+    }
+  });
+  
+  // New wallet address endpoints for MetaMask investment
+  
+  // Get wallet address for a user
+  app.get('/api/wallets/user/:userId', async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      // Try both methods of getting the wallet address for reliability
+      const walletFromUtil = await getWalletAddressByUserId(userId);
+      const user = await storage.getUser(userId);
+      const walletFromUser = user?.walletAddress || null;
+      
+      // Use the one from the dedicated collection first, as it's more reliable
+      const walletAddress = walletFromUtil || walletFromUser;
+      
+      // If the wallets don't match and both exist, sync them
+      if (walletFromUtil && walletFromUser && walletFromUtil !== walletFromUser) {
+        console.log(`Wallet address mismatch for user ${userId}, syncing...`);
+        await storeWalletAddress(userId, walletFromUser);
+      }
+      
+      if (!walletAddress) {
+        return res.status(404).json({ 
+          message: 'Wallet address not found',
+          userId
+        });
+      }
+      
+      res.status(200).json({ 
+        userId,
+        walletAddress
+      });
+    } catch (error) {
+      console.error('Error getting user wallet:', error);
+      res.status(500).json({ message: 'Failed to get wallet address' });
+    }
+  });
+  
+  // Get wallet address for a startup
+  app.get('/api/wallets/startup/:startupId', async (req: Request, res: Response) => {
+    try {
+      const startupId = parseInt(req.params.startupId);
+      
+      if (isNaN(startupId)) {
+        return res.status(400).json({ message: 'Invalid startup ID' });
+      }
+      
+      // Get the startup wallet from the dedicated collection
+      const walletAddress = await getWalletAddressByStartupId(startupId);
+      
+      // If not found in dedicated collection, try to get the founder and their wallet
+      if (!walletAddress) {
+        const startup = await storage.getStartup(startupId);
+        
+        if (!startup) {
+          return res.status(404).json({ 
+            message: 'Startup not found',
+            startupId
+          });
+        }
+        
+        // Get founder's wallet
+        const founderId = startup.founderId;
+        const founderWallet = await getWalletAddressByUserId(founderId);
+        
+        if (founderWallet) {
+          // Store it for future quick lookups
+          await storeStartupWalletAddress(startupId, founderId, founderWallet);
+          
+          return res.status(200).json({
+            startupId,
+            founderId,
+            walletAddress: founderWallet,
+            message: 'Using founder wallet address (now cached)'
+          });
+        }
+        
+        return res.status(404).json({ 
+          message: 'Wallet address not found for startup or founder',
+          startupId,
+          founderId
+        });
+      }
+      
+      res.status(200).json({ 
+        startupId,
+        walletAddress
+      });
+    } catch (error) {
+      console.error('Error getting startup wallet:', error);
+      res.status(500).json({ message: 'Failed to get wallet address' });
+    }
+  });
+  
+  // Find user by wallet address
+  app.get('/api/wallets/address/:walletAddress', async (req: Request, res: Response) => {
+    try {
+      const walletAddress = req.params.walletAddress;
+      
+      if (!walletAddress || !walletAddress.startsWith('0x')) {
+        return res.status(400).json({ message: 'Invalid wallet address format' });
+      }
+      
+      // Get user ID from the wallet address
+      const userId = await getUserIdByWalletAddress(walletAddress);
+      
+      if (!userId) {
+        return res.status(404).json({ 
+          message: 'User not found for wallet address',
+          walletAddress
+        });
+      }
+      
+      // Get full user details
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ 
+          message: 'User not found despite wallet lookup success',
+          userId,
+          walletAddress
+        });
+      }
+      
+      res.status(200).json({ 
+        user: { ...user, password: undefined },
+        walletAddress
+      });
+    } catch (error) {
+      console.error('Error finding user by wallet:', error);
+      res.status(500).json({ message: 'Failed to find user by wallet address' });
     }
   });
 

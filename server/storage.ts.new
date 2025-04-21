@@ -1,0 +1,518 @@
+import { 
+  users, User, InsertUser, 
+  startups, Startup, InsertStartup,
+  documents, Document, InsertDocument,
+  transactions, Transaction, InsertTransaction,
+  chats, Chat, InsertChat,
+  messages, Message, InsertMessage
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, inArray } from "drizzle-orm";
+
+export interface IStorage {
+  // User operations
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
+  updateUserWallet(id: number, walletAddress: string): Promise<User | undefined>;
+  
+  // Startup operations
+  getAllStartups(): Promise<Startup[]>;
+  getStartup(id: number): Promise<Startup | undefined>;
+  getStartupsByFounderId(founderId: number): Promise<Startup[]>;
+  createStartup(startup: InsertStartup): Promise<Startup>;
+  updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined>;
+  
+  // Document operations
+  getDocument(id: number | string): Promise<Document | undefined>;
+  getDocumentsByStartupId(startupId: number | string): Promise<Document[]>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  
+  // Transaction operations
+  getTransaction(id: number): Promise<Transaction | undefined>;
+  getTransactionsByFounderId(founderId: number): Promise<Transaction[]>;
+  getTransactionsByInvestorId(investorId: number): Promise<Transaction[]>;
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransactionStatus(id: number, status: string): Promise<Transaction | undefined>;
+  
+  // Chat operations
+  getChat(id: number): Promise<Chat | undefined>;
+  getChatsByFounderId(founderId: number): Promise<Chat[]>;
+  getChatsByInvestorId(investorId: number): Promise<Chat[]>;
+  createChat(chat: InsertChat): Promise<Chat>;
+  
+  // Message operations
+  getMessage(id: number): Promise<Message | undefined>;
+  getMessagesByChatId(chatId: number): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+}
+
+// Memory storage implementation (used for reference, now replaced with DatabaseStorage)
+class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private startups: Map<number, Startup>;
+  private documents: Map<number, Document>;
+  private transactions: Map<number, Transaction>;
+  private chats: Map<number, Chat>;
+  private messages: Map<number, Message>;
+  
+  private userCurrentId: number;
+  private startupCurrentId: number;
+  private documentCurrentId: number;
+  private transactionCurrentId: number;
+  private chatCurrentId: number;
+  private messageCurrentId: number;
+
+  constructor() {
+    this.users = new Map();
+    this.startups = new Map();
+    this.documents = new Map();
+    this.transactions = new Map();
+    this.chats = new Map();
+    this.messages = new Map();
+    
+    this.userCurrentId = 1;
+    this.startupCurrentId = 1;
+    this.documentCurrentId = 1;
+    this.transactionCurrentId = 1;
+    this.chatCurrentId = 1;
+    this.messageCurrentId = 1;
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.username === username);
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.userCurrentId++;
+    const createdAt = new Date();
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt,
+      walletAddress: insertUser.walletAddress || null,
+      profilePicture: insertUser.profilePicture || null,
+      sameId: insertUser.sameId || null
+    };
+    this.users.set(id, user);
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    
+    if (!existingUser) {
+      return undefined;
+    }
+    
+    const updatedUser = { ...existingUser, ...userData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserWallet(id: number, walletAddress: string): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    
+    if (!existingUser) {
+      return undefined;
+    }
+    
+    const updatedUser = { ...existingUser, walletAddress };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async getAllStartups(): Promise<Startup[]> {
+    return Array.from(this.startups.values());
+  }
+
+  async getStartup(id: number): Promise<Startup | undefined> {
+    return this.startups.get(id);
+  }
+
+  async getStartupsByFounderId(founderId: number): Promise<Startup[]> {
+    return Array.from(this.startups.values()).filter(
+      (startup) => startup.founderId === founderId,
+    );
+  }
+
+  async createStartup(insertStartup: InsertStartup): Promise<Startup> {
+    const id = this.startupCurrentId++;
+    const createdAt = new Date();
+    const startup: Startup = { 
+      ...insertStartup, 
+      id, 
+      createdAt,
+      upiId: insertStartup.upiId || null,
+      upiQrCode: insertStartup.upiQrCode || null,
+      sameId: insertStartup.sameId || null,
+      category: insertStartup.category || null,
+      fundingGoal: insertStartup.fundingGoal || null,
+      currentFunding: insertStartup.currentFunding || null,
+      logoUrl: insertStartup.logoUrl || null,
+      websiteUrl: insertStartup.websiteUrl || null,
+      mediaUrls: insertStartup.mediaUrls || [],
+      videoUrl: insertStartup.videoUrl || null
+    };
+    this.startups.set(id, startup);
+    return startup;
+  }
+
+  async updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined> {
+    const existingStartup = this.startups.get(id);
+    
+    if (!existingStartup) {
+      return undefined;
+    }
+    
+    const updatedStartup = { ...existingStartup, ...startupData };
+    this.startups.set(id, updatedStartup);
+    return updatedStartup;
+  }
+
+  async getDocument(id: number | string): Promise<Document | undefined> {
+    // Convert string numeric ID to number if needed
+    const numericId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id;
+    return typeof numericId === 'number' ? this.documents.get(numericId) : undefined;
+  }
+
+  async getDocumentsByStartupId(startupId: number | string): Promise<Document[]> {
+    console.log(`Getting documents for startup ID: ${startupId} (type: ${typeof startupId})`);
+    
+    // Handle both Firebase string IDs and numeric IDs
+    return Array.from(this.documents.values()).filter(
+      (document) => {
+        // For numeric startupId, directly compare
+        if (typeof startupId === 'number') {
+          return String(document.startupId) === String(startupId);
+        }
+        
+        // For string startupId, compare as strings
+        return String(document.startupId) === startupId;
+      }
+    );
+  }
+
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const id = this.documentCurrentId++;
+    const createdAt = new Date();
+    
+    console.log(`Creating document with startupId: ${insertDocument.startupId} (type: ${typeof insertDocument.startupId})`);
+    
+    // Create the document with the original startupId type (string or number)
+    const document: Document = { 
+      ...insertDocument, 
+      id, 
+      createdAt,
+      fileId: insertDocument.fileId || null,
+      fileName: insertDocument.fileName || null,
+      mimeType: insertDocument.mimeType || null,
+      fileSize: insertDocument.fileSize || null 
+    };
+    this.documents.set(id, document);
+    return document;
+  }
+
+  async getTransaction(id: number): Promise<Transaction | undefined> {
+    return this.transactions.get(id);
+  }
+
+  async getTransactionsByFounderId(founderId: number): Promise<Transaction[]> {
+    // First get all startups by founder ID
+    const founderStartups = await this.getStartupsByFounderId(founderId);
+    const startupIds = founderStartups.map(startup => String(startup.id));
+    
+    // Then get all transactions for those startups
+    return Array.from(this.transactions.values()).filter(
+      (transaction) => startupIds.includes(String(transaction.startupId)),
+    );
+  }
+
+  async getTransactionsByInvestorId(investorId: number): Promise<Transaction[]> {
+    return Array.from(this.transactions.values()).filter(
+      (transaction) => String(transaction.investorId) === String(investorId),
+    );
+  }
+
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const id = this.transactionCurrentId++;
+    const createdAt = new Date();
+    const transaction: Transaction = { 
+      ...insertTransaction, 
+      id, 
+      createdAt,
+      transactionId: insertTransaction.transactionId || null
+    };
+    this.transactions.set(id, transaction);
+    return transaction;
+  }
+
+  async updateTransactionStatus(id: number, status: string): Promise<Transaction | undefined> {
+    const existingTransaction = this.transactions.get(id);
+    
+    if (!existingTransaction) {
+      return undefined;
+    }
+    
+    const updatedTransaction = { ...existingTransaction, status };
+    this.transactions.set(id, updatedTransaction);
+    return updatedTransaction;
+  }
+
+  async getChat(id: number): Promise<Chat | undefined> {
+    return this.chats.get(id);
+  }
+
+  async getChatsByFounderId(founderId: number): Promise<Chat[]> {
+    return Array.from(this.chats.values()).filter(
+      (chat) => chat.founderId === founderId,
+    );
+  }
+
+  async getChatsByInvestorId(investorId: number): Promise<Chat[]> {
+    return Array.from(this.chats.values()).filter(
+      (chat) => chat.investorId === investorId,
+    );
+  }
+
+  async createChat(insertChat: InsertChat): Promise<Chat> {
+    const id = this.chatCurrentId++;
+    const createdAt = new Date();
+    const chat: Chat = { ...insertChat, id, createdAt };
+    this.chats.set(id, chat);
+    return chat;
+  }
+
+  async getMessage(id: number): Promise<Message | undefined> {
+    return this.messages.get(id);
+  }
+
+  async getMessagesByChatId(chatId: number): Promise<Message[]> {
+    return Array.from(this.messages.values()).filter(
+      (message) => message.chatId === chatId,
+    );
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const id = this.messageCurrentId++;
+    const createdAt = new Date();
+    const message: Message = { ...insertMessage, id, createdAt };
+    this.messages.set(id, message);
+    return message;
+  }
+}
+
+// Database storage implementation using PostgreSQL with Drizzle ORM
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        profilePicture: insertUser.profilePicture || null,
+        sameId: insertUser.sameId || null
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async updateUserWallet(id: number, walletAddress: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ walletAddress })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  // Startup operations
+  async getAllStartups(): Promise<Startup[]> {
+    return await db.select().from(startups);
+  }
+
+  async getStartup(id: number): Promise<Startup | undefined> {
+    const [startup] = await db.select().from(startups).where(eq(startups.id, id));
+    return startup;
+  }
+
+  async getStartupsByFounderId(founderId: number): Promise<Startup[]> {
+    return await db.select().from(startups).where(eq(startups.founderId, founderId));
+  }
+
+  async createStartup(insertStartup: InsertStartup): Promise<Startup> {
+    const [startup] = await db
+      .insert(startups)
+      .values({
+        ...insertStartup,
+        sameId: insertStartup.sameId || null,
+        category: insertStartup.category || null,
+        fundingGoal: insertStartup.fundingGoal || null,
+        currentFunding: insertStartup.currentFunding || null,
+        logoUrl: insertStartup.logoUrl || null,
+        websiteUrl: insertStartup.websiteUrl || null,
+        upiId: insertStartup.upiId || null,
+        upiQrCode: insertStartup.upiQrCode || null,
+        mediaUrls: insertStartup.mediaUrls || [],
+        videoUrl: insertStartup.videoUrl || null
+      })
+      .returning();
+    return startup;
+  }
+
+  async updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined> {
+    const [updatedStartup] = await db
+      .update(startups)
+      .set(startupData)
+      .where(eq(startups.id, id))
+      .returning();
+    return updatedStartup;
+  }
+
+  // Document operations
+  async getDocument(id: number | string): Promise<Document | undefined> {
+    const numericId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id;
+    if (typeof numericId !== 'number') return undefined;
+    
+    const [document] = await db.select().from(documents).where(eq(documents.id, numericId));
+    return document;
+  }
+
+  async getDocumentsByStartupId(startupId: number | string): Promise<Document[]> {
+    // All startupIds in db are stored as strings
+    const stringStartupId = String(startupId);
+    return await db.select().from(documents).where(eq(documents.startupId, stringStartupId));
+  }
+
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [newDocument] = await db
+      .insert(documents)
+      .values({
+        ...document,
+        fileId: document.fileId || null,
+        fileName: document.fileName || null,
+        mimeType: document.mimeType || null,
+        fileSize: document.fileSize || null
+      })
+      .returning();
+    return newDocument;
+  }
+
+  // Transaction operations
+  async getTransaction(id: number): Promise<Transaction | undefined> {
+    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
+    return transaction;
+  }
+
+  async getTransactionsByFounderId(founderId: number): Promise<Transaction[]> {
+    // First get all startups by founder ID
+    const founderStartups = await this.getStartupsByFounderId(founderId);
+    const startupIds = founderStartups.map(startup => String(startup.id));
+    
+    if (startupIds.length === 0) return [];
+    
+    // Then get all transactions for those startups
+    return await db.select().from(transactions).where(inArray(transactions.startupId, startupIds));
+  }
+
+  async getTransactionsByInvestorId(investorId: number): Promise<Transaction[]> {
+    const investorIdStr = String(investorId);
+    return await db.select().from(transactions).where(eq(transactions.investorId, investorIdStr));
+  }
+
+  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+    const [newTransaction] = await db
+      .insert(transactions)
+      .values({
+        ...transaction,
+        transactionId: transaction.transactionId || null
+      })
+      .returning();
+    return newTransaction;
+  }
+
+  async updateTransactionStatus(id: number, status: string): Promise<Transaction | undefined> {
+    const [updatedTransaction] = await db
+      .update(transactions)
+      .set({ status })
+      .where(eq(transactions.id, id))
+      .returning();
+    return updatedTransaction;
+  }
+
+  // Chat operations
+  async getChat(id: number): Promise<Chat | undefined> {
+    const [chat] = await db.select().from(chats).where(eq(chats.id, id));
+    return chat;
+  }
+
+  async getChatsByFounderId(founderId: number): Promise<Chat[]> {
+    return await db.select().from(chats).where(eq(chats.founderId, founderId));
+  }
+
+  async getChatsByInvestorId(investorId: number): Promise<Chat[]> {
+    return await db.select().from(chats).where(eq(chats.investorId, investorId));
+  }
+
+  async createChat(chat: InsertChat): Promise<Chat> {
+    const [newChat] = await db
+      .insert(chats)
+      .values(chat)
+      .returning();
+    return newChat;
+  }
+
+  // Message operations
+  async getMessage(id: number): Promise<Message | undefined> {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message;
+  }
+
+  async getMessagesByChatId(chatId: number): Promise<Message[]> {
+    return await db.select().from(messages).where(eq(messages.chatId, chatId));
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db
+      .insert(messages)
+      .values(message)
+      .returning();
+    return newMessage;
+  }
+}
+
+// Switch from MemStorage to DatabaseStorage
+export const storage = new DatabaseStorage();
