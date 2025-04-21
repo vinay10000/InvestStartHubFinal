@@ -13,7 +13,8 @@ import { WebSocket } from 'ws';
 import { setActiveConnections } from './imagekit';
 import { 
   getWalletAddressByUserId, 
-  getWalletAddressByStartupId, 
+  getWalletAddressByStartupId,
+  getWalletAddressByFirebaseUid,
   getUserIdByWalletAddress,
   storeWalletAddress,
   storeStartupWalletAddress
@@ -279,18 +280,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get wallet address for a startup
   app.get('/api/wallets/startup/:startupId', async (req: Request, res: Response) => {
     try {
-      const startupId = parseInt(req.params.startupId);
-      
-      if (isNaN(startupId)) {
-        return res.status(400).json({ message: 'Invalid startup ID' });
-      }
+      // Accept both numeric IDs and string IDs (for Firebase compatibility)
+      const startupId = req.params.startupId;
       
       // Get the startup wallet from the dedicated collection
       const walletAddress = await getWalletAddressByStartupId(startupId);
       
       // If not found in dedicated collection, try to get the founder and their wallet
       if (!walletAddress) {
-        const startup = await storage.getStartup(startupId);
+        const startup = await storage.getStartup(parseInt(startupId)) || 
+                       await storage.getStartupByFirebaseId(startupId);
         
         if (!startup) {
           return res.status(404).json({ 
@@ -299,9 +298,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Get founder's wallet
+        // Get founder's wallet - check if it's a Firebase UID or numeric ID
         const founderId = startup.founderId;
-        const founderWallet = await getWalletAddressByUserId(founderId);
+        let founderWallet = null;
+        
+        // Check if the founderId looks like a Firebase UID (non-numeric string)
+        const isFirebaseUid = typeof founderId === 'string' && isNaN(Number(founderId)) && founderId.length > 10;
+        
+        if (isFirebaseUid) {
+          console.log(`[routes] Detected Firebase UID as founderId: ${founderId}`);
+          // Use the new Firebase UID specific method
+          founderWallet = await getWalletAddressByFirebaseUid(founderId as string);
+        } else {
+          // Use the regular numeric ID method
+          founderWallet = await getWalletAddressByUserId(founderId);
+        }
         
         if (founderWallet) {
           // Store it for future quick lookups
@@ -318,7 +329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ 
           message: 'Wallet address not found for startup or founder',
           startupId,
-          founderId
+          founderId,
+          isFirebaseUid
         });
       }
       

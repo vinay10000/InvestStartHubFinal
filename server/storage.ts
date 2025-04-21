@@ -20,6 +20,7 @@ export interface IStorage {
   // Startup operations
   getAllStartups(): Promise<Startup[]>;
   getStartup(id: number): Promise<Startup | undefined>;
+  getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined>;
   getStartupsByFounderId(founderId: number): Promise<Startup[]>;
   createStartup(startup: InsertStartup): Promise<Startup>;
   updateStartup(id: number, startupData: Partial<Startup>): Promise<Startup | undefined>;
@@ -138,6 +139,25 @@ export class MemStorage implements IStorage {
 
   async getStartup(id: number): Promise<Startup | undefined> {
     return this.startups.get(id);
+  }
+  
+  async getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined> {
+    // For memory storage, search for startups with a matching founderId or sameId
+    const startups = Array.from(this.startups.values());
+    
+    // First try to find by founderId as a string
+    const startupByFounderId = startups.find(
+      (startup) => String(startup.founderId) === firebaseId
+    );
+    
+    if (startupByFounderId) {
+      return startupByFounderId;
+    }
+    
+    // Then try to find by sameId
+    return startups.find(
+      (startup) => startup.sameId === firebaseId
+    );
   }
 
   async getStartupsByFounderId(founderId: number): Promise<Startup[]> {
@@ -541,6 +561,67 @@ export class FirebaseStorage implements IStorage {
       return undefined;
     } catch (error) {
       console.error('Error getting startup:', error);
+      return undefined;
+    }
+  }
+  
+  /**
+   * Get a startup by its Firebase ID (string ID)
+   * This is specifically for handling Firebase UIDs which are strings like "5SddFKVv8ydDMPl4sSnrgPazt3c2"
+   */
+  async getStartupByFirebaseId(firebaseId: string): Promise<Startup | undefined> {
+    try {
+      if (!firestore) {
+        console.warn('Firestore is not available. Falling back to memory storage for getStartupByFirebaseId()');
+        return undefined;
+      }
+      
+      console.log(`[FirebaseStorage] Looking up startup with Firebase ID: ${firebaseId}`);
+      
+      // First try looking for the startup record directly using the Firebase ID as the document ID
+      const startupRef = firestore.collection(this.startupsCollection).doc(firebaseId);
+      let snapshot = await startupRef.get();
+      
+      if (snapshot.exists) {
+        const data = snapshot.data() as Omit<Startup, 'id'>;
+        return { ...data, id: Number(firebaseId) || 0 } as Startup;
+      }
+      
+      // If not found, try querying with where clause matching on founderId field
+      const querySnapshot = await firestore.collection(this.startupsCollection)
+        .where('founderId', '==', firebaseId)
+        .limit(1)
+        .get();
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const data = doc.data() as Omit<Startup, 'id'>;
+        const id = Number(doc.id) || 0;
+        
+        console.log(`[FirebaseStorage] Found startup with founderId=${firebaseId}, startup ID: ${id}`);
+        return { ...data, id } as Startup;
+      }
+      
+      // Also try looking for startups with sameId matching the Firebase UID
+      // (in case the startup was linked to the founder using sameId)
+      const sameIdQuerySnapshot = await firestore.collection(this.startupsCollection)
+        .where('sameId', '==', firebaseId)
+        .limit(1)
+        .get();
+        
+      if (!sameIdQuerySnapshot.empty) {
+        const doc = sameIdQuerySnapshot.docs[0];
+        const data = doc.data() as Omit<Startup, 'id'>;
+        const id = Number(doc.id) || 0;
+        
+        console.log(`[FirebaseStorage] Found startup with sameId=${firebaseId}, startup ID: ${id}`);
+        return { ...data, id } as Startup;
+      }
+      
+      console.log(`[FirebaseStorage] No startup found for Firebase ID: ${firebaseId}`);
+      return undefined;
+    } catch (error) {
+      console.error('Error getting startup by Firebase ID:', error);
       return undefined;
     }
   }

@@ -22,6 +22,9 @@ const safeFirestore = {
     return collection(db, collectionName);
   }
 }
+
+// Firebase user collection (for looking up by Firebase UIDs)
+const FIREBASE_USERS_COLLECTION = 'firebase_users';
 import { collection, doc, getDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
 
 // Collection names
@@ -71,6 +74,52 @@ export async function getWalletAddressByUserId(userId: number | string): Promise
     return null;
   } catch (error) {
     console.error(`[wallet-utils] Error getting wallet by user ID:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get a wallet address by Firebase UID
+ * Special method to handle Firebase Authentication UIDs which are strings like "5SddFKVv8ydDMPl4sSnrgPazt3c2"
+ */
+export async function getWalletAddressByFirebaseUid(firebaseUid: string): Promise<string | null> {
+  try {
+    if (!firebaseUid || firebaseUid === 'undefined') {
+      console.log(`[wallet-utils] Invalid Firebase UID: ${firebaseUid}`);
+      return null;
+    }
+    
+    console.log(`[wallet-utils] Fetching wallet for Firebase UID: ${firebaseUid}`);
+    
+    // Try getting from the firebase users collection
+    const userRef = doc(db, FIREBASE_USERS_COLLECTION, firebaseUid);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const walletAddress = userData.walletAddress;
+      
+      if (walletAddress) {
+        console.log(`[wallet-utils] Found wallet for Firebase UID ${firebaseUid}: ${walletAddress}`);
+        return walletAddress;
+      }
+    }
+    
+    // Try getting from the wallet collection directly
+    const walletRef = doc(db, `${WALLET_COLLECTION}_firebase`, firebaseUid);
+    const walletDoc = await getDoc(walletRef);
+    
+    if (walletDoc.exists()) {
+      const walletData = walletDoc.data();
+      const walletAddress = walletData.walletAddress;
+      console.log(`[wallet-utils] Found wallet for Firebase UID ${firebaseUid} in wallet_addresses_firebase: ${walletAddress}`);
+      return walletAddress;
+    }
+    
+    console.log(`[wallet-utils] No wallet found for Firebase UID ${firebaseUid}`);
+    return null;
+  } catch (error) {
+    console.error(`[wallet-utils] Error getting wallet by Firebase UID:`, error);
     return null;
   }
 }

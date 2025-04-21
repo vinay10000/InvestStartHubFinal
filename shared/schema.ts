@@ -18,7 +18,7 @@ export const users = pgTable("users", {
 // Startup profile table
 export const startups = pgTable("startups", {
   id: serial("id").primaryKey(),
-  founderId: integer("founder_id").notNull(),
+  founderId: text("founder_id").notNull(), // Changed to text for Firebase compatibility
   name: text("name").notNull(),
   description: text("description").notNull(),
   pitch: text("pitch").notNull(),
@@ -93,17 +93,17 @@ export const transactions = pgTable("transactions", {
 // Chat table for conversation between founders and investors
 export const chats = pgTable("chats", {
   id: serial("id").primaryKey(),
-  founderId: integer("founder_id").notNull(),
-  investorId: integer("investor_id").notNull(),
-  startupId: integer("startup_id").notNull(),
+  founderId: text("founder_id").notNull(), // Changed to text for Firebase compatibility
+  investorId: text("investor_id").notNull(), // Changed to text for Firebase compatibility
+  startupId: text("startup_id").notNull(), // Changed to text for Firebase compatibility
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Messages for chat
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  chatId: integer("chat_id").notNull(),
-  senderId: integer("sender_id").notNull(),
+  chatId: text("chat_id").notNull(), // Changed to text for Firebase compatibility
+  senderId: text("sender_id").notNull(), // Changed to text for Firebase compatibility
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
