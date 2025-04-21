@@ -1,30 +1,29 @@
 /**
- * Enhanced function to retrieve a startup's wallet address
- * with multiple fallback approaches and improved reliability
+ * Enhanced function to retrieve a startup's wallet address 
+ * with ONLY direct Firestore lookup - NO FALLBACKS
  */
 // Use relative imports with the correct path
 import { apiRequest } from '../lib/queryClient';
 import { normalizeWalletAddress } from '../lib/utils';
-import { getStartupWallet } from './wallet-utils';
 
 // Cache for wallet addresses to avoid repeated API calls
 const walletCache: Record<string, { address: string; timestamp: number }> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 /**
- * Get a startup's wallet address with enhanced reliability
- * Uses the following fallback mechanisms:
+ * Get a startup's wallet address ONLY from Firestore
+ * No fallbacks or temporary addresses allowed
+ * Uses ONLY the following methods:
  * 1. Cached wallet address (if recent)
- * 2. API endpoint for wallet address (/api/wallets/startup/:id)
- * 3. Fetch startup details and get founderId
- * 4. Use founder's wallet address as fallback (/api/wallets/user/:founderId)
+ * 2. API endpoint for wallet address (/api/wallets/startup/:id) - direct Firestore query
+ * 3. Get startup details and founder's wallet from Firestore
  * 
  * @param startupId The ID of the startup
  * @returns Promise resolving to wallet address or null
  */
 export async function getStartupWalletNew(startupId: string | number): Promise<string | null> {
   const startupIdStr = startupId.toString();
-  console.log(`[getStartupWalletNew] Fetching wallet for startup ${startupIdStr}`);
+  console.log(`[getStartupWalletNew] Fetching wallet for startup ${startupIdStr} (Firestore-only mode)`);
   
   // Check cache first
   const now = Date.now();
@@ -36,34 +35,33 @@ export async function getStartupWalletNew(startupId: string | number): Promise<s
   }
   
   try {
-    // Approach 1: Try getting from the wallet API endpoint
-    console.log(`[getStartupWalletNew] Trying API endpoint for startup ${startupIdStr}`);
+    // APPROACH 1: Try getting from the wallet API endpoint (direct Firestore query)
+    console.log(`[getStartupWalletNew] Fetching wallet from Firestore via API for startup ${startupIdStr}`);
     const walletResponse = await apiRequest(`/api/wallets/startup/${startupIdStr}`);
     
     if (walletResponse && walletResponse.walletAddress) {
       const walletAddress = normalizeWalletAddress(walletResponse.walletAddress);
-      console.log(`[getStartupWalletNew] Found via API: ${walletAddress}`);
+      console.log(`[getStartupWalletNew] ✅ Found real wallet in Firestore: ${walletAddress}`);
       
       // Cache the result
       walletCache[startupIdStr] = { address: walletAddress, timestamp: now };
       return walletAddress;
     }
     
-    // Approach 2: Get the startup details to find the founder
-    console.log(`[getStartupWalletNew] Trying to get startup details for ${startupIdStr}`);
+    // APPROACH 2: Get the startup details and founder ID from Firestore
+    console.log(`[getStartupWalletNew] Fetching startup details from Firestore for ${startupIdStr}`);
     const startupResponse = await apiRequest(`/api/startups/${startupIdStr}`);
     
     if (startupResponse && startupResponse.founderId) {
       const founderId = startupResponse.founderId;
-      console.log(`[getStartupWalletNew] Found founderId: ${founderId}, getting founder wallet`);
+      console.log(`[getStartupWalletNew] Found founderId in Firestore: ${founderId}, getting founder wallet`);
       
-      // Approach 3: Get the founder's wallet address directly
-      // This is the most reliable method as shown in the diagnostics
+      // Get the founder's wallet address directly from Firestore
       const founderWalletResponse = await apiRequest(`/api/wallets/user/${founderId}`);
       
       if (founderWalletResponse && founderWalletResponse.walletAddress) {
         const founderWalletAddress = normalizeWalletAddress(founderWalletResponse.walletAddress);
-        console.log(`[getStartupWalletNew] Found via founder: ${founderWalletAddress}`);
+        console.log(`[getStartupWalletNew] ✅ Found founder's real wallet in Firestore: ${founderWalletAddress}`);
         
         // Cache the result
         walletCache[startupIdStr] = { address: founderWalletAddress, timestamp: now };
@@ -71,36 +69,11 @@ export async function getStartupWalletNew(startupId: string | number): Promise<s
       }
     }
     
-    // Approach 4: Fallback to the utility function if all else fails
-    console.log(`[getStartupWalletNew] Trying utility function fallback`);
-    const fallbackWallet = await getStartupWallet(startupIdStr);
-    
-    if (fallbackWallet) {
-      const normalizedWallet = normalizeWalletAddress(fallbackWallet);
-      console.log(`[getStartupWalletNew] Found via fallback: ${normalizedWallet}`);
-      
-      // Cache the result
-      walletCache[startupIdStr] = { address: normalizedWallet, timestamp: now };
-      return normalizedWallet;
-    }
-    
-    console.log(`[getStartupWalletNew] No wallet found for startup ${startupIdStr}`);
+    // NO FALLBACKS - if we couldn't find a real wallet in Firestore, return null
+    console.log(`[getStartupWalletNew] ❌ No real wallet found in Firestore for startup ${startupIdStr}`);
     return null;
   } catch (error) {
-    console.error(`[getStartupWalletNew] Error fetching wallet for startup ${startupIdStr}:`, error);
-    
-    try {
-      // One last attempt using the utility function
-      const emergencyFallbackWallet = await getStartupWallet(startupIdStr);
-      if (emergencyFallbackWallet) {
-        const normalizedEmergencyWallet = normalizeWalletAddress(emergencyFallbackWallet);
-        console.log(`[getStartupWalletNew] Found via emergency fallback: ${normalizedEmergencyWallet}`);
-        return normalizedEmergencyWallet;
-      }
-    } catch (fallbackError) {
-      console.error(`[getStartupWalletNew] Fallback also failed:`, fallbackError);
-    }
-    
+    console.error(`[getStartupWalletNew] Error fetching wallet from Firestore for startup ${startupIdStr}:`, error);
     return null;
   }
 }

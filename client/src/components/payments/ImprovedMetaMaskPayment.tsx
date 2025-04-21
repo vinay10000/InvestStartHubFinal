@@ -20,7 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { doc, setDoc, collection, serverTimestamp, addDoc } from 'firebase/firestore';
 import { firestore } from '../../firebase/config';
-import { getStartupWallet } from '../../utils/wallet-utils';
+// Removed old wallet utility with fallbacks
 import { getStartupWalletNew } from '../../utils/getStartupWalletNew';
 import { useQueryClient } from "@tanstack/react-query";
 
