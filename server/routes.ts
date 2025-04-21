@@ -689,6 +689,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/startups/founder/:id', async (req: Request, res: Response) => {
+    try {
+      const founderIdParam = req.params.id;
+      console.log(`Getting startups for founder ID: ${founderIdParam}`);
+      
+      // Check if the ID is numeric
+      const isNumericId = !isNaN(Number(founderIdParam));
+      let startups = [];
+      
+      if (isNumericId) {
+        startups = await storage.getStartupsByFounderId(Number(founderIdParam));
+      } else {
+        // For MongoDB compatibility (if using string IDs)
+        // Note: We need to implement this method in the storage interface or handle it here
+        // This is a temporary solution until we update the storage interface
+        startups = await storage.getStartupsByFounderId(Number(founderIdParam));
+      }
+      
+      res.status(200).json({ startups });
+    } catch (error) {
+      console.error('Error fetching startups for founder:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch startups for founder',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get('/api/startups/:id', async (req: Request, res: Response) => {
     try {
       // Accept both numeric IDs and string IDs (for MongoDB compatibility)

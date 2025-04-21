@@ -10,7 +10,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 // Use .js extension and type it as any to avoid TypeScript errors
-import useWebSocketConnection from '@/hooks/useWebSocketConnection.js';
+import useWebSocketConnection from '@/hooks/useWebSocketConnection';
 
 interface WebSocketDiagnosticsProps {
   startupId?: string;

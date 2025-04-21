@@ -118,7 +118,7 @@ export async function updateUser(userId: string | number, userData: Partial<Mong
 /**
  * Create a startup in MongoDB
  */
-export async function createStartup(startupData: Omit<MongoStartup, 'id' | 'createdAt'>): Promise<MongoStartup | null> {
+export async function createStartup(startupData: Omit<MongoStartup, 'id' | 'createdAt'>): Promise<MongoStartup> {
   try {
     const response = await fetch('/api/startups', {
       method: 'POST',
@@ -134,17 +134,22 @@ export async function createStartup(startupData: Omit<MongoStartup, 'id' | 'crea
     }
     
     const result = await response.json();
-    return result.startup || null;
+    
+    if (!result.startup || !result.startup.id) {
+      throw new Error('Failed to create startup - no valid startup data returned from server');
+    }
+    
+    return result.startup;
   } catch (error) {
     console.error('Error creating startup:', error);
-    return null;
+    throw error; // Re-throw to allow component to handle the error
   }
 }
 
 /**
  * Update a startup in MongoDB
  */
-export async function updateStartup(startupId: string | number, startupData: Partial<MongoStartup>): Promise<MongoStartup | null> {
+export async function updateStartup(startupId: string | number, startupData: Partial<MongoStartup>): Promise<MongoStartup> {
   try {
     const response = await fetch(`/api/startups/${startupId}`, {
       method: 'PUT',
@@ -160,10 +165,15 @@ export async function updateStartup(startupId: string | number, startupData: Par
     }
     
     const result = await response.json();
-    return result.startup || null;
+    
+    if (!result.startup || !result.startup.id) {
+      throw new Error('Failed to update startup - no valid startup data returned from server');
+    }
+    
+    return result.startup;
   } catch (error) {
     console.error('Error updating startup:', error);
-    return null;
+    throw error; // Re-throw to allow component to handle the error
   }
 }
 
@@ -214,7 +224,7 @@ export async function getStartup(startupId: string | number): Promise<MongoStart
 /**
  * Create a document in MongoDB
  */
-export async function createDocument(documentData: Omit<MongoDocument, 'id' | 'createdAt'>): Promise<MongoDocument | null> {
+export async function createDocument(documentData: Omit<MongoDocument, 'id' | 'createdAt'>): Promise<MongoDocument> {
   try {
     const response = await fetch(`/api/startups/${documentData.startupId}/documents`, {
       method: 'POST',
@@ -230,10 +240,15 @@ export async function createDocument(documentData: Omit<MongoDocument, 'id' | 'c
     }
     
     const result = await response.json();
-    return result.document || null;
+    
+    if (!result.document || !result.document.id) {
+      throw new Error('Failed to create document - no valid document data returned from server');
+    }
+    
+    return result.document;
   } catch (error) {
     console.error('Error creating document:', error);
-    return null;
+    throw error; // Re-throw to allow component to handle the error
   }
 }
 

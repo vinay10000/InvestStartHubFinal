@@ -32,17 +32,38 @@ const authStateObservers: Array<(user: User | null) => void> = [];
 // Check if user is already logged in on initialization
 (async function initAuth() {
   try {
+    console.log("Initializing auth state...");
     const response = await apiRequest('GET', '/api/user');
-    if (response.ok) {
-      const userData = await response.json();
-      if (userData) {
-        // Convert MongoDB user to Firebase-like user
-        currentUser = formatUserData(userData);
-        notifyAuthStateObservers();
-      }
+    
+    // Handle unauthorized responses correctly
+    if (response.status === 401) {
+      console.log("No authenticated user found");
+      currentUser = null;
+      notifyAuthStateObservers();
+      return;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get user data: ${response.status} ${response.statusText}`);
+    }
+    
+    const userData = await response.json();
+    
+    if (userData) {
+      console.log("User found:", userData.username || userData.email);
+      // Convert MongoDB user to Firebase-like user
+      currentUser = formatUserData(userData);
+      notifyAuthStateObservers();
+    } else {
+      console.log("No user data returned");
+      currentUser = null;
+      notifyAuthStateObservers();
     }
   } catch (error) {
     console.error("Error initializing auth state:", error);
+    // Ensure we still notify observers even on error
+    currentUser = null;
+    notifyAuthStateObservers();
   }
 })();
 
@@ -103,19 +124,62 @@ export async function signup(email: string, password: string): Promise<User | nu
 // Log in a user with email and password
 export async function login(email: string, password: string): Promise<User | null> {
   try {
-    const response = await apiRequest('POST', '/api/login', { username: email, password });
+    console.log(`Attempting to log in with email: ${email}`);
+    
+    // Normalize email (remove whitespace and convert to lowercase)
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Determine if this is an email or username
+    const isEmail = normalizedEmail.includes('@');
+    const loginPayload = {
+      // If it looks like an email, use it as email, otherwise as username
+      ...(isEmail ? { email: normalizedEmail } : { username: normalizedEmail }),
+      password
+    };
+    
+    console.log(`Login payload prepared with ${isEmail ? 'email' : 'username'}`);
+    
+    const response = await apiRequest('POST', '/api/login', loginPayload);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Login failed with status: ${response.status}`);
+    // Special handling for common error cases
+    if (response.status === 401) {
+      throw new Error("Invalid username/email or password");
+    }
+    
+    if (response.status === 404) {
+      throw new Error("User not found");
     }
 
+    if (!response.ok) {
+      let errorMessage = `Login failed with status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, use the default message
+      }
+      throw new Error(errorMessage);
+    }
+
+    // Parse user data
     const userData = await response.json();
+    
+    if (!userData) {
+      throw new Error("No user data returned from server");
+    }
+    
+    console.log(`Login successful for user: ${userData.username || userData.email}`);
+    
     currentUser = formatUserData(userData);
     notifyAuthStateObservers();
     return currentUser;
   } catch (error) {
     console.error("Login error:", error);
+    // Clear current user on login error
+    currentUser = null;
+    notifyAuthStateObservers();
     throw error;
   }
 }

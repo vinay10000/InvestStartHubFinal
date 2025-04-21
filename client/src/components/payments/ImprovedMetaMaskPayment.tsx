@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useStartups } from "@/hooks/useStartups";
 import { useFounderWallet } from "@/hooks/useFounderWallet";
 import { useWallet } from "@/hooks/useWallet";
-import useWebSocketConnection from "@/hooks/useWebSocketConnection.js";
+import useWebSocketConnection from "@/hooks/useWebSocketConnection";
 import { Label as UILabel } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -144,7 +144,8 @@ const ImprovedMetaMaskPayment = ({
   }, [lastMessage, startupId, toast]);
   
   // Whether we have a valid wallet address for the founder
-  const effectiveHasWallet = !!founderWallet;
+  // Check both the MongoDB wallet and the connected MetaMask wallet
+  const effectiveHasWallet = !!founderWallet || (isWalletConnected() && !!address);
                              
   // For wallet discovery logging only
   console.log("Wallet Discovery - Founder wallet sources:", {
@@ -242,6 +243,92 @@ const ImprovedMetaMaskPayment = ({
   }, [user, txHash, refreshTransactions]);
   
   // Update the useEffect for wallet connection state
+  // Function to store wallet address in MongoDB
+  const storeWalletAddressInMongoDB = async (walletAddress: string) => {
+    if (!user) {
+      console.log("[ImprovedMetaMaskPayment] Cannot store wallet - no user");
+      return;
+    }
+    
+    // Get user ID - handle both old and new auth formats
+    const userId = user.id || user.uid;
+    
+    if (!userId) {
+      console.log("[ImprovedMetaMaskPayment] Cannot store wallet - no user ID");
+      return;
+    }
+    
+    try {
+      console.log(`[ImprovedMetaMaskPayment] Storing wallet address ${walletAddress.substring(0, 10)}... for user ${userId}`);
+      
+      // Try both wallet connection endpoints for maximum compatibility
+      // First try the MongoDB-specific endpoint
+      try {
+        const mongoResponse = await fetch('/api/wallets/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userId.toString(),
+            walletAddress
+          })
+        });
+        
+        if (mongoResponse.ok) {
+          const mongoData = await mongoResponse.json();
+          console.log("[ImprovedMetaMaskPayment] Wallet address stored via MongoDB endpoint:", mongoData);
+        } else {
+          console.warn("[ImprovedMetaMaskPayment] Failed to store wallet via MongoDB endpoint, will try legacy endpoint");
+        }
+      } catch (mongoError) {
+        console.warn("[ImprovedMetaMaskPayment] Error with MongoDB wallet endpoint:", mongoError);
+      }
+      
+      // Also use the legacy endpoint for maximum compatibility
+      const response = await fetch('/api/user/wallet/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId.toString(),
+          walletAddress,
+          isPermanent: true
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to store wallet address: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log("[ImprovedMetaMaskPayment] Wallet address stored via legacy endpoint:", data);
+      
+      // Update local storage to ensure the wallet connection persists across sessions
+      localStorage.setItem('wallet_connected', 'true');
+      
+      // Show success toast
+      toast({
+        title: "Wallet Connected",
+        description: "Your wallet address has been saved to your profile",
+        variant: "default"
+      });
+      
+      // Force refresh user auth state to show the updated wallet address
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
+      return data;
+    } catch (error) {
+      console.error("[ImprovedMetaMaskPayment] Error storing wallet address:", error);
+      
+      // Show error toast
+      toast({
+        title: "Connection Error",
+        description: "Failed to save your wallet address to your profile. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     const attemptAutoConnect = async () => {
       // Skip if MetaMask is not installed
@@ -253,6 +340,13 @@ const ImprovedMetaMaskPayment = ({
       // If we already have a connected address, we're done
       if (address) {
         console.log("[ImprovedMetaMaskPayment] Already connected to:", address);
+        
+        // If we have an address but no wallet in MongoDB, store it
+        if (user && (!user.walletAddress || user.walletAddress === "")) {
+          console.log("[ImprovedMetaMaskPayment] User doesn't have wallet in MongoDB, storing current address");
+          await storeWalletAddressInMongoDB(address);
+        }
+        
         return;
       }
 
@@ -278,7 +372,13 @@ const ImprovedMetaMaskPayment = ({
         // If we have a stored wallet, MetaMask reports connected, or user has wallet in profile, try to connect
         if (metaMaskConnected || isStoredAsConnected || effectiveWalletAddress || userHasWalletInProfile) {
           console.log("[ImprovedMetaMaskPayment] Attempting to auto-connect wallet");
-          await connect();
+          const connected = await connect();
+          
+          // If connection successful and user doesn't have wallet in MongoDB, store it
+          if (connected && user && (!user.walletAddress || user.walletAddress === "") && address) {
+            console.log("[ImprovedMetaMaskPayment] Auto-connection successful, storing wallet in MongoDB");
+            await storeWalletAddressInMongoDB(address);
+          }
         }
       } catch (error) {
         console.error("[ImprovedMetaMaskPayment] Error during auto-connect:", error);
@@ -286,7 +386,7 @@ const ImprovedMetaMaskPayment = ({
     };
 
     attemptAutoConnect();
-  }, [isInstalled, address, connect, isWalletConnected, effectiveWalletAddress, user]);
+  }, [isInstalled, address, connect, isWalletConnected, effectiveWalletAddress, user, toast]);
   
   // Handle investment process
   const handleInvest = async () => {
@@ -425,8 +525,8 @@ const ImprovedMetaMaskPayment = ({
           paymentMethod: "metamask",
           transactionHash: result.transactionHash,
           status: "completed",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
           fromAddress: address,
           toAddress: startupWallet, // Use the directly fetched wallet address
           networkName: networkName,
