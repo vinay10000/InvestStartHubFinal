@@ -149,10 +149,36 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
         const userData = await response.json();
         console.log('Refreshed user data in StartupForm:', userData);
         
-        // If the userData has a walletAddress but our user state doesn't, update it in the auth context
-        if (userData.walletAddress && (!user || !user.walletAddress)) {
+        // Debug current user context vs fresh data
+        console.log('Current user context:', user);
+        console.log('Fresh userData has wallet?', !!userData.walletAddress);
+        console.log('User context has wallet?', !!user?.walletAddress);
+        
+        // Always update the user context with the latest wallet data from the API
+        if (userData.walletAddress) {
           console.log('Updating auth context with wallet:', userData.walletAddress);
+          // Force update the wallet address in the user context
           await updateProfile({ walletAddress: userData.walletAddress });
+        } else {
+          console.log('No wallet address found in fresh user data, checking additional sources');
+          
+          // Try additional sources for wallet data (MongoDB API)
+          try {
+            if (user?.id) {
+              const walletResponse = await fetch(`/api/wallets/user/${user.id}`);
+              if (walletResponse.ok) {
+                const walletData = await walletResponse.json();
+                console.log('Wallet data from MongoDB API:', walletData);
+                
+                if (walletData && walletData.address) {
+                  console.log('Found wallet in MongoDB, updating profile:', walletData.address);
+                  await updateProfile({ walletAddress: walletData.address });
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching wallet from MongoDB:', error);
+          }
         }
       }
     } catch (error) {
@@ -166,6 +192,27 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
   useEffect(() => {
     refreshUserData();
   }, [refreshCounter]);
+  
+  // Additional effect to run on mount to ensure wallet is loaded
+  useEffect(() => {
+    // Force an immediate check on component mount
+    console.log('StartupForm mounted - checking wallet status');
+    refreshUserData();
+    
+    // Set up periodic checks for wallet status (every 3 seconds)
+    const intervalId = setInterval(() => {
+      if (!user?.walletAddress) {
+        console.log('Periodic wallet check - no wallet detected yet');
+        refreshUserData();
+      } else {
+        console.log('Wallet already detected, stopping periodic checks');
+        clearInterval(intervalId);
+      }
+    }, 3000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, []);
   
   const handleSubmit = async (data: StartupFormValues) => {
     // Only include UPI QR code file, no media files
@@ -518,7 +565,7 @@ const StartupForm = ({ onSubmit, isLoading, defaultValues }: StartupFormProps) =
 
         {/* Wallet information section with manual refresh button */}
         <div className="mt-8 p-4 border rounded-lg bg-gray-50">
-          {user?.walletAddress ? (
+          {user && user.walletAddress ? (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-medium">Wallet Connected</h3>
