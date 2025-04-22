@@ -90,7 +90,7 @@ export async function addWalletAddress(
   isPermanent: boolean = false
 ): Promise<void> {
   try {
-    const response = await fetch('/api/user/wallet/connect', {
+    const response = await fetch('/api/wallets/connect', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -116,7 +116,7 @@ export async function addWalletAddress(
  */
 export async function makeWalletPermanent(walletAddress: string, userId: number | string): Promise<void> {
   try {
-    const response = await fetch('/api/user/wallet/connect', {
+    const response = await fetch('/api/wallets/connect', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

@@ -30,7 +30,7 @@ const WalletSetup: React.FC = () => {
       if (user?.id) {
         try {
           // Get wallet data from MongoDB API
-          const response = await apiRequest('GET', `/api/wallet/user/${user.id}`);
+          const response = await apiRequest('GET', `/api/wallets/user/${user.id}`);
           const walletData = await response.json();
           
           // If user already has a permanent wallet, redirect directly

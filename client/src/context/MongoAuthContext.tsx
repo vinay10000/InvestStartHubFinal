@@ -227,7 +227,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("You must be logged in to connect a wallet");
       }
       
-      const response = await apiRequest("POST", "/api/user/wallet/connect", {
+      const response = await apiRequest("POST", "/api/wallets/connect", {
+        userId: user.id,
         walletAddress
       });
       
